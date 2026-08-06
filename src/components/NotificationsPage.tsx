@@ -54,6 +54,7 @@ export default function NotificationsPage() {
               size="sm"
               className="text-gray-400 hover:text-red-400"
               onClick={handleClear}
+              aria-label={t("notifications.clear")}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -72,7 +73,7 @@ export default function NotificationsPage() {
           )}
           {permission === "denied" && (
             <p className="text-sm text-red-400 mt-1">
-              {t("notifications.blocked")}
+              {t("notifications.permissionDenied")}
             </p>
           )}
         </div>
@@ -85,10 +86,10 @@ export default function NotificationsPage() {
               <Bell className="h-8 w-8 text-gray-400" />
             </div>
             <h3 className="text-2xl font-bold mb-2 text-white">
-              {t("notifications.title")}
+              {t("notifications.emptyTitle")}
             </h3>
             <p className="text-gray-400 max-w-sm mx-auto">
-              {t("notifications.settingsText")}
+              {t("notifications.emptyText")}
             </p>
           </CardContent>
         </Card>

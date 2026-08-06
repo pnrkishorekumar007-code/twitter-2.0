@@ -34,6 +34,10 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
   const lookup = (key: string): string => {
     const dict = translations[language] || translations.en;
     const value = key.split(".").reduce<any>((acc, part) => acc?.[part], dict);

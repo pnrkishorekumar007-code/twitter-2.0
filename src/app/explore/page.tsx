@@ -12,7 +12,6 @@ export default function ExplorePage() {
       <PlaceholderPage
         title={t("nav.explore")}
         icon={Search}
-        subtitle={t("common.search")}
       />
     </Mainlayout>
   );

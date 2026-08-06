@@ -84,6 +84,7 @@ export default function OtpModal({
             size="icon"
             className="absolute right-4 top-4 text-white hover:bg-gray-900"
             onClick={onClose}
+            aria-label={t("common.close")}
           >
             <X className="h-5 w-5" />
           </Button>
@@ -118,7 +119,7 @@ export default function OtpModal({
           </div>
 
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-xs text-blue-300">
-            Demo mode: your OTP is <span className="font-bold text-lg tracking-widest">{demoOtp}</span>
+            {tf("auth.demoOtp", { otp: demoOtp })}
           </div>
 
           <div className="space-y-2">

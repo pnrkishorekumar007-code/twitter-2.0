@@ -12,7 +12,6 @@ export default function BookmarksPage() {
       <PlaceholderPage
         title={t("nav.bookmarks")}
         icon={Bookmark}
-        subtitle={t("common.posts")}
       />
     </Mainlayout>
   );

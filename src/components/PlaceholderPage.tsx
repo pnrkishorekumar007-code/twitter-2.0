@@ -8,11 +8,9 @@ import { useLanguage } from "@/context/LanguageContext";
 export default function PlaceholderPage({
   title,
   icon: Icon,
-  subtitle,
 }: {
   title: string;
   icon: LucideIcon;
-  subtitle: string;
 }) {
   const { t } = useLanguage();
   return (
@@ -29,7 +27,7 @@ export default function PlaceholderPage({
           </div>
           <h3 className="text-2xl font-bold mb-2 text-white">{title}</h3>
           <p className="text-gray-400 max-w-sm mx-auto">
-            {subtitle} {t("common.loading")}
+            {t("common.comingSoon")}
           </p>
         </CardContent>
       </Card>

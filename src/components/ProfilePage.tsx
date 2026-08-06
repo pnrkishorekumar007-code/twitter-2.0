@@ -29,12 +29,10 @@ import Link from "next/link";
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { enabled, permission, toggle } = useNotifications();
   const [activeTab, setActiveTab] = useState("posts");
   const [showEditModal, setShowEditModal] = useState(false);
-
-  if (!user) return null;
   const [tweets, setTweets] = useState<any>([]);
   const [loading, setloading] = useState(false);
   const fetchTweets = async () => {
@@ -51,6 +49,7 @@ export default function ProfilePage() {
   useEffect(() => {
     fetchTweets();
   }, []);
+  if (!user) return null;
   // Filter tweets by current user
   const userTweets = tweets.filter((tweet: any) => tweet.author?._id === user._id);
 
@@ -84,6 +83,7 @@ export default function ProfilePage() {
             variant="ghost"
             size="sm"
             className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-black/70"
+            aria-label={t("profile.editProfile")}
           >
             <Camera className="h-5 w-5 text-white" />
           </Button>
@@ -102,6 +102,7 @@ export default function ProfilePage() {
               variant="ghost"
               size="sm"
               className="absolute bottom-2 right-2 p-2 rounded-full bg-black/70 hover:bg-black/90"
+              aria-label={t("profile.editProfile")}
             >
               <Camera className="h-4 w-4 text-white" />
             </Button>
@@ -133,6 +134,7 @@ export default function ProfilePage() {
             variant="ghost"
             size="sm"
             className="p-2 rounded-full hover:bg-gray-900"
+            aria-label={t("common.more")}
           >
             <MoreHorizontal className="h-5 w-5 text-gray-400" />
           </Button>
@@ -145,20 +147,18 @@ export default function ProfilePage() {
         <div className="flex items-center space-x-4 text-gray-400 text-sm mb-3 flex-wrap gap-y-2">
           <div className="flex items-center space-x-1">
             <MapPin className="h-4 w-4" />
-            <span>{user.location ? user.location : "Earth"}</span>
+            {user.location && <span>{user.location}</span>}
           </div>
           <div className="flex items-center space-x-1">
             <LinkIcon className="h-4 w-4" />
-            <span className="text-blue-400">
-              {user.website ? user.website : "example.com"}
-            </span>
+            {user.website && <span className="text-blue-400">{user.website}</span>}
           </div>
           <div className="flex items-center space-x-1">
             <Calendar className="h-4 w-4" />
             <span>
               {t("profile.joined")}{" "}
               {user.joinedDate &&
-                new Date(user.joinedDate).toLocaleDateString("en-us", {
+                new Date(user.joinedDate).toLocaleDateString(language, {
                   month: "long",
                   year: "numeric",
                 })}
@@ -261,9 +261,9 @@ export default function ProfilePage() {
             <CardContent className="py-12 text-center">
               <div className="text-gray-400">
                 <h3 className="text-2xl font-bold mb-2">
-                  {t("profile.noMediaTitle")}
+                  {t("profile.noArticlesTitle")}
                 </h3>
-                <p>{t("profile.noMediaText")}</p>
+                <p>{t("profile.noArticlesText")}</p>
               </div>
             </CardContent>
           </Card>
@@ -318,7 +318,12 @@ export default function ProfilePage() {
                     className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
                       enabled ? "bg-blue-500" : "bg-gray-700"
                     }`}
-                    aria-label="toggle"
+                    aria-label={
+                      enabled
+                        ? t("notifications.enabled")
+                        : t("notifications.disabled")
+                    }
+                    aria-pressed={enabled}
                   >
                     <span
                       className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${

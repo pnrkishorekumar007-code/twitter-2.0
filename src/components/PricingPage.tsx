@@ -78,7 +78,8 @@ export default function PricingPage() {
             <p className="text-white font-semibold">{t("premium.paymentWindowTitle")}</p>
             <p className="text-gray-300 text-sm">{t("premium.paymentWindowText")}</p>
             <p className="text-sm mt-1 text-blue-300">
-              IST: {getIstTimeLabel()} {windowOpen ? "✓" : "✗"}
+              {tf("auth.istTime", { time: getIstTimeLabel() })}{" "}
+              {windowOpen ? "✓" : "✗"}
             </p>
           </div>
         </div>
@@ -141,7 +142,7 @@ export default function PricingPage() {
                       ) : (
                         <Check className="h-4 w-4 text-blue-400 mr-2" />
                       )}
-                      {t("premium.invoiceSent")}
+                      {t("premium.invoiceIncluded")}
                     </li>
                   </ul>
 
@@ -174,7 +175,7 @@ export default function PricingPage() {
                   ? t("premium.unlimited")
                   : `${tweetsUsed}/${PLAN_LIMITS[currentPlan]} ${t("common.posts")}`}
               </p>
-              <p className="text-gray-400 text-sm">{t("feed.whatsHappening")}</p>
+              <p className="text-gray-400 text-sm">{t("premium.currentUsage")}</p>
             </div>
           </CardContent>
         </Card>

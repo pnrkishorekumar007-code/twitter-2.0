@@ -56,7 +56,7 @@ export default function ForgotPassword() {
     if (usedToday) return;
     if (!value.trim()) {
       setError(
-        tab === "email" ? t("auth.emailRequired") : t("common.error")
+        tab === "email" ? t("auth.emailRequired") : t("auth.phoneRequired")
       );
       return;
     }
@@ -250,7 +250,7 @@ export default function ForgotPassword() {
                         ) : (
                           <>
                             <Copy className="h-4 w-4 mr-2" />
-                            {t("common.confirm")}
+                            {t("forgot.copy")}
                           </>
                         )}
                       </Button>

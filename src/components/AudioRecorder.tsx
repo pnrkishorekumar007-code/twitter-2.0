@@ -28,6 +28,7 @@ export default function AudioRecorder({ onAudioChange }: AudioRecorderProps) {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingDuration, setPendingDuration] = useState(0);
   const [windowOpen, setWindowOpen] = useState(false);
+  const [pendingStart, setPendingStart] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -44,34 +45,43 @@ export default function AudioRecorder({ onAudioChange }: AudioRecorderProps) {
     };
   }, []);
 
-  const startRecording = async () => {
+  const startRecording = () => {
     setError("");
     if (!user) return;
+    setPendingStart(true);
     setShowOtp(true);
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
-    mediaRecorderRef.current = recorder;
-    chunksRef.current = [];
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
-    };
-    recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-      stream.getTracks().forEach((track) => track.stop());
-      finalizeBlob(blob, elapsed);
-    };
-    recorder.start();
-    setRecording(true);
-    setElapsed(0);
-    timerRef.current = setInterval(() => {
-      setElapsed((e) => {
-        if (e + 1 > 300) {
-          stopRecording();
-          return e;
-        }
-        return e + 1;
-      });
-    }, 1000);
+  };
+
+  const beginRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+        finalizeBlob(blob, elapsed);
+      };
+      recorder.start();
+      setRecording(true);
+      setElapsed(0);
+      timerRef.current = setInterval(() => {
+        setElapsed((e) => {
+          if (e + 1 > 300) {
+            stopRecording();
+            return e;
+          }
+          return e + 1;
+        });
+      }, 1000);
+    } catch (err) {
+      console.log(err);
+      setError(t("audio.micDenied"));
+    }
   };
 
   const stopRecording = () => {
@@ -131,7 +141,10 @@ export default function AudioRecorder({ onAudioChange }: AudioRecorderProps) {
     if (verifyOtp(otp)) {
       consumeOtp();
       setShowOtp(false);
-      if (pendingFile) {
+      if (pendingStart) {
+        setPendingStart(false);
+        beginRecording();
+      } else if (pendingFile) {
         finalizeBlob(pendingFile, pendingDuration);
         setPendingFile(null);
       }
@@ -153,7 +166,7 @@ export default function AudioRecorder({ onAudioChange }: AudioRecorderProps) {
           <Clock className="h-4 w-4 mr-2" /> {t("audio.windowClosed")}
         </p>
         <p className="text-gray-400 text-xs mt-1">{t("audio.windowClosedText")}</p>
-        <p className="text-blue-300 text-xs mt-1">IST: {getIstTimeLabel()}</p>
+        <p className="text-blue-300 text-xs mt-1">{tf("audio.istTime", { time: getIstTimeLabel() })}</p>
       </div>
     );
   }
@@ -232,6 +245,8 @@ export default function AudioRecorder({ onAudioChange }: AudioRecorderProps) {
         onClose={() => {
           setShowOtp(false);
           setPendingFile(null);
+          setPendingStart(false);
+          if (recording) stopRecording();
           consumeOtp();
         }}
         target={user?.email || ""}

@@ -1,7 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Input } from "../ui/input";
 import { Card, CardContent } from "../ui/card";
@@ -38,6 +38,14 @@ const suggestions = [
 
 export default function RightSidebar() {
   const { t } = useLanguage();
+  const [following, setFollowing] = useState<string[]>([]);
+  const [visibleCount, setVisibleCount] = useState(3);
+
+  const toggleFollow = (id: string) => {
+    setFollowing((prev) =>
+      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+    );
+  };
 
   return (
     <div className="w-80 p-4 space-y-4">
@@ -59,10 +67,11 @@ export default function RightSidebar() {
           <p className="text-gray-400 text-sm mb-4">
             {t("rightSidebar.subscribeText")}
           </p>
-          <Link href="/subscribe">
-            <Button className="bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-full">
-              {t("rightSidebar.subscribeTitle")}
-            </Button>
+          <Link
+            href="/subscribe"
+            className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-full px-5 py-2 text-center"
+          >
+            {t("common.subscribe")}
           </Link>
         </CardContent>
       </Card>
@@ -74,49 +83,60 @@ export default function RightSidebar() {
             {t("rightSidebar.youMightLike")}
           </h3>
           <div className="space-y-4">
-            {suggestions.map((user) => (
-              <div key={user.id} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={user.avatar} alt={user.displayName} />
-                    <AvatarFallback>{user.displayName[0]}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="flex items-center space-x-1">
-                      <span className="text-white font-semibold">
-                        {user.displayName}
+            {suggestions.slice(0, visibleCount).map((user) => {
+              const isFollowing = following.includes(user.id);
+              return (
+                <div key={user.id} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={user.avatar} alt={user.displayName} />
+                      <AvatarFallback>{user.displayName[0]}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center space-x-1">
+                        <span className="text-white font-semibold">
+                          {user.displayName}
+                        </span>
+                        {user.verified && (
+                          <div className="bg-blue-500 rounded-full p-0.5">
+                            <svg
+                              className="h-3 w-3 text-white fill-current"
+                              viewBox="0 0 20 20"
+                            >
+                              <path d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-gray-400 text-sm">
+                        @{user.username}
                       </span>
-                      {user.verified && (
-                        <div className="bg-blue-500 rounded-full p-0.5">
-                          <svg
-                            className="h-3 w-3 text-white fill-current"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
-                          </svg>
-                        </div>
-                      )}
                     </div>
-                    <span className="text-gray-400 text-sm">
-                      @{user.username}
-                    </span>
                   </div>
+                  <Button
+                    variant="outline"
+                    className={`font-semibold rounded-full px-4 ${
+                      isFollowing
+                        ? "border-gray-600 text-gray-300"
+                        : "bg-white text-black hover:bg-gray-200"
+                    }`}
+                    onClick={() => toggleFollow(user.id)}
+                  >
+                    {isFollowing ? t("common.following") : t("common.follow")}
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  className="bg-white text-black hover:bg-gray-200 font-semibold rounded-full px-4"
-                >
-                  {t("common.follow")}
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
-          <Button
-            variant="ghost"
-            className="text-blue-400 hover:text-blue-300 p-0 mt-4"
-          >
-            {t("common.showMore")}
-          </Button>
+          {visibleCount < suggestions.length && (
+            <Button
+              variant="ghost"
+              className="text-blue-400 hover:text-blue-300 p-0 mt-4"
+              onClick={() => setVisibleCount(suggestions.length)}
+            >
+              {t("common.showMore")}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -124,19 +144,19 @@ export default function RightSidebar() {
       <div className="p-4 text-xs text-gray-500 space-y-2">
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           <a href="#" className="hover:underline">
-            Terms of Service
+            {t("rightSidebar.terms")}
           </a>
           <a href="#" className="hover:underline">
-            Privacy Policy
+            {t("rightSidebar.privacy")}
           </a>
           <a href="#" className="hover:underline">
-            Cookie Policy
+            {t("rightSidebar.cookie")}
           </a>
           <a href="#" className="hover:underline">
-            Accessibility
+            {t("rightSidebar.accessibility")}
           </a>
           <a href="#" className="hover:underline">
-            Ads info
+            {t("rightSidebar.ads")}
           </a>
         </div>
         <div>© 2026 Twiller.</div>

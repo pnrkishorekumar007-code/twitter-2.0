@@ -4,11 +4,14 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   browserSupported,
   requestNotificationPermission,
+  getInAppNotifications,
 } from "@/lib/notifications";
 
 interface NotificationContextType {
   enabled: boolean;
   permission: NotificationPermission | "unsupported";
+  unreadCount: number;
+  refreshUnread: () => void;
   toggle: () => Promise<void>;
   requestPermission: () => Promise<void>;
 }
@@ -34,6 +37,16 @@ export const NotificationProvider: React.FC<{
   const [permission, setPermission] = useState<
     NotificationPermission | "unsupported"
   >("default");
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const refreshUnread = () => {
+    try {
+      const list = getInAppNotifications();
+      setUnreadCount(list.filter((n) => !n.read).length);
+    } catch {
+      setUnreadCount(0);
+    }
+  };
 
   useEffect(() => {
     const stored = localStorage.getItem("twiller-notifications");
@@ -45,6 +58,9 @@ export const NotificationProvider: React.FC<{
     } else {
       setPermission("unsupported");
     }
+    refreshUnread();
+    window.addEventListener("storage", refreshUnread);
+    return () => window.removeEventListener("storage", refreshUnread);
   }, []);
 
   const toggle = async () => {
@@ -70,7 +86,14 @@ export const NotificationProvider: React.FC<{
 
   return (
     <NotificationContext.Provider
-      value={{ enabled, permission, toggle, requestPermission }}
+      value={{
+        enabled,
+        permission,
+        unreadCount,
+        refreshUnread,
+        toggle,
+        requestPermission,
+      }}
     >
       {children}
     </NotificationContext.Provider>

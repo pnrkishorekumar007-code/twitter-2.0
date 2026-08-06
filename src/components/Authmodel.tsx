@@ -190,6 +190,7 @@ export default function AuthModal({
             size="icon"
             className="absolute right-4 top-4 text-white hover:bg-gray-900"
             onClick={onClose}
+            aria-label={t("common.close")}
           >
             <X className="h-5 w-5" />
           </Button>
@@ -214,10 +215,10 @@ export default function AuthModal({
             <div className="bg-red-900/20 border border-red-800 rounded-lg p-3">
               <p className="text-red-400 text-sm font-semibold flex items-center">
                 <ShieldCheck className="h-4 w-4 mr-2" />
-                Mobile login is only allowed between 10:00 AM and 1:00 PM IST.
+                {t("auth.mobileBlocked")}
               </p>
               <p className="text-gray-400 text-xs mt-1">
-                Current IST time: {getIstTimeLabel()}
+                {tf("auth.istTime", { time: getIstTimeLabel() })}
               </p>
             </div>
           )}
@@ -234,7 +235,7 @@ export default function AuthModal({
                     <Input
                       id="displayName"
                       type="text"
-                      placeholder="Your display name"
+                      placeholder={t("auth.displayNamePlaceholder")}
                       value={formData.displayName}
                       onChange={(e) =>
                         handleInputChange("displayName", e.target.value)
@@ -259,7 +260,7 @@ export default function AuthModal({
                     <Input
                       id="username"
                       type="text"
-                      placeholder="username"
+                      placeholder={t("auth.usernamePlaceholder")}
                       value={formData.username}
                       onChange={(e) =>
                         handleInputChange("username", e.target.value)
@@ -276,7 +277,7 @@ export default function AuthModal({
                 <div className="space-y-2">
                   <Label htmlFor="phone" className="text-white">
                     {t("common.phone")}{" "}
-                    <span className="text-gray-500">({t("common.search")})</span>
+                    <span className="text-gray-500">({t("common.optional")})</span>
                   </Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
@@ -303,7 +304,7 @@ export default function AuthModal({
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder={t("auth.emailPlaceholder")}
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   className="pl-10 bg-transparent border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
@@ -324,7 +325,7 @@ export default function AuthModal({
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder={t("auth.passwordPlaceholder")}
                   value={formData.password}
                   onChange={(e) =>
                     handleInputChange("password", e.target.value)
@@ -388,7 +389,7 @@ export default function AuthModal({
           <div className="relative">
             <Separator className="bg-gray-700" />
             <span className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black px-2 text-gray-400 text-sm">
-              OR
+              {t("landing.or")}
             </span>
           </div>
 
@@ -423,7 +424,6 @@ export default function AuthModal({
         subtitle={tf("auth.verifyOtp", { target: t("common.email") })}
         onVerify={handleOtpVerify}
       />
-      {otpError && <p className="text-red-400 text-sm">{otpError}</p>}
     </div>
   );
 }

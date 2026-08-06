@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
   Search,
@@ -29,17 +29,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import TwitterLogo from "../Twitterlogo";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useNotifications } from "@/context/NotificationContext";
 import LanguageSwitcher from "../LanguageSwitcher";
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const pathname = usePathname();
   const { t } = useLanguage();
+  const { unreadCount } = useNotifications();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const navigation = [
     { name: t("nav.home"), icon: Home, href: "/home", current: pathname === "/home" },
     { name: t("nav.explore"), icon: Search, href: "/explore", current: pathname === "/explore" },
-    { name: t("nav.notifications"), icon: Bell, href: "/notifications", current: pathname === "/notifications", badge: true },
+    { name: t("nav.notifications"), icon: Bell, href: "/notifications", current: pathname === "/notifications", badge: unreadCount },
     { name: t("nav.messages"), icon: Mail, href: "/messages", current: pathname === "/messages" },
     { name: t("nav.bookmarks"), icon: Bookmark, href: "/bookmarks", current: pathname === "/bookmarks" },
     { name: t("nav.profile"), icon: User, href: "/profile", current: pathname === "/profile" },
@@ -66,9 +69,9 @@ export default function Sidebar() {
               >
                 <span className="relative">
                   <item.icon className="h-6 w-6 lg:h-7 lg:w-7 lg:mr-4" />
-                  {item.badge && (
+                  {(item.badge ?? 0) > 0 && (
                     <span className="absolute -top-1 -right-1 lg:right-3 lg:-top-1 bg-blue-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                      3
+                      {item.badge}
                     </span>
                   )}
                 </span>
@@ -124,22 +127,25 @@ export default function Sidebar() {
             <DropdownMenuContent className="w-56 bg-black border-gray-800">
               <DropdownMenuItem
                 className="text-white hover:bg-gray-900"
-                onClick={() => (window.location.href = "/profile")}
+                onClick={() => router.push("/profile")}
               >
                 <User className="mr-2 h-4 w-4" />
                 {t("nav.profile")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-white hover:bg-gray-900"
-                onClick={() => (window.location.href = "/subscribe")}
+                onClick={() => router.push("/subscribe")}
               >
                 <BadgeCheck className="mr-2 h-4 w-4" />
                 {t("nav.premium")}
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-800" />
-              <DropdownMenuItem className="text-white hover:bg-gray-900">
+              <DropdownMenuItem
+                className="text-white hover:bg-gray-900"
+                onClick={() => router.push("/profile")}
+              >
                 <Settings className="mr-2 h-4 w-4" />
-                {t("common.search")}
+                {t("settings.title")}
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-800" />
               <DropdownMenuItem

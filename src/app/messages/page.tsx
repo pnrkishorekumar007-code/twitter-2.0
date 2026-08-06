@@ -12,7 +12,6 @@ export default function MessagesPage() {
       <PlaceholderPage
         title={t("nav.messages")}
         icon={Mail}
-        subtitle={t("common.posts")}
       />
     </Mainlayout>
   );

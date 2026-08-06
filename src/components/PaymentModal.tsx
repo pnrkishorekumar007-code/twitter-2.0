@@ -80,7 +80,7 @@ export default function PaymentModal({
             <>
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold">{t("premium.orderSummary")}</h3>
-                <Button variant="ghost" size="sm" className="text-gray-400" onClick={resetAndClose}>
+                <Button variant="ghost" size="sm" className="text-gray-400" onClick={resetAndClose} aria-label={t("common.close")}>
                   <X className="h-5 w-5" />
                 </Button>
               </div>
@@ -96,7 +96,7 @@ export default function PaymentModal({
               </div>
 
               <div className="flex items-center justify-center py-2">
-                <span className="text-xs text-gray-400">Powered by</span>
+                <span className="text-xs text-gray-400">{t("premium.poweredBy")}</span>
                 <span className="ml-2 text-sm font-bold text-blue-400">Razorpay</span>
               </div>
 

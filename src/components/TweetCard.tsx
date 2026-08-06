@@ -13,10 +13,12 @@ import {
   AudioLines,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import axiosInstance from "@/lib/axiosInstance";
 
 export default function TweetCard({ tweet }: any) {
   const { user } = useAuth();
+  const { t, language } = useLanguage();
   const [tweetstate, settweetstate] = useState(tweet);
   const likeTweet = async (tweetId: string) => {
     try {
@@ -50,6 +52,19 @@ export default function TweetCard({ tweet }: any) {
   };
   const isLiked = tweetstate.likedBy?.includes(user?._id);
   const isRetweet = tweetstate.retweetedBy?.includes(user?._id);
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Twiller", text: tweetstate.content, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
   return (
     <Card className="bg-black border-gray-800 border-x-0 border-t-0 rounded-none hover:bg-gray-950/50 transition-colors cursor-pointer">
       <CardContent className="p-4">
@@ -59,7 +74,7 @@ export default function TweetCard({ tweet }: any) {
               src={tweetstate.author.avatar}
               alt={tweetstate.author.displayName}
             />
-            <AvatarFallback>{tweetstate.author.displayName}</AvatarFallback>
+            <AvatarFallback>{tweetstate.author.displayName?.[0]}</AvatarFallback>
           </Avatar>
 
           <div className="flex-1 min-w-0">
@@ -81,18 +96,20 @@ export default function TweetCard({ tweet }: any) {
                 @{tweetstate.author.username}
               </span>
               <span className="text-gray-500">·</span>
-              <span className="text-gray-500">
-                {tweetstate.timestamp &&
-                  new Date(tweetstate.timestamp).toLocaleDateString("en-us", {
-                    month: "long",
-                    year: "numeric",
-                  })}
-              </span>
+                <span className="text-gray-500">
+                  {tweetstate.timestamp &&
+                    new Date(tweetstate.timestamp).toLocaleDateString(language, {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                </span>
               <div className="ml-auto">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="p-1 rounded-full hover:bg-gray-900"
+                  aria-label={t("common.more")}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <MoreHorizontal className="h-5 w-5 text-gray-500" />
                 </Button>
@@ -117,7 +134,7 @@ export default function TweetCard({ tweet }: any) {
               <div className="mb-3 rounded-2xl bg-gray-900 border border-gray-800 p-3">
                 <div className="flex items-center text-blue-400 text-sm mb-2">
                   <AudioLines className="h-4 w-4 mr-2" />
-                  Audio tweet
+                  {t("audio.audioTweet")}
                   {tweetstate.audioDuration && (
                     <span className="ml-2 text-gray-500">
                       {Math.floor(tweetstate.audioDuration / 60)}:
@@ -156,7 +173,7 @@ export default function TweetCard({ tweet }: any) {
               >
                 <Repeat2
                   className={`h-5 w-5 ${
-                    tweet.retweeted
+                    isRetweet
                       ? "text-green-400"
                       : "group-hover:text-green-400"
                   }`}
@@ -179,7 +196,7 @@ export default function TweetCard({ tweet }: any) {
               >
                 <Heart
                   className={`h-5 w-5 ${
-                    tweetstate.liked
+                    isLiked
                       ? "text-red-500 fill-current"
                       : "group-hover:text-red-400"
                   }`}
@@ -193,6 +210,11 @@ export default function TweetCard({ tweet }: any) {
                 variant="ghost"
                 size="sm"
                 className="flex items-center space-x-2 p-2 rounded-full hover:bg-blue-900/20 text-gray-500 hover:text-blue-400 group"
+                aria-label={t("common.share")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShare();
+                }}
               >
                 <Share className="h-5 w-5 group-hover:text-blue-400" />
               </Button>

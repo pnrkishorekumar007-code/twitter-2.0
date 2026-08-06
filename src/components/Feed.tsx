@@ -16,6 +16,7 @@ const KEYWORDS = ["cricket", "science"];
 const Feed = () => {
   const [tweets, setTweets] = useState<any>([]);
   const [loading, setloading] = useState(false);
+  const [error, setError] = useState("");
   const { enabled, permission } = useNotifications();
   const { t } = useLanguage();
 
@@ -34,11 +35,13 @@ const Feed = () => {
   const fetchTweets = async () => {
     try {
       setloading(true);
+      setError("");
       const res = await axiosInstance.get("/post");
       setTweets(res.data);
       res.data.forEach((tweet: any) => maybeNotify(tweet));
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
+      setError(t("feed.loadError"));
     } finally {
       setloading(false);
     }
@@ -63,13 +66,13 @@ const Feed = () => {
           <TabsList className="grid w-full grid-cols-2 bg-transparent border-b border-gray-800 rounded-none h-auto">
             <TabsTrigger
               value="foryou"
-              className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-1 data-[state=active]:border-blue-100 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+              className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
             >
               {t("feed.forYou")}
             </TabsTrigger>
             <TabsTrigger
               value="following"
-              className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-1 data-[state=active]:border-blue-100 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+              className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
             >
               {t("feed.following")}
             </TabsTrigger>
@@ -87,14 +90,28 @@ const Feed = () => {
               </div>
             </CardContent>
           </Card>
+        ) : error ? (
+          <Card className="bg-black border-none">
+            <CardContent className="py-16 text-center">
+              <div className="text-gray-400">
+                <h3 className="text-2xl font-bold mb-2">{t("feed.loadError")}</h3>
+                <button
+                  onClick={fetchTweets}
+                  className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-full px-6 py-2"
+                >
+                  {t("common.retry")}
+                </button>
+              </div>
+            </CardContent>
+          </Card>
         ) : tweets.length === 0 ? (
           <Card className="bg-black border-none">
             <CardContent className="py-16 text-center">
               <div className="text-gray-400">
                 <h3 className="text-2xl font-bold mb-2">
-                  {t("profile.noPostsTitle")}
+                  {t("feed.emptyTitle")}
                 </h3>
-                <p>{t("profile.noPostsText")}</p>
+                <p>{t("feed.emptyText")}</p>
               </div>
             </CardContent>
           </Card>

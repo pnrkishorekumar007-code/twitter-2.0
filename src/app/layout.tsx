@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'X Clone - Social Media Platform',
-  description: 'A modern Twitter clone built with Next.js ',
+  title: 'Twiller - Connect and share',
+  description: 'A modern social media platform built with Next.js',
    icons: {
     icon:"/favicon.ico",
   },

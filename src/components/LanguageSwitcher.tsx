@@ -26,7 +26,7 @@ export default function LanguageSwitcher({
   compact = false,
   variant = "sidebar",
 }: LanguageSwitcherProps) {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, t, tf } = useLanguage();
   const { user } = useAuth();
   const [pendingLang, setPendingLang] = useState<string | null>(null);
   const [target, setTarget] = useState("");
@@ -94,10 +94,9 @@ export default function LanguageSwitcher({
           target={target}
           channel={channel}
           title={t("settings.switchOtpTitle")}
-          subtitle={t("settings.switchOtpText").replace(
-            "{target}",
-            channel === "email" ? t("common.email") : t("common.phone")
-          )}
+          subtitle={tf("settings.switchOtpText", {
+            target: channel === "email" ? t("common.email") : t("common.phone"),
+          })}
           onVerify={handleVerify}
         />
       </>
@@ -149,10 +148,9 @@ export default function LanguageSwitcher({
         target={target}
         channel={channel}
         title={t("settings.switchOtpTitle")}
-        subtitle={t("settings.switchOtpText").replace(
-          "{target}",
-          channel === "email" ? t("common.email") : t("common.phone")
-        )}
+        subtitle={tf("settings.switchOtpText", {
+          target: channel === "email" ? t("common.email") : t("common.phone"),
+        })}
         onVerify={handleVerify}
       />
     </>

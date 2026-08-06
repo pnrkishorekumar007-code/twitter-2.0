@@ -42,9 +42,10 @@ const TweetComposer = ({ onTweetPosted }: any) => {
     e.preventDefault();
     if (!user || !content.trim()) return;
     if (!canPost) {
-      alert(`${t("feed.whatsHappening")} — ${tweetsUsed}/${tweetLimit}`);
+      alert(`${t("feed.limitReached")} — ${tweetsUsed}/${tweetLimit}`);
       return;
     }
+    setIsLoading(true);
     try {
       const tweetdata: any = {
         author: user?._id,
@@ -117,7 +118,7 @@ const TweetComposer = ({ onTweetPosted }: any) => {
               </span>
               {!canPost && (
                 <span className="text-xs text-red-400 flex items-center">
-                  <BadgeCheck className="h-3 w-3 mr-1" /> Limit reached
+                  <BadgeCheck className="h-3 w-3 mr-1" /> {t("feed.limitReached")}
                 </span>
               )}
             </div>
@@ -126,6 +127,7 @@ const TweetComposer = ({ onTweetPosted }: any) => {
               <Textarea
                 placeholder={t("feed.whatsHappening")}
                 value={content}
+                maxLength={maxLength}
                 onChange={(e) => setContent(e.target.value)}
                 className="bg-transparent border-none text-xl text-white placeholder-gray-500 resize-none min-h-[120px] focus-visible:ring-0 focus-visible:ring-offset-0"
               />
@@ -138,8 +140,10 @@ const TweetComposer = ({ onTweetPosted }: any) => {
                     className="w-full max-h-96 object-cover"
                   />
                   <button
+                    type="button"
                     onClick={() => setimageurl("")}
                     className="absolute top-2 right-2 bg-black/70 rounded-full p-1.5 hover:bg-black/90"
+                    aria-label={t("common.close")}
                   >
                     <X className="h-4 w-4 text-white" />
                   </button>
@@ -169,10 +173,13 @@ const TweetComposer = ({ onTweetPosted }: any) => {
                     />
                   </label>
                   <button
+                    type="button"
                     className={`p-2 rounded-full hover:bg-blue-900/20 ${
                       showAudio ? "bg-blue-900/20" : ""
                     }`}
                     onClick={() => setShowAudio((v) => !v)}
+                    aria-label={t("audio.attachAudio")}
+                    aria-pressed={showAudio}
                   >
                     <AudioLines className="h-5 w-5" />
                   </button>
