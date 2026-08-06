@@ -1,7 +1,8 @@
 "use client";
 
-import React from 'react';
-
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Home,
   Search,
@@ -11,111 +12,147 @@ import {
   User,
   MoreHorizontal,
   Settings,
-  LogOut
-} from 'lucide-react';
+  LogOut,
+  BadgeCheck,
+  Languages,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
+} from "../ui/dropdown-menu";
 
-import { Button } from '../ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import TwitterLogo from '../Twitterlogo';
-import { useAuth } from '@/context/AuthContext';
+import { Button } from "../ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import TwitterLogo from "../Twitterlogo";
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import LanguageSwitcher from "../LanguageSwitcher";
 
-interface SidebarProps {
-  currentPage?: string;
-  onNavigate?: (page: string) => void;
-}
-
-export default function Sidebar({ currentPage = 'home', onNavigate }: SidebarProps) {
+export default function Sidebar() {
   const { user, logout } = useAuth();
+  const pathname = usePathname();
+  const { t } = useLanguage();
 
   const navigation = [
-    { name: 'Home', icon: Home, current: currentPage === 'home', page: 'home' },
-    { name: 'Explore', icon: Search, current: currentPage === 'explore', page: 'explore' },
-    { name: 'Notifications', icon: Bell, current: currentPage === 'notifications', page: 'notifications', badge: true },
-    { name: 'Messages', icon: Mail, current: currentPage === 'messages', page: 'messages' },
-    { name: 'Bookmarks', icon: Bookmark, current: currentPage === 'bookmarks', page: 'bookmarks' },
-    { name: 'Profile', icon: User, current: currentPage === 'profile', page: 'profile' },
-    { name: 'More', icon: MoreHorizontal, current: currentPage === 'more', page: 'more' },
+    { name: t("nav.home"), icon: Home, href: "/home", current: pathname === "/home" },
+    { name: t("nav.explore"), icon: Search, href: "/explore", current: pathname === "/explore" },
+    { name: t("nav.notifications"), icon: Bell, href: "/notifications", current: pathname === "/notifications", badge: true },
+    { name: t("nav.messages"), icon: Mail, href: "/messages", current: pathname === "/messages" },
+    { name: t("nav.bookmarks"), icon: Bookmark, href: "/bookmarks", current: pathname === "/bookmarks" },
+    { name: t("nav.profile"), icon: User, href: "/profile", current: pathname === "/profile" },
+    { name: t("nav.premium"), icon: BadgeCheck, href: "/subscribe", current: pathname === "/subscribe" },
   ];
 
   return (
-    <div className="flex flex-col h-screen w-64 border-r border-gray-800 bg-black">
-      <div className="p-4">
-        <TwitterLogo size="lg" className="text-white" />
+    <div className="flex flex-col h-screen w-20 md:w-24 lg:w-64 border-r border-gray-800 bg-black sticky top-0">
+      <div className="p-4 flex justify-center lg:justify-start">
+        <Link href="/home" className="rounded-full hover:bg-gray-900 p-2">
+          <TwitterLogo size="lg" className="text-white" />
+        </Link>
       </div>
-      
-      <nav className="flex-1 px-2">
-        <ul className="space-y-2">
+
+      <nav className="flex-1 px-2 lg:px-3 overflow-y-auto">
+        <ul className="space-y-1 lg:space-y-2">
           {navigation.map((item) => (
-            <li key={item.name}>
-              <Button
-                variant="ghost"
-                className={`w-full justify-start text-xl py-6 px-4 rounded-full hover:bg-gray-900 ${
-                  item.current ? 'font-bold' : 'font-normal'
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className={`w-full flex items-center justify-center lg:justify-start text-xl py-3 lg:py-4 lg:px-4 rounded-full hover:bg-gray-900 ${
+                  item.current ? "font-bold" : "font-normal"
                 } text-white hover:text-white`}
-                onClick={() => onNavigate?.(item.page)}
               >
-                <item.icon className="mr-4 h-7 w-7" />
-                {item.name}
-                {item.badge && (
-                  <span className="ml-2 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    3
-                  </span>
-                )}
-              </Button>
+                <span className="relative">
+                  <item.icon className="h-6 w-6 lg:h-7 lg:w-7 lg:mr-4" />
+                  {item.badge && (
+                    <span className="absolute -top-1 -right-1 lg:right-3 lg:-top-1 bg-blue-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                      3
+                    </span>
+                  )}
+                </span>
+                <span className="hidden lg:inline">{item.name}</span>
+              </Link>
             </li>
           ))}
         </ul>
-        
-        <div className="mt-8 px-2">
-          <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-full text-lg">
-            Post
-          </Button>
+
+        <div className="mt-4 lg:mt-8 px-0 lg:px-2">
+          <Link
+            href="/home"
+            className="hidden lg:flex w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-full text-lg items-center justify-center"
+          >
+            {t("common.post")}
+          </Link>
+          <Link
+            href="/home"
+            className="lg:hidden flex w-12 h-12 mx-auto bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-full items-center justify-center"
+            aria-label={t("common.post")}
+          >
+            <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current">
+              <path d="M23 3c-6.62-.1-10.38 2.421-13.05 6.03C7.29 12.61 6 17.331 6 22h2c0-1.007.07-2.012.19-3H12c4.1 0 7.48-3.082 7.94-7.054C22.79 10.147 23.17 6.359 23 3z" />
+            </svg>
+          </Link>
         </div>
       </nav>
-      
-      {user && (
-        <div className="p-4 border-t border-gray-800">
+
+      <div className="p-2 lg:p-4 border-t border-gray-800 space-y-2">
+        <div className="flex justify-center lg:hidden">
+          <LanguageSwitcher compact />
+        </div>
+        {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="w-full justify-start p-3 rounded-full hover:bg-gray-900"
+                className="w-full justify-center lg:justify-start p-2 lg:p-3 rounded-full hover:bg-gray-900"
               >
-                <Avatar className="h-10 w-10 mr-3">
+                <Avatar className="h-10 w-10 lg:mr-3">
                   <AvatarImage src={user.avatar} alt={user.displayName} />
                   <AvatarFallback>{user.displayName[0]}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1 text-left">
-                  <div className="text-white font-semibold">{user.displayName}</div>
+                <div className="hidden lg:block flex-1 text-left">
+                  <div className="text-white font-semibold truncate">
+                    {user.displayName}
+                  </div>
                   <div className="text-gray-400 text-sm">@{user.username}</div>
                 </div>
-                <MoreHorizontal className="h-5 w-5 text-gray-400" />
+                <MoreHorizontal className="hidden lg:block h-5 w-5 text-gray-400" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 bg-black border-gray-800">
-              <DropdownMenuItem className="text-white hover:bg-gray-900">
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
+              <DropdownMenuItem
+                className="text-white hover:bg-gray-900"
+                onClick={() => (window.location.href = "/profile")}
+              >
+                <User className="mr-2 h-4 w-4" />
+                {t("nav.profile")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-white hover:bg-gray-900"
+                onClick={() => (window.location.href = "/subscribe")}
+              >
+                <BadgeCheck className="mr-2 h-4 w-4" />
+                {t("nav.premium")}
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-800" />
-              <DropdownMenuItem 
+              <DropdownMenuItem className="text-white hover:bg-gray-900">
+                <Settings className="mr-2 h-4 w-4" />
+                {t("common.search")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-gray-800" />
+              <DropdownMenuItem
                 className="text-white hover:bg-gray-900"
                 onClick={logout}
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                Log out @{user.username}
+                {t("common.logout")} @{user.username}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

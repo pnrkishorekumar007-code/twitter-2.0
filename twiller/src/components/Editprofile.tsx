@@ -2,7 +2,7 @@ import { useAuth } from "@/context/AuthContext";
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Camera, LinkIcon, MapPin, X } from "lucide-react";
+import { Camera, LinkIcon, MapPin, Phone, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
@@ -19,6 +19,7 @@ const Editprofile = ({ isopen, onclose }: any) => {
     location: "Earth",
     website: "example.com",
     avatar: user?.avatar || "",
+    phone: user?.phone || "",
   });
   const [error, setError] = useState<any>({});
   if (!isopen || !user) return null;
@@ -286,6 +287,28 @@ const Editprofile = ({ isopen, onclose }: any) => {
                   <p className="text-gray-400 ml-auto">
                     {formData.website.length}/100
                   </p>
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-white">
+                  Phone
+                </Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      handleInputChange("phone", e.target.value)
+                    }
+                    className="pl-10 bg-transparent border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                    placeholder="+91 98765 43210"
+                    maxLength={20}
+                    disabled={isLoading}
+                  />
                 </div>
               </div>
             </div>

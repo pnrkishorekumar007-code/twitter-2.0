@@ -8,7 +8,10 @@ import {
   Link as LinkIcon,
   MoreHorizontal,
   Camera,
-  Settings,
+  Bell,
+  BellOff,
+  Languages,
+  BadgeCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "./ui/button";
@@ -17,89 +20,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import TweetCard from "./TweetCard";
 import { Card, CardContent } from "./ui/card";
 import Editprofile from "./Editprofile";
+import LoginHistory from "./LoginHistory";
+import LanguageSwitcher from "./LanguageSwitcher";
 import axiosInstance from "@/lib/axiosInstance";
+import { useLanguage } from "@/context/LanguageContext";
+import { useNotifications } from "@/context/NotificationContext";
+import Link from "next/link";
 
-interface Tweet {
-  id: string;
-  author: {
-    id: string;
-    username: string;
-    displayName: string;
-    avatar: string;
-    verified?: boolean;
-  };
-  content: string;
-  timestamp: string;
-  likes: number;
-  retweets: number;
-  comments: number;
-  liked?: boolean;
-  retweeted?: boolean;
-  image?: string;
-}
-const tweets: Tweet[] = [
-  {
-    id: "1",
-    author: {
-      id: "1",
-      username: "elonmusk",
-      displayName: "Elon Musk",
-      avatar:
-        "https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg?auto=compress&cs=tinysrgb&w=400",
-      verified: true,
-    },
-    content:
-      "Just had an amazing conversation about the future of AI. The possibilities are endless!",
-    timestamp: "2h",
-    likes: 1247,
-    retweets: 324,
-    comments: 89,
-    liked: false,
-    retweeted: false,
-  },
-  {
-    id: "2",
-    author: {
-      id: "1",
-      username: "sarahtech",
-      displayName: "Sarah Johnson",
-      avatar:
-        "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=400",
-      verified: false,
-    },
-    content:
-      "Working on some exciting new features for our app. Can't wait to share what we've been building! 🚀",
-    timestamp: "4h",
-    likes: 89,
-    retweets: 23,
-    comments: 12,
-    liked: true,
-    retweeted: false,
-  },
-  {
-    id: "3",
-    author: {
-      id: "4",
-      username: "designguru",
-      displayName: "Alex Chen",
-      avatar:
-        "https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=400",
-      verified: true,
-    },
-    content:
-      "The new design system is finally complete! It took 6 months but the results are incredible. Clean, consistent, and accessible.",
-    timestamp: "6h",
-    likes: 456,
-    retweets: 78,
-    comments: 34,
-    liked: false,
-    retweeted: true,
-    image:
-      "https://images.pexels.com/photos/196645/pexels-photo-196645.jpeg?auto=compress&cs=tinysrgb&w=800",
-  },
-];
 export default function ProfilePage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
+  const { enabled, permission, toggle } = useNotifications();
   const [activeTab, setActiveTab] = useState("posts");
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -121,23 +52,27 @@ export default function ProfilePage() {
     fetchTweets();
   }, []);
   // Filter tweets by current user
-  const userTweets = tweets.filter((tweet: any) => tweet.author._id === user._id);
+  const userTweets = tweets.filter((tweet: any) => tweet.author?._id === user._id);
 
   return (
     <div className="min-h-screen">
       {/* Header */}
       <div className="sticky top-0 bg-black/90 backdrop-blur-md border-b border-gray-800 z-10">
         <div className="flex items-center px-4 py-3 space-x-8">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-2 rounded-full hover:bg-gray-900"
-          >
-            <ArrowLeft className="h-5 w-5 text-white" />
-          </Button>
+          <Link href="/home">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 rounded-full hover:bg-gray-900"
+            >
+              <ArrowLeft className="h-5 w-5 text-white" />
+            </Button>
+          </Link>
           <div>
             <h1 className="text-xl font-bold text-white">{user.displayName}</h1>
-            <p className="text-sm text-gray-400">{userTweets.length} posts</p>
+            <p className="text-sm text-gray-400">
+              {userTweets.length} {t("profile.posts")}
+            </p>
           </div>
         </div>
       </div>
@@ -180,7 +115,7 @@ export default function ProfilePage() {
             className="border-gray-600 text-white bg-gray-950 font-semibold rounded-full px-6"
             onClick={() => setShowEditModal(true)}
           >
-            Edit profile
+            {t("profile.editProfile")}
           </Button>
         </div>
       </div>
@@ -207,7 +142,7 @@ export default function ProfilePage() {
           <p className="text-white mb-3 leading-relaxed">{user.bio}</p>
         )}
 
-        <div className="flex items-center space-x-4 text-gray-400 text-sm mb-3">
+        <div className="flex items-center space-x-4 text-gray-400 text-sm mb-3 flex-wrap gap-y-2">
           <div className="flex items-center space-x-1">
             <MapPin className="h-4 w-4" />
             <span>{user.location ? user.location : "Earth"}</span>
@@ -221,7 +156,7 @@ export default function ProfilePage() {
           <div className="flex items-center space-x-1">
             <Calendar className="h-4 w-4" />
             <span>
-              Joined{" "}
+              {t("profile.joined")}{" "}
               {user.joinedDate &&
                 new Date(user.joinedDate).toLocaleDateString("en-us", {
                   month: "long",
@@ -230,58 +165,78 @@ export default function ProfilePage() {
             </span>
           </div>
         </div>
+
+        <Link
+          href="/subscribe"
+          className="inline-flex items-center text-blue-400 hover:text-blue-300 text-sm font-semibold"
+        >
+          <BadgeCheck className="h-4 w-4 mr-1" />
+          {t("nav.premium")}
+        </Link>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 bg-transparent border-b border-gray-800 rounded-none h-auto">
+        <TabsList className="w-full bg-transparent border-b border-gray-800 rounded-none h-auto flex overflow-x-auto">
           <TabsTrigger
             value="posts"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold flex-shrink-0"
           >
-            Posts
+            {t("profile.posts")}
           </TabsTrigger>
           <TabsTrigger
             value="replies"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold flex-shrink-0"
           >
-            Replies
+            {t("profile.replies")}
           </TabsTrigger>
           <TabsTrigger
             value="highlights"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold flex-shrink-0"
           >
-            Highlights
-          </TabsTrigger>
-          <TabsTrigger
-            value="articles"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
-          >
-            Articles
+            {t("profile.highlights")}
           </TabsTrigger>
           <TabsTrigger
             value="media"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold flex-shrink-0"
           >
-            Media
+            {t("profile.media")}
+          </TabsTrigger>
+          <TabsTrigger
+            value="loginhistory"
+            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold flex-shrink-0"
+          >
+            {t("loginHistory.title")}
+          </TabsTrigger>
+          <TabsTrigger
+            value="settings"
+            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold flex-shrink-0"
+          >
+            {t("settings.title")}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="posts" className="mt-0">
           <div className="divide-y divide-gray-800">
-            { loading ? (
+            {loading ? (
+              <Card className="bg-black border-none">
+                <CardContent className="py-12 text-center">
+                  <div className="text-gray-400">{t("common.loading")}</div>
+                </CardContent>
+              </Card>
+            ) : userTweets.length === 0 ? (
               <Card className="bg-black border-none">
                 <CardContent className="py-12 text-center">
                   <div className="text-gray-400">
                     <h3 className="text-2xl font-bold mb-2">
-                      You haven't posted yet
+                      {t("profile.noPostsTitle")}
                     </h3>
-                    <p>When you post, it will show up here.</p>
+                    <p>{t("profile.noPostsText")}</p>
                   </div>
                 </CardContent>
               </Card>
             ) : (
-              userTweets.map((tweet:any) => (
+              userTweets.map((tweet: any) => (
                 <TweetCard key={tweet._id} tweet={tweet} />
               ))
             )}
@@ -293,9 +248,9 @@ export default function ProfilePage() {
             <CardContent className="py-12 text-center">
               <div className="text-gray-400">
                 <h3 className="text-2xl font-bold mb-2">
-                  You haven't replied yet
+                  {t("profile.noRepliesTitle")}
                 </h3>
-                <p>When you reply to a post, it will show up here.</p>
+                <p>{t("profile.noRepliesText")}</p>
               </div>
             </CardContent>
           </Card>
@@ -306,22 +261,9 @@ export default function ProfilePage() {
             <CardContent className="py-12 text-center">
               <div className="text-gray-400">
                 <h3 className="text-2xl font-bold mb-2">
-                  Lights, camera … attachments!
+                  {t("profile.noMediaTitle")}
                 </h3>
-                <p>When you post photos or videos, they will show up here.</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="articles" className="mt-0">
-          <Card className="bg-black border-none">
-            <CardContent className="py-12 text-center">
-              <div className="text-gray-400">
-                <h3 className="text-2xl font-bold mb-2">
-                  You haven't written any articles
-                </h3>
-                <p>When you write articles, they will show up here.</p>
+                <p>{t("profile.noMediaText")}</p>
               </div>
             </CardContent>
           </Card>
@@ -332,12 +274,85 @@ export default function ProfilePage() {
             <CardContent className="py-12 text-center">
               <div className="text-gray-400">
                 <h3 className="text-2xl font-bold mb-2">
-                  Lights, camera … attachments!
+                  {t("profile.noMediaTitle")}
                 </h3>
-                <p>When you post photos or videos, they will show up here.</p>
+                <p>{t("profile.noMediaText")}</p>
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="loginhistory" className="mt-0">
+          <div className="border-b border-gray-800 px-4 py-3">
+            <h3 className="text-lg font-bold text-white">
+              {t("loginHistory.title")}
+            </h3>
+            <p className="text-gray-400 text-sm">{t("loginHistory.subtitle")}</p>
+          </div>
+          <LoginHistory />
+        </TabsContent>
+
+        <TabsContent value="settings" className="mt-0">
+          <div className="p-4 space-y-4">
+            {/* Notifications */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    {enabled ? (
+                      <Bell className="h-5 w-5 text-blue-400" />
+                    ) : (
+                      <BellOff className="h-5 w-5 text-gray-400" />
+                    )}
+                    <div>
+                      <p className="text-white font-semibold">
+                        {t("notifications.settingsTitle")}
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        {t("notifications.settingsText")}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={toggle}
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
+                      enabled ? "bg-blue-500" : "bg-gray-700"
+                    }`}
+                    aria-label="toggle"
+                  >
+                    <span
+                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                        enabled ? "translate-x-5" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                </div>
+                {permission === "denied" && (
+                  <p className="text-red-400 text-sm mt-2">
+                    {t("notifications.blocked")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Language */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3 mb-3">
+                  <Languages className="h-5 w-5 text-blue-400" />
+                  <div>
+                    <p className="text-white font-semibold">
+                      {t("settings.language")}
+                    </p>
+                    <p className="text-gray-400 text-sm">
+                      {t("settings.languageText")}
+                    </p>
+                  </div>
+                </div>
+                <LanguageSwitcher variant="inline" />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
       <Editprofile
