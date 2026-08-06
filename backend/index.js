@@ -4,10 +4,13 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import User from "./models/user.js";
 import Tweet from "./models/tweet.js";
+import profileRouter from "./routes/profile.js";
 dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+app.use("/api", profileRouter);
 
 app.get("/", (req, res) => {
   res.send("Twiller backend is running successfully");
