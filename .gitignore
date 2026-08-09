@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Env / secrets — never commit these
+.env
+.env.*
+!.env.example
+*.env.local
+*.env.development
+*.env.production
+
+# Firebase / Google service account private keys
+*serviceAccount*.json
+*service-account*.json
+firebase-adminsdk*.json
+*.pem
+*.key
+*.p8
+
+# Build output
+.next/
+dist/
+build/
+out/
+tsconfig.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
