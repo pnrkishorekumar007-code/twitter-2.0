@@ -101,7 +101,7 @@ router.post("/forgot-password/request", async (req, res) => {
       label: "Password reset",
     });
 
-    user.passwordReset.lastRequestedAt = new Date();
+    user.set("passwordReset.lastRequestedAt", new Date());
     await user.save();
 
     return res.status(200).send({ message: "OTP sent to your registered email." });

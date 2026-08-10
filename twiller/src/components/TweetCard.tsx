@@ -49,6 +49,26 @@ export default function TweetCard({ tweet }: any) {
   };
   const isLiked = tweetstate.likedBy?.includes(user?._id);
   const isRetweet = tweetstate.retweetedBy?.includes(user?._id);
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Twiller",
+          text: tweetstate.content,
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  if (!tweetstate.author) return null;
+
   return (
     <Card className="bg-black border-gray-800 border-x-0 border-t-0 rounded-none hover:bg-gray-950/50 transition-colors cursor-pointer">
       <CardContent className="p-4">
@@ -147,7 +167,7 @@ export default function TweetCard({ tweet }: any) {
               >
                 <Repeat2
                   className={`h-5 w-5 ${
-                    tweet.retweeted
+                    isRetweet
                       ? "text-green-400"
                       : "group-hover:text-green-400"
                   }`}
@@ -170,7 +190,7 @@ export default function TweetCard({ tweet }: any) {
               >
                 <Heart
                   className={`h-5 w-5 ${
-                    tweetstate.liked
+                    isLiked
                       ? "text-red-500 fill-current"
                       : "group-hover:text-red-400"
                   }`}
@@ -184,6 +204,10 @@ export default function TweetCard({ tweet }: any) {
                 variant="ghost"
                 size="sm"
                 className="flex items-center space-x-2 p-2 rounded-full hover:bg-blue-900/20 text-gray-500 hover:text-blue-400 group"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShare();
+                }}
               >
                 <Share className="h-5 w-5 group-hover:text-blue-400" />
               </Button>

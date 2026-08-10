@@ -64,6 +64,9 @@ router.post(
       }
 
       const planInfo = PLANS[plan];
+      if (!planInfo) {
+        return res.status(400).send({ error: "Invalid plan" });
+      }
       const user = await User.findOneAndUpdate(
         { email },
         {

@@ -16,8 +16,8 @@ const Editprofile = ({ isopen, onclose }: any) => {
   const [formData, setFormdata] = useState({
     displayName: user?.displayName || "",
     bio: user?.bio || "",
-    location: "Earth",
-    website: "example.com",
+    location: user?.location || "",
+    website: user?.website || "",
     avatar: user?.avatar || "",
   });
   const [error, setError] = useState<any>({});

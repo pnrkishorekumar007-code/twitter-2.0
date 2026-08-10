@@ -35,6 +35,7 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
         const b = new Blob(chunksRef.current, { type: "audio/webm" });
         setBlob(b);
         stream.getTracks().forEach((t) => t.stop());
+        setRecording(false);
       };
       recorder.start();
       mediaRecorderRef.current = recorder;
@@ -42,8 +43,11 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
       setDuration(0);
       timerRef.current = setInterval(() => {
         setDuration((d) => {
-          if (d + 1 >= MAX_DURATION_SEC) stopRecording();
-          return d + 1;
+          const next = d + 1;
+          if (next >= MAX_DURATION_SEC) {
+            clearInterval(timerRef.current);
+          }
+          return next;
         });
       }, 1000);
     } catch {

@@ -24,6 +24,18 @@ app.use("/payment", paymentRoutes);
 app.use("/", audioRoutes); // /audio/otp/request, /audio/upload
 app.use("/", userRoutes); // /notifications/:email, /language/otp/*
 
+app.use((err, req, res, next) => {
+  if (err?.name === "MulterError") {
+    const msg =
+      err.code === "LIMIT_FILE_SIZE"
+        ? "Audio file too large (max 100 MB)."
+        : err.message;
+    return res.status(400).send({ error: msg });
+  }
+  console.error(err);
+  return res.status(500).send({ error: err?.message || "Internal server error" });
+});
+
 const port = process.env.PORT || 5000;
 const url = process.env.MONGODB_URL || process.env.MONGODB_URI || process.env.MONOGDB_URL;
 
