@@ -48,7 +48,7 @@ export default function ProfilePage() {
     try {
       setloading(true);
       const res = await axiosInstance.get("/post");
-      setTweets(res.data);
+      setTweets(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error(error);
     } finally {

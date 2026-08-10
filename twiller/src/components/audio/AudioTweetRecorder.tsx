@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Mic, Square, Upload, X } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuth } from "@/context/AuthContext";
@@ -18,6 +18,17 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
   const [error, setError] = useState("");
   const [otpOpen, setOtpOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!blob) {
+      setAudioUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    setAudioUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [blob]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -135,9 +146,9 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
         <input ref={fileInputRef} type="file" accept="audio/*" hidden onChange={handleFilePick} />
       </div>
 
-      {blob && (
+      {blob && audioUrl && (
         <div className="mt-3 flex items-center gap-2">
-          <audio controls src={URL.createObjectURL(blob)} className="max-w-full" />
+          <audio controls src={audioUrl} className="max-w-full" />
           <button onClick={() => setBlob(null)}>
             <X className="h-4 w-4 text-gray-400" />
           </button>

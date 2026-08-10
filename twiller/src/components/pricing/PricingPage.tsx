@@ -39,7 +39,13 @@ export default function PricingPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    axiosInstance.get("/payment/plans").then((res) => setPlans(res.data));
+    axiosInstance
+      .get("/payment/plans")
+      .then((res) => setPlans(res.data))
+      .catch((error) => {
+        console.error("Failed to load plans:", error);
+        setPlans({});
+      });
   }, []);
 
   const handleSubscribe = async (planKey: string) => {

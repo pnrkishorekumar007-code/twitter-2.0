@@ -1,3 +1,5 @@
+"use client";
+
 import { useAuth } from "@/context/AuthContext";
 import React, { useState } from "react";
 import { Card, CardContent } from "./ui/card";

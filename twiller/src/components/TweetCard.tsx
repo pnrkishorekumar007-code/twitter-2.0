@@ -39,13 +39,14 @@ export default function TweetCard({ tweet }: any) {
     }
   };
   const formatNumber = (num: number) => {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + "M";
+    const n = Number(num) || 0;
+    if (n >= 1000000) {
+      return (n / 1000000).toFixed(1) + "M";
     }
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1) + "K";
+    if (n >= 1000) {
+      return (n / 1000).toFixed(1) + "K";
     }
-    return num.toString();
+    return n.toString();
   };
   const isLiked = tweetstate.likedBy?.includes(user?._id);
   const isRetweet = tweetstate.retweetedBy?.includes(user?._id);
@@ -67,7 +68,7 @@ export default function TweetCard({ tweet }: any) {
     }
   };
 
-  if (!tweetstate.author) return null;
+  if (!tweetstate || !tweetstate.author) return null;
 
   return (
     <Card className="bg-black border-gray-800 border-x-0 border-t-0 rounded-none hover:bg-gray-950/50 transition-colors cursor-pointer">
