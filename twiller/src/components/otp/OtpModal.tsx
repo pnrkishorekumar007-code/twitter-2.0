@@ -10,9 +10,10 @@ interface OtpModalProps {
   description: string;
   onVerify: (code: string) => Promise<void>;
   onClose: () => void;
+  devCode?: string;
 }
 
-export default function OtpModal({ open, title, description, onVerify, onClose }: OtpModalProps) {
+export default function OtpModal({ open, title, description, onVerify, onClose, devCode }: OtpModalProps) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,6 +39,12 @@ export default function OtpModal({ open, title, description, onVerify, onClose }
       <div className="bg-black border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
         <h3 className="text-white text-xl font-bold mb-1">{title}</h3>
         <p className="text-gray-400 text-sm mb-4">{description}</p>
+        {devCode && (
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-2 mb-2 text-center">
+            <p className="text-gray-400 text-xs">Dev mode — email not configured. Your code:</p>
+            <p className="text-white text-xl font-bold tracking-widest">{devCode}</p>
+          </div>
+        )}
         <Input
           value={code}
           onChange={(e) => setCode(e.target.value)}

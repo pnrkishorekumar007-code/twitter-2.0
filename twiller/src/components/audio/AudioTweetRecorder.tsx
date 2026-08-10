@@ -17,6 +17,7 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState("");
   const [otpOpen, setOtpOpen] = useState(false);
+  const [otpDevCode, setOtpDevCode] = useState<string | undefined>(undefined);
   const [uploading, setUploading] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
@@ -89,7 +90,8 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
     setError("");
     if (duration > MAX_DURATION_SEC) return setError("Audio must be 5 minutes or shorter.");
     try {
-      await axiosInstance.post("/audio/otp/request", { email: (user as any).email });
+      const res = await axiosInstance.post("/audio/otp/request", { email: (user as any).email });
+      setOtpDevCode(res.data?.devCode);
       setOtpOpen(true);
     } catch (err: any) {
       setError(err?.response?.data?.error || "Could not send OTP.");
@@ -172,6 +174,7 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
         open={otpOpen}
         title="Verify to post audio"
         description="Enter the code sent to your registered email."
+        devCode={otpDevCode}
         onVerify={confirmUpload}
         onClose={() => setOtpOpen(false)}
       />

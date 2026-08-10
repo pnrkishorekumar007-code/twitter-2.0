@@ -38,14 +38,14 @@ router.post("/language/otp/request", async (req, res) => {
     const purpose = "language_switch";
     const channelLabel = targetLanguage === "fr" ? "email" : "mobile";
 
-    await issueOtp({
+    const { devCode } = await issueOtp({
       identifier: email,
       purpose,
       emailTo: email,
       label: `Language switch to "${targetLanguage}" (sent via ${channelLabel} channel)`,
     });
 
-    return res.status(200).send({ message: `OTP sent via ${channelLabel}`, channel: channelLabel });
+    return res.status(200).send({ message: `OTP sent via ${channelLabel}`, channel: channelLabel, devCode });
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }

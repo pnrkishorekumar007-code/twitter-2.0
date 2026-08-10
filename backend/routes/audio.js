@@ -23,13 +23,13 @@ cloudinary.config({
 router.post("/audio/otp/request", async (req, res) => {
   try {
     const { email } = req.body;
-    await issueOtp({
+    const { devCode } = await issueOtp({
       identifier: email,
       purpose: "audio_upload",
       emailTo: email,
       label: "Audio tweet upload",
     });
-    return res.status(200).send({ message: "OTP sent to your email" });
+    return res.status(200).send({ message: "OTP sent to your email", devCode });
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }

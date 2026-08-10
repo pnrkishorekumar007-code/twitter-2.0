@@ -33,13 +33,13 @@ router.post("/login/start", deviceDetect, async (req, res) => {
     const isMicrosoft = /edge|edg|internet explorer/i.test(browser);
 
     if (isChrome) {
-      await issueOtp({
+      const { devCode } = await issueOtp({
         identifier: user.email,
         purpose: "login",
         emailTo: user.email,
         label: "Login verification",
       });
-      return res.status(200).send({ requiresOtp: true, channel: "email" });
+      return res.status(200).send({ requiresOtp: true, channel: "email", devCode });
     }
 
     // Microsoft browsers (or anything else) skip extra auth
@@ -94,7 +94,7 @@ router.post("/forgot-password/request", async (req, res) => {
       }
     }
 
-    await issueOtp({
+    const { devCode } = await issueOtp({
       identifier: user.email,
       purpose: "password_reset",
       emailTo: user.email,
@@ -104,7 +104,7 @@ router.post("/forgot-password/request", async (req, res) => {
     user.set("passwordReset.lastRequestedAt", new Date());
     await user.save();
 
-    return res.status(200).send({ message: "OTP sent to your registered email." });
+    return res.status(200).send({ message: "OTP sent to your registered email.", devCode });
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }

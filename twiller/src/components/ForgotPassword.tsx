@@ -11,13 +11,15 @@ export default function ForgotPassword({ onBack }: { onBack: () => void }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [devCode, setDevCode] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
   const requestReset = async () => {
     setError("");
     setLoading(true);
     try {
-      await axiosInstance.post("/auth/forgot-password/request", { identifier });
+      const res = await axiosInstance.post("/auth/forgot-password/request", { identifier });
+      setDevCode(res.data?.devCode);
       setStep("verify");
     } catch (err: any) {
       setError(err?.response?.data?.error || "Something went wrong");
@@ -62,6 +64,12 @@ export default function ForgotPassword({ onBack }: { onBack: () => void }) {
       {step === "verify" && (
         <>
           <p className="text-gray-400 text-sm">Enter the 6-digit code emailed to you.</p>
+          {devCode && (
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-2 text-center">
+              <p className="text-gray-400 text-xs">Dev mode — email not configured. Your code:</p>
+              <p className="text-white text-lg font-bold tracking-widest">{devCode}</p>
+            </div>
+          )}
           <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="6-digit code" maxLength={6} />
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <Button className="w-full bg-blue-500 hover:bg-blue-600" disabled={loading} onClick={verifyAndReset}>

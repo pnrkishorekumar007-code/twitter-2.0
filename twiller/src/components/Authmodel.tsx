@@ -37,6 +37,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [otpOpen, setOtpOpen] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+  const [devCode, setDevCode] = useState<string | undefined>(undefined);
 
   if (!isOpen) return null;
 
@@ -86,6 +87,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
           const res = await axiosInstance.post('/auth/login/start', { email: formData.email });
           if (res.data?.requiresOtp) {
             setPendingEmail(formData.email);
+            setDevCode(res.data?.devCode);
             setOtpOpen(true);
             return; // keep modal open until OTP is verified
           }
@@ -102,8 +104,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
       onClose();
       setFormData({ email: '', password: '', username: '', displayName: '' });
       setErrors({});
-    } catch (error) {
-      setErrors({ general: 'Authentication failed. Please try again.' });
+    } catch (error: any) {
+      setErrors({ general: error?.message || 'Authentication failed. Please try again.' });
     }
   };
 
@@ -303,6 +305,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
         open={otpOpen}
         title="Verify it's you"
         description="Chrome logins require a one-time code sent to your email."
+        devCode={devCode}
         onVerify={async (code) => {
           const res = await axiosInstance.post('/auth/login/verify', { email: pendingEmail, code });
           if (res.data?.user) {

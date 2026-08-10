@@ -13,13 +13,16 @@ export async function issueOtp({ identifier, purpose, emailTo, label }) {
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
   await Otp.create({ identifier, purpose, code, expiresAt });
 
-  await sendMail({
+  const mailResult = await sendMail({
     to: emailTo,
     subject: `Your Twiller verification code${label ? " – " + label : ""}`,
     html: `<p>Your OTP code is:</p><h2 style="letter-spacing:4px">${code}</h2><p>This code expires in 10 minutes. If you didn't request this, ignore this email.</p>`,
   });
 
-  return { expiresAt };
+  // Dev fallback: when no SMTP is configured, expose the code so local
+  // testing can still complete the flow. Never included when email is sent.
+  const devCode = mailResult?.skipped ? code : undefined;
+  return { expiresAt, devCode };
 }
 
 export async function verifyOtp({ identifier, purpose, code }) {
