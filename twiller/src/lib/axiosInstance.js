@@ -4,7 +4,7 @@ import axios from "axios";
 // prefixed NEXT_PUBLIC_. Set NEXT_PUBLIC_BACKEND_URL in your .env.local
 // and in your Vercel project settings.
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
+  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000",
   headers: {
     "Content-Type": "application/json",
   },

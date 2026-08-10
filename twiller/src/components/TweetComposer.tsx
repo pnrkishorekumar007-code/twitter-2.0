@@ -50,7 +50,9 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: any) => {
     formdataimg.set("image", image);
     try {
       const res = await axios.post(
-        "https://api.imgbb.com/1/upload?key=97f3fb960c3520d6a88d7e29679cf96f",
+        `https://api.imgbb.com/1/upload?key=${
+          process.env.NEXT_PUBLIC_IMGBB_KEY || "97f3fb960c3520d6a88d7e29679cf96f"
+        }`,
         formdataimg
       );
       const url = res.data.data.display_url;

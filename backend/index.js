@@ -25,7 +25,12 @@ app.use("/", audioRoutes); // /audio/otp/request, /audio/upload
 app.use("/", userRoutes); // /notifications/:email, /language/otp/*
 
 const port = process.env.PORT || 5000;
-const url = process.env.MONGODB_URL || process.env.MONOGDB_URL; // support old typo'd env var too
+const url = process.env.MONGODB_URL || process.env.MONGODB_URI || process.env.MONOGDB_URL;
+
+if (!url) {
+  console.error("❌ MONGODB_URL is not set. Add it to backend/.env.");
+  process.exit(1);
+}
 
 mongoose
   .connect(url)
