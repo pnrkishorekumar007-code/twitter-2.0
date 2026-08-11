@@ -9,6 +9,13 @@ const TweetSchema = new mongoose.Schema({
   comments: { type: Number, default: 0 },
   likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   retweetedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  replies: [
+    {
+      user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+      content: { type: String, required: true, trim: true, maxlength: 280 },
+      timestamp: { type: Date, default: Date.now },
+    },
+  ],
   image: { type: String, default: null },
 
   // Task 4: audio tweets

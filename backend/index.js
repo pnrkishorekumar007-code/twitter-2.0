@@ -143,6 +143,41 @@ app.get("/post", async (req, res) => {
     return res.status(400).send({ error: error.message });
   }
 });
+// get single tweet with replies
+app.get("/tweet/:id", async (req, res) => {
+  try {
+    const tweet = await Tweet.findById(req.params.id)
+      .populate("author")
+      .populate("replies.user");
+    if (!tweet) return res.status(404).send({ error: "Tweet not found" });
+    return res.status(200).send(tweet);
+  } catch (error) {
+    return res.status(400).send({ error: error.message });
+  }
+});
+// reply to a tweet
+app.post("/tweet/:id/reply", async (req, res) => {
+  try {
+    const { userId, content } = req.body;
+    if (!userId) return res.status(400).send({ error: "UserId required" });
+    if (!content || !content.trim())
+      return res.status(400).send({ error: "Reply cannot be empty" });
+
+    const tweet = await Tweet.findById(req.params.id);
+    if (!tweet) return res.status(404).send({ error: "Tweet not found" });
+
+    tweet.replies.push({ user: userId, content: content.trim() });
+    tweet.comments = tweet.replies.length;
+    await tweet.save();
+
+    const updated = await Tweet.findById(req.params.id)
+      .populate("author")
+      .populate("replies.user");
+    return res.status(201).send(updated);
+  } catch (error) {
+    return res.status(400).send({ error: error.message });
+  }
+});
 //  LIKE TWEET
 app.post("/like/:tweetid", async (req, res) => {
   try {

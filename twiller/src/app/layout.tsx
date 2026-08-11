@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "@/context/ThemeContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,12 +14,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'X Clone - Social Media Platform',
-  description: 'A modern Twitter clone built with Next.js ',
+  title: 'Twiller - Social Media Platform',
+  description: 'A modern social media platform built with Next.js',
    icons: {
     icon:"/favicon.ico",
   },
 };
+
+const themeScript = `
+  try {
+    var t = localStorage.getItem('twiller-theme');
+    var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (dark) document.documentElement.classList.add('dark');
+  } catch (e) {}
+`;
 
 export default function RootLayout({
   children,
@@ -26,11 +35,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

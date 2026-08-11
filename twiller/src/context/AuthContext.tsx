@@ -22,6 +22,7 @@ interface User {
   email: string;
   website: string;
   location: string;
+  verified?: boolean;
 }
 
 interface AuthContextType {

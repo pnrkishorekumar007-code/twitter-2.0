@@ -6,44 +6,25 @@ import {
   Calendar,
   MapPin,
   Link as LinkIcon,
-  MoreHorizontal,
   Camera,
   Settings,
+  BadgeCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import TweetCard from "./TweetCard";
-import { Card, CardContent } from "./ui/card";
 import Editprofile from "./Editprofile";
-import ProfileSettingsPanel from "./ProfileSettingsPanel";
 import axiosInstance from "@/lib/axiosInstance";
+import { Skeleton } from "./ui/skeleton";
 
-interface Tweet {
-  id: string;
-  author: {
-    id: string;
-    username: string;
-    displayName: string;
-    avatar: string;
-    verified?: boolean;
-  };
-  content: string;
-  timestamp: string;
-  likes: number;
-  retweets: number;
-  comments: number;
-  liked?: boolean;
-  retweeted?: boolean;
-  image?: string;
-}
 export default function ProfilePage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("posts");
   const [showEditModal, setShowEditModal] = useState(false);
   const [tweets, setTweets] = useState<any>([]);
   const [loading, setloading] = useState(false);
+
   const fetchTweets = async () => {
     try {
       setloading(true);
@@ -55,246 +36,164 @@ export default function ProfilePage() {
       setloading(false);
     }
   };
+
   useEffect(() => {
     fetchTweets();
   }, []);
+
   if (!user) return null;
-  // Filter tweets by current user
-  const userTweets = tweets.filter(
-    (tweet: any) => tweet?.author?._id === user._id
+
+  const userTweets = tweets.filter((t: any) => t.author?._id === user._id);
+  const userLiked = tweets.filter((t: any) => t.likedBy?.includes(user._id));
+  const userRetweets = tweets.filter((t: any) =>
+    t.retweetedBy?.includes(user._id)
+  );
+
+  const EmptyState = ({ title, sub }: { title: string; sub: string }) => (
+    <div className="py-20 text-center px-6">
+      <p className="text-2xl font-bold text-foreground">{title}</p>
+      <p className="text-muted-foreground mt-1">{sub}</p>
+    </div>
   );
 
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <div className="sticky top-0 bg-black/90 backdrop-blur-md border-b border-gray-800 z-10">
-        <div className="flex items-center px-4 py-3 space-x-8">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-2 rounded-full hover:bg-gray-900"
-          >
-            <ArrowLeft className="h-5 w-5 text-white" />
-          </Button>
+      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-md border-b border-border">
+        <div className="px-4 py-3 flex items-center gap-4">
+          <ArrowLeft
+            className="h-5 w-5 cursor-pointer text-muted-foreground hover:text-foreground"
+            onClick={() => window.history.back()}
+          />
           <div>
-            <h1 className="text-xl font-bold text-white">{user.displayName}</h1>
-            <p className="text-sm text-gray-400">{userTweets.length} posts</p>
+            <h1 className="text-lg font-bold text-foreground">
+              {user.displayName}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {userTweets.length} posts
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Cover Photo */}
-      <div className="relative">
-        <div className="h-48 bg-gradient-to-r from-blue-600 to-purple-600 relative">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-black/70"
-          >
-            <Camera className="h-5 w-5 text-white" />
-          </Button>
-        </div>
+      <div className="relative h-44 bg-brand-gradient animate-gradient overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/25" />
+        <button
+          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+          aria-label="Change cover"
+        >
+          <Camera className="h-5 w-5" />
+        </button>
+      </div>
 
-        {/* Profile Picture */}
-        <div className="absolute -bottom-16 left-4">
-          <div className="relative">
-            <Avatar className="h-32 w-32 border-4 border-black">
-              <AvatarImage src={user.avatar} alt={user.displayName} />
-              <AvatarFallback className="text-2xl">
-                {user.displayName[0]}
-              </AvatarFallback>
-            </Avatar>
+      <div className="px-4">
+        <div className="flex items-start justify-between">
+          <Avatar className="h-24 w-24 border-4 border-background -mt-12 bg-accent shadow-xl">
+            <AvatarImage src={user.avatar} alt={user.displayName} />
+            <AvatarFallback className="text-3xl">
+              {user.displayName[0]}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex gap-2 mt-2">
             <Button
-              variant="ghost"
-              size="sm"
-              className="absolute bottom-2 right-2 p-2 rounded-full bg-black/70 hover:bg-black/90"
+              variant="outline"
+              onClick={() => setShowEditModal(true)}
+              className="rounded-full border-border text-foreground hover:bg-accent font-semibold"
             >
-              <Camera className="h-4 w-4 text-white" />
+              Edit profile
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full border-border text-muted-foreground hover:bg-accent"
+              aria-label="Settings"
+            >
+              <Settings className="h-4 w-4" />
             </Button>
           </div>
         </div>
+      </div>
 
-        {/* Edit Profile Button */}
-        <div className="flex justify-end p-4">
-          <Button
-            variant="outline"
-            className="border-gray-600 text-white bg-gray-950 font-semibold rounded-full px-6"
-            onClick={() => setShowEditModal(true)}
-          >
-            Edit profile
-          </Button>
+      <div className="mt-4 px-4 space-y-1">
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-1.5">
+          {user.displayName}
+          {user.verified && (
+            <BadgeCheck className="h-5 w-5 text-brand shrink-0" />
+          )}
+        </h1>
+        <p className="text-muted-foreground">@{user.username}</p>
+        {user.bio && <p className="mt-2 text-foreground">{user.bio}</p>}
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mt-2">
+          {user.location && (
+            <span className="flex items-center gap-1">
+              <MapPin className="h-4 w-4" />
+              {user.location}
+            </span>
+          )}
+          {user.website && (
+            <a className="flex items-center gap-1 hover:underline cursor-pointer text-brand">
+              <LinkIcon className="h-4 w-4" />
+              {user.website}
+            </a>
+          )}
+          {user.joinedDate && (
+            <span className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              Joined {new Date(user.joinedDate).toLocaleDateString()}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Profile Info */}
-      <div className="px-4 pb-4 mt-12">
-        <div className="flex items-start justify-between mb-3">
-          <div>
-            <h1 className="text-2xl font-bold text-white">
-              {user.displayName}
-            </h1>
-            <p className="text-gray-400">@{user.username}</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-2 rounded-full hover:bg-gray-900"
-          >
-            <MoreHorizontal className="h-5 w-5 text-gray-400" />
-          </Button>
-        </div>
-
-        {user.bio && (
-          <p className="text-white mb-3 leading-relaxed">{user.bio}</p>
-        )}
-
-        <div className="flex items-center space-x-4 text-gray-400 text-sm mb-3">
-          <div className="flex items-center space-x-1">
-            <MapPin className="h-4 w-4" />
-            <span>{user.location ? user.location : "Earth"}</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <LinkIcon className="h-4 w-4" />
-            <span className="text-blue-400">
-              {user.website ? user.website : "example.com"}
-            </span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Calendar className="h-4 w-4" />
-            <span>
-              Joined{" "}
-              {user.joinedDate &&
-                new Date(user.joinedDate).toLocaleDateString("en-us", {
-                  month: "long",
-                  year: "numeric",
-                })}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6 bg-transparent border-b border-gray-800 rounded-none h-auto">
+      <Tabs defaultValue="posts" className="w-full mt-4">
+        <TabsList className="w-full grid grid-cols-3 bg-transparent border-b border-border">
           <TabsTrigger
             value="posts"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            className="rounded-none bg-transparent h-12 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=active]:border-b-1 data-[state=active]:border-brand text-muted-foreground font-semibold"
           >
             Posts
           </TabsTrigger>
           <TabsTrigger
-            value="replies"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            value="liked"
+            className="rounded-none bg-transparent h-12 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=active]:border-b-1 data-[state=active]:border-brand text-muted-foreground font-semibold"
           >
-            Replies
+            Likes
           </TabsTrigger>
           <TabsTrigger
-            value="highlights"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            value="retweets"
+            className="rounded-none bg-transparent h-12 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=active]:border-b-1 data-[state=active]:border-brand text-muted-foreground font-semibold"
           >
-            Highlights
-          </TabsTrigger>
-          <TabsTrigger
-            value="articles"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
-          >
-            Articles
-          </TabsTrigger>
-          <TabsTrigger
-            value="media"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
-          >
-            Media
-          </TabsTrigger>
-          <TabsTrigger
-            value="settings"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
-          >
-            Settings
+            Retweets
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="posts" className="mt-0">
-          <div className="divide-y divide-gray-800">
-            { loading ? (
-              <Card className="bg-black border-none">
-                <CardContent className="py-12 text-center">
-                  <div className="text-gray-400">
-                    <h3 className="text-2xl font-bold mb-2">
-                      You haven't posted yet
-                    </h3>
-                    <p>When you post, it will show up here.</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              userTweets.map((tweet:any) => (
-                <TweetCard key={tweet._id} tweet={tweet} />
-              ))
-            )}
-          </div>
+        <TabsContent value="posts">
+          {loading ? (
+            <div className="p-4 space-y-4">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          ) : userTweets.length === 0 ? (
+            <EmptyState title="No posts yet. Post one!" sub="When you post, it appears here." />
+          ) : (
+            userTweets.map((t: any) => <TweetCard key={t._id} tweet={t} />)
+          )}
         </TabsContent>
-
-        <TabsContent value="replies" className="mt-0">
-          <Card className="bg-black border-none">
-            <CardContent className="py-12 text-center">
-              <div className="text-gray-400">
-                <h3 className="text-2xl font-bold mb-2">
-                  You haven't replied yet
-                </h3>
-                <p>When you reply to a post, it will show up here.</p>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="liked">
+          {userLiked.length === 0 ? (
+            <EmptyState title="No liked posts yet." sub="Posts you like will show up here." />
+          ) : (
+            userLiked.map((t: any) => <TweetCard key={t._id} tweet={t} />)
+          )}
         </TabsContent>
-
-        <TabsContent value="highlights" className="mt-0">
-          <Card className="bg-black border-none">
-            <CardContent className="py-12 text-center">
-              <div className="text-gray-400">
-                <h3 className="text-2xl font-bold mb-2">
-                  Lights, camera … attachments!
-                </h3>
-                <p>When you post photos or videos, they will show up here.</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="articles" className="mt-0">
-          <Card className="bg-black border-none">
-            <CardContent className="py-12 text-center">
-              <div className="text-gray-400">
-                <h3 className="text-2xl font-bold mb-2">
-                  You haven't written any articles
-                </h3>
-                <p>When you write articles, they will show up here.</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="media" className="mt-0">
-          <Card className="bg-black border-none">
-            <CardContent className="py-12 text-center">
-              <div className="text-gray-400">
-                <h3 className="text-2xl font-bold mb-2">
-                  Lights, camera … attachments!
-                </h3>
-                <p>When you post photos or videos, they will show up here.</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="settings" className="mt-0">
-          <ProfileSettingsPanel />
+        <TabsContent value="retweets">
+          {userRetweets.length === 0 ? (
+            <EmptyState title="No retweets yet." sub="Retweets you make will show up here." />
+          ) : (
+            userRetweets.map((t: any) => <TweetCard key={t._id} tweet={t} />)
+          )}
         </TabsContent>
       </Tabs>
-      <Editprofile
-        isopen={showEditModal}
-        onclose={() => setShowEditModal(false)}
-      />
+      <Editprofile isopen={showEditModal} onclose={() => setShowEditModal(false)} />
     </div>
   );
 }

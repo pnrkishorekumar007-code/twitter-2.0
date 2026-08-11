@@ -4,8 +4,10 @@ import React, { useState } from "react";
 import LoadingSpinner from "../loading-spinner";
 import Sidebar from "./Sidebar";
 import RightSidebar from "./Rightsidebar";
+import MobileBottomNav from "./MobileBottomNav";
 import ProfilePage from "../ProfilePage";
 import PricingPage from "../pricing/PricingPage";
+import { TwillerBrand } from "../Twitterlogo";
 
 const Mainlayout = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
@@ -13,10 +15,12 @@ const Mainlayout = ({ children }: { children: React.ReactNode }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-white text-4xl font-bold mb-4">X</div>
-          <LoadingSpinner size="lg" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <TwillerBrand className="justify-center" />
+          <div className="flex justify-center">
+            <LoadingSpinner size="lg" />
+          </div>
         </div>
       </div>
     );
@@ -28,16 +32,23 @@ const Mainlayout = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex justify-center">
-      <div className="w-20 sm:w-24 md:w-64 border-r border-gray-800">
+    <div className="min-h-screen bg-background text-foreground flex justify-center">
+      <div className="hidden md:block w-20 lg:w-64 shrink-0 border-r border-border">
         <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
       </div>
-      <main className="flex-1 max-w-2xl border-x border-gray-800">
-        {currentPage ==="profile" ? <ProfilePage/> : currentPage === "pricing" ? <PricingPage/> : children}
+      <main className="flex-1 max-w-2xl border-x border-border pb-20 md:pb-0">
+        {currentPage === "profile" ? (
+          <ProfilePage />
+        ) : currentPage === "pricing" ? (
+          <PricingPage />
+        ) : (
+          children
+        )}
       </main>
-      <div className="hidden lg:block w-80 p-4">
+      <div className="hidden lg:block w-80 shrink-0 p-4">
         <RightSidebar />
       </div>
+      <MobileBottomNav currentPage={currentPage} onNavigate={setCurrentPage} />
     </div>
   );
 };

@@ -3,46 +3,70 @@
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import AuthModal from "./Authmodel";
-import TwitterLogo from "./Twitterlogo";
+import TwitterLogo, { TwillerBrand } from "./Twitterlogo";
 import { useAuth } from "@/context/AuthContext";
 import Feed from "./Feed";
+import { Sparkles } from "lucide-react";
 
 export default function LandingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
-  const { user, logout ,googlesignin} = useAuth();
+  const { user, googlesignin } = useAuth();
 
   const openAuthModal = (mode: "login" | "signup") => {
     setAuthMode(mode);
     setShowAuthModal(true);
   };
   if (user) {
-    return <Feed/>;
+    return <Feed />;
   }
   return (
-    <div className="min-h-screen bg-black text-white flex">
-      {/* Left side - Logo */}
-      <div className="hidden lg:flex lg:flex-1 items-center justify-center">
-        <TwitterLogo className="text-white h-80 w-80" />
+    <div className="min-h-screen bg-black text-white flex overflow-hidden">
+      {/* Left side - animated logo */}
+      <div className="hidden lg:flex lg:flex-1 items-center justify-center relative overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-30 bg-brand-gradient animate-gradient"
+          style={{ filter: "blur(120px)" }}
+        />
+        <div className="absolute top-1/4 left-1/4 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl animate-float" />
+        <div className="absolute bottom-1/4 right-1/4 h-80 w-80 rounded-full bg-fuchsia-500/15 blur-3xl animate-float-slow" />
+        <div className="absolute inset-0 opacity-[0.05] [background-image:radial-gradient(rgba(255,255,255,0.7)_1px,transparent_1px)] [background-size:28px_28px]" />
+        <div className="relative animate-float">
+          <TwitterLogo
+            variant="gradient"
+            size="xl"
+            className="h-64 w-64 lg:h-80 lg:w-80 drop-shadow-[0_0_80px_rgba(129,140,248,0.55)]"
+          />
+        </div>
       </div>
+
       {/* Right side - Content */}
-      <div className="flex-1 lg:flex-1 flex flex-col justify-center px-8 lg:px-16 max-w-lg lg:max-w-2xl">
-        <div className="lg:hidden mb-8 text-center">
-          <TwitterLogo size="xl" className="text-white mx-auto" />
+      <div className="flex-1 flex flex-col justify-center px-8 lg:px-16 max-w-lg lg:max-w-2xl">
+        <div className="lg:hidden mb-8">
+          <TwillerBrand />
         </div>
 
         <div className="space-y-12">
           <div>
-            <h1 className="text-5xl lg:text-6xl font-bold mb-8 leading-tight">
-              Happening now
+            <h1 className="text-5xl lg:text-7xl font-extrabold mb-4 leading-[1.05] tracking-tight animate-fade-up">
+              Happening{" "}
+              <span className="bg-brand-gradient bg-clip-text text-transparent">
+                now
+              </span>
             </h1>
-            <h2 className="text-2xl lg:text-3xl font-bold mb-8">Join today.</h2>
+            <h2 className="text-2xl lg:text-3xl font-bold mb-3 animate-fade-up [animation-delay:100ms]">
+              Join Twiller today.
+            </h2>
+            <p className="text-gray-400 flex items-center gap-1.5 animate-fade-up [animation-delay:150ms]">
+              <Sparkles className="h-4 w-4 text-brand" /> Your timeline, your
+              voice.
+            </p>
           </div>
 
-          <div className="space-y-4 max-w-xs">
+          <div className="space-y-4 max-w-xs animate-fade-up [animation-delay:200ms]">
             <Button
               variant="outline"
-              className="w-full py-3 rounded-full border-gray-600 bg-black  text-white font-semibold text-base h-12"
+              className="w-full py-3 rounded-full border-white/15 bg-white/5 text-white font-semibold text-base h-12 hover:bg-white/10 hover:border-white/25 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/5 transition-all"
               onClick={() => googlesignin()}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -68,8 +92,8 @@ export default function LandingPage() {
 
             <Button
               variant="outline"
-              className="w-full py-3 rounded-full border-gray-600  bg-black text-white font-semibold text-base h-12"
-             onClick={() => openAuthModal("signup")}
+              className="w-full py-3 rounded-full border-white/15 bg-white/5 text-white font-semibold text-base h-12 hover:bg-white/10 hover:border-white/25 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/5 transition-all"
+              onClick={() => openAuthModal("signup")}
             >
               <svg
                 className="w-5 h-5 mr-2"
@@ -83,45 +107,54 @@ export default function LandingPage() {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-gray-600" />
+                <span className="w-full border-t border-white/10" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-black px-2 text-gray-400">or</span>
+                <span className="bg-black px-2 text-gray-500">or</span>
               </div>
             </div>
             <Button
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-full text-base h-12"
+              className="w-full bg-brand-gradient animate-gradient text-white font-bold py-3 rounded-full text-base h-12 shadow-lg shadow-brand/40 hover:brightness-110 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand/40 transition-all"
               onClick={() => openAuthModal("signup")}
             >
               Create account
             </Button>
-            <p className="text-xs text-gray-400 leading-relaxed">
+            <p className="text-xs text-gray-500 leading-relaxed">
               By signing up, you agree to the{" "}
-              <a href="#" className="text-blue-400 hover:underline">
+              <a href="#" className="text-brand hover:underline">
                 Terms of Service
               </a>{" "}
               and{" "}
-              <a href="#" className="text-blue-400 hover:underline">
+              <a href="#" className="text-brand hover:underline">
                 Privacy Policy
               </a>
               , including{" "}
-              <a href="#" className="text-blue-400 hover:underline">
+              <a href="#" className="text-brand hover:underline">
                 Cookie Use
               </a>
               .
             </p>
           </div>
-          <div className="space-y-5">
+          <div className="space-y-5 animate-fade-up [animation-delay:250ms]">
             <p className="text-lg font-bold">Already have an account?</p>
             <Button
               variant="outline"
-              className="w-full max-w-xs py-3 rounded-full border-gray-600 hover:bg-gray-900 text-blue-400 font-semibold text-base h-12"
+              className="w-full max-w-xs py-3 rounded-full border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/25 text-brand font-semibold text-base h-12 hover:-translate-y-0.5 transition-all"
               onClick={() => openAuthModal("login")}
             >
               Log in
             </Button>
           </div>
         </div>
+
+        <footer className="hidden lg:flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-500 mt-14 pt-6 border-t border-white/10 max-w-xs">
+          <span>© 2026 Twiller</span>
+          <a href="#" className="hover:text-gray-300 hover:underline">About</a>
+          <a href="#" className="hover:text-gray-300 hover:underline">Help</a>
+          <a href="#" className="hover:text-gray-300 hover:underline">Privacy</a>
+          <a href="#" className="hover:text-gray-300 hover:underline">Terms</a>
+          <a href="#" className="hover:text-gray-300 hover:underline">Cookies</a>
+        </footer>
       </div>
 
       <AuthModal

@@ -1,19 +1,22 @@
 import Landing from "@/components/Landing";
 import Mainlayout from "@/components/layout/Mainlayout";
-import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
-import Image from "next/image";
+import { ThemeProvider } from "@/context/ThemeContext";
+import { ToastProvider } from "@/components/Toast";
 
 export default function Home() {
-
   return (
-    <AuthProvider>
-      <LanguageProvider>
-        <Mainlayout>
-          {" "}
-          <Landing />
-        </Mainlayout>
-      </LanguageProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <LanguageProvider>
+          <ToastProvider>
+            <Mainlayout>
+              <Landing />
+            </Mainlayout>
+          </ToastProvider>
+        </LanguageProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
