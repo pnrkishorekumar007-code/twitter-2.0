@@ -1,30 +1,49 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationsContext";
+import { getSocket } from "@/lib/socketClient";
+import type { Tweet } from "@/lib/types";
 
 const KEYWORDS = ["cricket", "science"];
 
 /**
- * TASK 5: watches the tweet list for the keywords "cricket" or "science"
- * and fires a browser Notification popup with the full tweet content,
- * only when the user has notifications enabled in their profile.
+ * KEYWORD NOTIFICATIONS — polling fallback.
+ *
+ * The primary delivery channel is Socket.IO (see NotificationsContext), which
+ * pushes "keyword-tweet" events the moment a matching tweet is created. This
+ * hook watches the in-memory tweet list and is only used as a **fallback** when
+ * the real-time channel is not connected, so users never get duplicate popups.
+ *
+ * Respects the user's `keywordNotifications` preference, the browser
+ * permission, and matches keywords case-insensitively.
  */
-export function useTweetNotifications(tweets: any[]) {
+export function useTweetNotifications(tweets: Tweet[]) {
   const { user } = useAuth();
+  const { settings } = useNotifications();
+  const [socketLive, setSocketLive] = useState(false);
   const seenIds = useRef<Set<string>>(new Set());
   const permissionAsked = useRef(false);
   const initialized = useRef(false);
 
+  // Track whether the Socket.IO channel is up. When it is, polling stands down.
   useEffect(() => {
-    if (!user || !(user as any).notificationsEnabled) return;
+    const check = () => setSocketLive(getSocket()?.connected ?? false);
+    check();
+    const id = window.setInterval(check, 2000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!user || !settings.keywordNotifications) return;
     if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (socketLive) return; // real-time channel is handling delivery
 
     if (!permissionAsked.current && Notification.permission === "default") {
       permissionAsked.current = true;
       Notification.requestPermission();
     }
-
     if (Notification.permission !== "granted") return;
 
     const isFirstPass = !initialized.current;
@@ -39,11 +58,12 @@ export function useTweetNotifications(tweets: any[]) {
       const text = (tweet.content || "").toLowerCase();
       const matched = KEYWORDS.find((k) => text.includes(k));
       if (matched) {
-        new Notification(`New tweet about ${matched}!`, {
-          body: tweet.content,
-          icon: tweet.author?.avatar,
+        new Notification("New Keyword Tweet", {
+          body: tweet.content || "",
+          icon: tweet.author?.avatar || "/favicon.ico",
+          tag: `twiller-kw-${id}`,
         });
       }
     });
-  }, [tweets, user]);
+  }, [tweets, user, settings.keywordNotifications, socketLive]);
 }

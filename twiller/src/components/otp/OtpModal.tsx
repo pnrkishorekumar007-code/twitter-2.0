@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { getErrorMessage } from "@/lib/types";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface OtpModalProps {
   open: boolean;
@@ -11,12 +13,63 @@ interface OtpModalProps {
   onVerify: (code: string) => Promise<void>;
   onClose: () => void;
   devCode?: string;
+  /** When provided, a "Resend code" button with countdown is shown. */
+  onResend?: () => Promise<void>;
+  resendCooldownSec?: number;
 }
 
-export default function OtpModal({ open, title, description, onVerify, onClose, devCode }: OtpModalProps) {
+export default function OtpModal({
+  open,
+  title,
+  description,
+  onVerify,
+  onClose,
+  devCode,
+  onResend,
+  resendCooldownSec = 60,
+}: OtpModalProps) {
+  const { t } = useLanguage();
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [countdown, setCountdown] = useState(onResend ? resendCooldownSec : 0);
+  const resendTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Start the resend countdown from scratch each time the modal opens
+  // (adjusting state during render, per React docs).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) setCountdown(resendCooldownSec);
+  }
+
+  useEffect(() => {
+    if (!open || !onResend) {
+      return () => {
+        if (resendTimerRef.current !== null) clearInterval(resendTimerRef.current);
+      };
+    }
+  }, [open, onResend]);
+
+  useEffect(() => {
+    if (countdown <= 0) {
+      if (resendTimerRef.current !== null) clearInterval(resendTimerRef.current);
+      return;
+    }
+    resendTimerRef.current = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          if (resendTimerRef.current !== null) clearInterval(resendTimerRef.current);
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => {
+      if (resendTimerRef.current !== null) clearInterval(resendTimerRef.current);
+    };
+  }, [countdown]);
 
   if (!open) return null;
 
@@ -27,42 +80,73 @@ export default function OtpModal({ open, title, description, onVerify, onClose, 
       await onVerify(code);
       setCode("");
       onClose();
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err.message || "Verification failed");
+    } catch (err) {
+      setError(getErrorMessage(err, "Verification failed"));
     } finally {
       setLoading(false);
     }
   };
 
+  const handleResend = async () => {
+    if (!onResend || countdown > 0) return;
+    setResending(true);
+    setError("");
+    try {
+      await onResend();
+      setCode("");
+      setCountdown(resendCooldownSec);
+    } catch (err) {
+      setError(getErrorMessage(err, "Could not resend code"));
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-      <div className="bg-black border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
-        <h3 className="text-white text-xl font-bold mb-1">{title}</h3>
-        <p className="text-gray-400 text-sm mb-4">{description}</p>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+        <h3 className="text-foreground text-xl font-bold mb-1">{title}</h3>
+        <p className="text-muted-foreground text-sm mb-4">{description}</p>
         {devCode && (
-          <div className="bg-gray-900 border border-gray-700 rounded-lg p-2 mb-2 text-center">
-            <p className="text-gray-400 text-xs">Dev mode — email not configured. Your code:</p>
-            <p className="text-white text-xl font-bold tracking-widest">{devCode}</p>
+          <div className="bg-muted border border-border rounded-lg p-2 mb-2 text-center">
+            <p className="text-muted-foreground text-xs">{t("otp_dev_code")}</p>
+            <p className="text-foreground text-xl font-bold tracking-widest">{devCode}</p>
           </div>
         )}
         <Input
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="6-digit code"
+          placeholder={t("otp_placeholder")}
           maxLength={6}
-          className="mb-2 text-white"
+          className="mb-2 text-foreground"
         />
         {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+        {onResend && (
+          <div className="mb-2">
+            <button
+              type="button"
+              disabled={countdown > 0 || resending}
+              onClick={handleResend}
+              className="text-brand text-sm hover:underline disabled:text-muted-foreground/60 disabled:no-underline"
+            >
+              {resending
+                ? t("otp_sending")
+                : countdown > 0
+                ? `${t("otp_resend_in")} ${countdown}s`
+                : t("otp_resend")}
+            </button>
+          </div>
+        )}
         <div className="flex gap-2 mt-4">
           <Button variant="outline" className="flex-1" onClick={onClose}>
-            Cancel
+            {t("otp_cancel")}
           </Button>
           <Button
-            className="flex-1 bg-blue-500 hover:bg-blue-600"
+            className="flex-1 bg-brand hover:bg-brand/90"
             disabled={loading || code.length !== 6}
             onClick={handleVerify}
           >
-            {loading ? "Verifying..." : "Verify"}
+            {loading ? t("otp_verifying") : t("otp_verify")}
           </Button>
         </div>
       </div>

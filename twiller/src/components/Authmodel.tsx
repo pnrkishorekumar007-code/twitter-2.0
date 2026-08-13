@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-
+import { useRouter } from 'next/navigation';
 import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 
 import LoadingSpinner from './loading-spinner';
@@ -12,9 +12,9 @@ import { Input } from './ui/input';
 import { Separator } from './ui/separator';
 import { useAuth } from '@/context/AuthContext';
 import TwitterLogo from './Twitterlogo';
-import ForgotPassword from './ForgotPassword';
-import OtpModal from './otp/OtpModal';
 import axiosInstance from '@/lib/axiosInstance';
+import { getErrorMessage } from '@/lib/types';
+import { getClientInfo } from '@/lib/clientInfo';
 
 
 
@@ -25,8 +25,9 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) {
-  const { login, signup, isLoading } = useAuth();
-  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>(initialMode);
+  const { login, signup, logout, isLoading } = useAuth();
+  const router = useRouter();
+  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -35,9 +36,16 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
     displayName: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [otpOpen, setOtpOpen] = useState(false);
-  const [pendingEmail, setPendingEmail] = useState('');
-  const [devCode, setDevCode] = useState<string | undefined>(undefined);
+
+  const [lastOpen, setLastOpen] = useState(false);
+  if (isOpen && !lastOpen) {
+    setLastOpen(true);
+    setMode(initialMode);
+    setErrors({});
+    setFormData({ email: '', password: '', username: '', displayName: '' });
+  } else if (!isOpen && lastOpen) {
+    setLastOpen(false);
+  }
 
   if (!isOpen) return null;
 
@@ -76,27 +84,36 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === 'forgot') return;
     if (!validateForm() || isLoading) return;
 
     try {
       if (mode === 'login') {
+        // Credential validation first (Firebase) — this matches the task's
+        // "after successful credential validation" step.
         await login(formData.email, formData.password);
-        // Task 3: record device/browser info; Chrome logins require an email OTP
-        try {
-          const res = await axiosInstance.post('/auth/login/start', { email: formData.email });
-          if (res.data?.requiresOtp) {
-            setPendingEmail(formData.email);
-            setDevCode(res.data?.devCode);
-            setOtpOpen(true);
-            return; // keep modal open until OTP is verified
-          }
-        } catch (deviceErr: any) {
-          if (deviceErr?.response?.status === 403) {
-            setErrors({ general: deviceErr.response.data.error });
-            return;
-          }
-          // non-blocking: if the device-check call fails for another reason, don't block login
+
+        // Advanced login security: device gate + Chrome OTP decision.
+        const loginRes = await axiosInstance.post('/auth/login', {
+          email: formData.email,
+          method: 'email',
+          clientInfo: getClientInfo(),
+        });
+
+        if (loginRes.data?.requiresOtp) {
+          localStorage.setItem('twiller-login-token', loginRes.data.loginToken || '');
+          localStorage.setItem('twiller-login-email', formData.email);
+          localStorage.setItem(
+            'twiller-login-expires-at',
+            String(Date.now() + (loginRes.data.expiresIn ?? 300) * 1000)
+          );
+          localStorage.setItem('twiller-login-method', 'email');
+          onClose();
+          router.push(`/verify-login-otp?email=${encodeURIComponent(formData.email)}`);
+          return;
+        }
+
+        if (loginRes.data?.token) {
+          localStorage.setItem('twiller-jwt', loginRes.data.token);
         }
       } else {
         await signup(formData.email, formData.password, formData.username, formData.displayName);
@@ -104,8 +121,26 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
       onClose();
       setFormData({ email: '', password: '', username: '', displayName: '' });
       setErrors({});
-    } catch (error: any) {
-      setErrors({ general: error?.message || 'Authentication failed. Please try again.' });
+    } catch (error) {
+      // If the device gate rejected the login (e.g. mobile outside the IST
+      // window) the account is already signed into Firebase — roll it back.
+      const axiosErr = error as {
+        response?: { status?: number; data?: { message?: string; error?: string } };
+      };
+      if (axiosErr?.response?.status === 403) {
+        try {
+          await logout();
+        } catch {
+          // ignore
+        }
+        const msg =
+          axiosErr.response.data?.message ||
+          axiosErr.response.data?.error ||
+          'Login is not allowed on this device right now.';
+        setErrors({ general: msg });
+        return;
+      }
+      setErrors({ general: getErrorMessage(error, 'Authentication failed. Please try again.') });
     }
   };
 
@@ -145,10 +180,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {mode === 'forgot' ? (
-            <ForgotPassword onBack={() => setMode('login')} />
-          ) : (
-          <>
           {errors.general && (
             <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 text-red-400 text-sm">
               {errors.general}
@@ -247,7 +278,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                 <button
                   type="button"
                   className="text-blue-400 text-sm hover:underline"
-                  onClick={() => setMode('forgot')}
+                  onClick={() => {
+                    onClose();
+                    router.push('/forgot-password');
+                  }}
                 >
                   Forgot password?
                 </button>
@@ -296,26 +330,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
               By signing up, you agree to our Terms of Service and Privacy Policy, including Cookie Use.
             </div>
           )}
-          </>
-          )}
         </CardContent>
       </Card>
-
-      <OtpModal
-        open={otpOpen}
-        title="Verify it's you"
-        description="Chrome logins require a one-time code sent to your email."
-        devCode={devCode}
-        onVerify={async (code) => {
-          const res = await axiosInstance.post('/auth/login/verify', { email: pendingEmail, code });
-          if (res.data?.user) {
-            onClose();
-            setFormData({ email: '', password: '', username: '', displayName: '' });
-            setErrors({});
-          }
-        }}
-        onClose={() => setOtpOpen(false)}
-      />
     </div>
   );
 }

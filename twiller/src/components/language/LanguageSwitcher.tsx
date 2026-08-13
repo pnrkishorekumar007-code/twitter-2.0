@@ -11,11 +11,14 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { LANGUAGES, LangCode } from "@/lib/translations";
 import OtpModal from "../otp/OtpModal";
+import { getErrorMessage } from "@/lib/types";
 
 export default function LanguageSwitcher() {
   const { lang, t, requestLanguageOtp, verifyLanguageOtp } = useLanguage();
   const [pending, setPending] = useState<LangCode | null>(null);
-  const [channel, setChannel] = useState("");
+  const [channel, setChannel] = useState("email");
+  const [devCode, setDevCode] = useState<string | undefined>(undefined);
+  const [resendAfterSec, setResendAfterSec] = useState(60);
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleSelect = async (code: LangCode) => {
@@ -24,10 +27,19 @@ export default function LanguageSwitcher() {
       const res = await requestLanguageOtp(code);
       setPending(code);
       setChannel(res.channel);
+      setDevCode(res.devCode);
+      setResendAfterSec(res.resendAfterSec ?? 60);
       setModalOpen(true);
-    } catch (err: any) {
-      alert(err?.response?.data?.error || err.message);
+    } catch (err) {
+      alert(getErrorMessage(err));
     }
+  };
+
+  const handleResend = async () => {
+    if (!pending) return;
+    const res = await requestLanguageOtp(pending);
+    setDevCode(res.devCode);
+    setResendAfterSec(res.resendAfterSec ?? 60);
   };
 
   return (
@@ -55,11 +67,14 @@ export default function LanguageSwitcher() {
       {pending && (
         <OtpModal
           open={modalOpen}
-          title="Verify to switch language"
-          description={`We sent a code via ${channel === "email" ? "email" : "your registered mobile number"}.`}
+          title={t("language_switch_verify")}
+          description={channel === "email" ? t("otp_channel_email") : t("otp_channel_sms")}
+          devCode={devCode}
           onVerify={async (code) => {
             await verifyLanguageOtp(pending, code);
           }}
+          onResend={handleResend}
+          resendCooldownSec={resendAfterSec}
           onClose={() => setModalOpen(false)}
         />
       )}

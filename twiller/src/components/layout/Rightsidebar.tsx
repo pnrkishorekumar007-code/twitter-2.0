@@ -1,38 +1,39 @@
 "use client";
 
-import { Search } from "lucide-react";
-import React from "react";
+import { Search, BadgeCheck, Sparkles, UserPlus } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { Input } from "../ui/input";
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { BadgeCheck } from "lucide-react";
+import axiosInstance from "@/lib/axiosInstance";
+import FollowButton from "../FollowButton";
+import type { FollowUser } from "@/lib/types";
 
-const suggestions = [
-  {
-    id: "1",
-    username: "narendramodi",
-    displayName: "Narendra Modi",
-    avatar: "https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=400",
-    verified: true,
-  },
-  {
-    id: "2",
-    username: "akshaykumar",
-    displayName: "Akshay Kumar",
-    avatar: "https://images.pexels.com/photos/1382735/pexels-photo-1382735.jpeg?auto=compress&cs=tinysrgb&w=400",
-    verified: true,
-  },
-  {
-    id: "3",
-    username: "rashtrapatibhvn",
-    displayName: "President of India",
-    avatar: "https://images.pexels.com/photos/1080213/pexels-photo-1080213.jpeg?auto=compress&cs=tinysrgb&w=400",
-    verified: true,
-  },
+const trends = [
+  { category: "Sports · Trending", tag: "#Cricket", posts: "24.5K posts" },
+  { category: "Trending in India", tag: "#Science", posts: "12.1K posts" },
+  { category: "Technology", tag: "AI everywhere", posts: "8,492 posts" },
 ];
 
 export default function RightSidebar() {
+  const [suggestions, setSuggestions] = useState<FollowUser[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    axiosInstance
+      .get("/users/suggested", { params: { limit: 5 } })
+      .then((res) => {
+        if (!cancelled) setSuggestions(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setSuggestions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="w-full space-y-4 sticky top-0">
       {/* Search */}
@@ -40,94 +41,134 @@ export default function RightSidebar() {
         <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
         <Input
           placeholder="Search"
-          className="pl-12 bg-muted/50 border-transparent text-foreground placeholder:text-muted-foreground rounded-full py-3 focus-visible:border-brand/40 focus-visible:ring-brand/20 focus-visible:ring-[3px]"
+          className="pl-12 bg-muted/60 border-transparent text-foreground placeholder:text-muted-foreground rounded-full py-3 focus-visible:border-brand focus-visible:ring-brand/20 focus-visible:ring-[3px]"
         />
       </div>
 
-      {/* Subscribe to Premium */}
+      {/* Premium */}
       <Card className="bg-card border-border rounded-2xl overflow-hidden">
-        <div className="h-1.5 bg-brand-gradient animate-gradient" />
+        <div className="h-1 bg-brand-gradient animate-gradient" />
         <CardContent className="p-4">
-          <h3 className="text-foreground text-xl font-bold mb-2">
+          <h3 className="text-foreground text-xl font-extrabold mb-2 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-brand" />
             Subscribe to Premium
           </h3>
-          <p className="text-muted-foreground text-sm mb-4">
+          <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
             Subscribe to unlock new features and if eligible, receive a share
             of revenue.
           </p>
-          <Button className="bg-brand-gradient animate-gradient text-white font-semibold rounded-full shadow-lg shadow-brand/30 hover:brightness-110">
+          <Button
+            className="bg-brand-gradient animate-gradient text-white font-bold rounded-full shadow-lg shadow-brand/30 hover:brightness-110"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("twiller:go-premium"))
+            }
+          >
             Subscribe
           </Button>
         </CardContent>
       </Card>
 
-      {/* Who to follow */}
+      {/* Trends */}
       <Card className="bg-card border-border rounded-2xl overflow-hidden">
-        <CardContent className="p-4">
-          <h3 className="text-foreground text-xl font-bold mb-4">
-            You might like
+        <CardContent className="p-0">
+          <h3 className="text-foreground text-xl font-extrabold px-4 py-3">
+            What&apos;s happening
           </h3>
-          <div className="space-y-1">
-            {suggestions.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center justify-between px-2 py-2 rounded-xl hover:bg-accent/60 -mx-2 transition-colors"
+          <div className="divide-y divide-border">
+            {trends.map((trend) => (
+              <button
+                key={trend.tag}
+                className="w-full text-left px-4 py-3 hover:bg-accent/60 transition-colors"
               >
-                <div className="flex items-center space-x-3 min-w-0">
-                  <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarImage src={user.avatar} alt={user.displayName} />
-                    <AvatarFallback>{user.displayName[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <div className="flex items-center space-x-1">
-                      <span className="text-foreground font-semibold truncate hover:underline">
-                        {user.displayName}
-                      </span>
-                      {user.verified && (
-                        <BadgeCheck className="h-4 w-4 text-brand shrink-0" />
-                      )}
-                    </div>
-                    <span className="text-muted-foreground text-sm">
-                      @{user.username}
-                    </span>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  className="bg-foreground text-background hover:bg-foreground/80 font-semibold rounded-full px-4 shrink-0"
-                >
-                  Follow
-                </Button>
-              </div>
+                <p className="text-xs text-muted-foreground">{trend.category}</p>
+                <p className="text-foreground font-bold text-[15px]">{trend.tag}</p>
+                <p className="text-xs text-muted-foreground">{trend.posts}</p>
+              </button>
             ))}
           </div>
           <Button
             variant="ghost"
-            className="text-brand hover:text-brand/80 hover:bg-brand/10 p-0 mt-3 rounded-lg"
+            className="text-brand hover:text-brand/80 hover:bg-brand/10 px-4 py-3 h-auto rounded-none w-full justify-start font-semibold"
           >
             Show more
           </Button>
         </CardContent>
       </Card>
 
+      {/* Who to follow */}
+      <Card className="bg-card border-border rounded-2xl overflow-hidden">
+        <CardContent className="p-0">
+          <h3 className="text-foreground text-xl font-extrabold px-4 py-3">
+            You might like
+          </h3>
+          {suggestions.length === 0 ? (
+            <div className="px-4 py-8 text-center">
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-muted mb-2">
+                <UserPlus className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground text-sm">
+                No suggestions right now.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {suggestions.map((user) => (
+                <div
+                  key={user._id}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-accent/60 transition-colors"
+                >
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <Avatar className="h-10 w-10 shrink-0">
+                      <AvatarImage src={user.avatar} alt={user.displayName} />
+                      <AvatarFallback>
+                        {user.displayName?.[0] || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="flex items-center space-x-1">
+                        <span className="text-foreground font-semibold truncate hover:underline cursor-pointer">
+                          {user.displayName || "Unknown User"}
+                        </span>
+                        {user.verified && (
+                          <BadgeCheck className="h-4 w-4 text-brand shrink-0" />
+                        )}
+                      </div>
+                      <span className="text-muted-foreground text-sm">
+                        @{user.username || "unknown"}
+                      </span>
+                    </div>
+                  </div>
+                  <FollowButton
+                    targetId={user._id}
+                    onToggle={(nowFollowing) => {
+                      if (nowFollowing) {
+                        setSuggestions((prev) =>
+                          prev.filter((s) => s._id !== user._id)
+                        );
+                      }
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Footer */}
       <div className="p-4 text-xs text-muted-foreground space-y-2">
         <div className="flex flex-wrap gap-x-3 gap-y-1">
-          <a href="#" className="hover:underline hover:text-foreground transition-colors">
-            Terms of Service
-          </a>
-          <a href="#" className="hover:underline hover:text-foreground transition-colors">
-            Privacy Policy
-          </a>
-          <a href="#" className="hover:underline hover:text-foreground transition-colors">
-            Cookie Policy
-          </a>
-          <a href="#" className="hover:underline hover:text-foreground transition-colors">
-            Accessibility
-          </a>
-          <a href="#" className="hover:underline hover:text-foreground transition-colors">
-            Ads info
-          </a>
+          {["Terms of Service", "Privacy Policy", "Cookie Policy", "Accessibility", "Ads info"].map(
+            (label) => (
+              <a
+                key={label}
+                href="#"
+                className="hover:underline hover:text-foreground transition-colors"
+              >
+                {label}
+              </a>
+            )
+          )}
         </div>
         <div>© 2024 Twiller Corp.</div>
       </div>

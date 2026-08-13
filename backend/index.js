@@ -1,19 +1,28 @@
+import http from "http";
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import User from "./models/user.js";
 import Tweet from "./models/tweet.js";
+import { initSocket } from "./socket.js";
+import { notifyKeywordTweet } from "./services/notificationService.js";
 
 import authRoutes from "./routes/auth.js";
 import paymentRoutes from "./routes/payment.js";
 import audioRoutes from "./routes/audio.js";
 import userRoutes from "./routes/user.js";
+import followRoutes from "./routes/follow.js";
+
+import { requireTweetLimit, incrementTweetUsed } from "./middleware/tweetLimit.js";
 
 dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const server = http.createServer(app);
+initSocket(server);
 
 app.get("/", (req, res) => {
   res.send("Twiller backend is running successfully");
@@ -22,15 +31,18 @@ app.get("/", (req, res) => {
 app.use("/auth", authRoutes);
 app.use("/payment", paymentRoutes);
 app.use("/", audioRoutes); // /audio/otp/request, /audio/upload
-app.use("/", userRoutes); // /notifications/:email, /language/otp/*
+app.use("/", userRoutes); // /notifications/:email, /language/otp*, /profile/*
+app.use("/api", userRoutes); // alias so /api/profile/update and /api/profile/banner also work
+app.use("/", followRoutes); // /users/follow/:id, /users/followers/:id, ...
+app.use("/api", followRoutes); // alias so /api/users/* also works
 
 app.use((err, req, res, next) => {
   if (err?.name === "MulterError") {
     const msg =
       err.code === "LIMIT_FILE_SIZE"
-        ? "Audio file too large (max 100 MB)."
+        ? "Audio size must not exceed 100 MB."
         : err.message;
-    return res.status(400).send({ error: msg });
+    return res.status(400).send({ success: false, message: msg, error: msg });
   }
   console.error(err);
   return res.status(500).send({ error: err?.message || "Internal server error" });
@@ -48,7 +60,7 @@ mongoose
   .connect(url)
   .then(() => {
     console.log("✅ Connected to MongoDB");
-    app.listen(port, () => {
+    server.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);
     });
   })
@@ -103,32 +115,15 @@ app.patch("/userupdate/:email", async (req, res) => {
 
 // Tweet API
 
-// POST — now enforces the subscription tweet-limit (Task 1)
-app.post("/post", async (req, res) => {
+// POST — enforces the subscription tweet-limit (per plan: FREE=1, BRONZE=3,
+// SILVER=5, GOLD=unlimited). The counter increments only on successful save.
+app.post("/post", requireTweetLimit, async (req, res) => {
   try {
-    const { author } = req.body;
-    const user = await User.findById(author);
-    if (!user) return res.status(404).send({ error: "User not found" });
-
-    // reset monthly cycle if it has rolled over
-    const cycleAge = Date.now() - new Date(user.subscription.cycleStart).getTime();
-    if (cycleAge > 30 * 24 * 60 * 60 * 1000) {
-      user.subscription.tweetsUsedThisCycle = 0;
-      user.subscription.cycleStart = new Date();
-    }
-
-    if (user.subscription.tweetsUsedThisCycle >= user.subscription.tweetLimit) {
-      return res.status(403).send({
-        error: `You've hit your ${user.subscription.plan} plan's tweet limit (${user.subscription.tweetLimit}/month). Upgrade your plan to post more.`,
-      });
-    }
-
     const tweet = new Tweet(req.body);
     await tweet.save();
-
-    user.subscription.tweetsUsedThisCycle += 1;
-    await user.save();
-
+    await incrementTweetUsed(req.body.author);
+    notifyKeywordTweet(tweet);
+    await tweet.populate("author");
     return res.status(201).send(tweet);
   } catch (error) {
     return res.status(400).send({ error: error.message });
@@ -183,11 +178,18 @@ app.post("/like/:tweetid", async (req, res) => {
   try {
     const { userId } = req.body;
     const tweet = await Tweet.findById(req.params.tweetid);
-    if (!tweet.likedBy.includes(userId)) {
+    const alreadyLiked = tweet.likedBy.some(
+      (id) => String(id) === String(userId)
+    );
+    if (!alreadyLiked) {
       tweet.likes += 1;
       tweet.likedBy.push(userId);
-      await tweet.save();
+    } else {
+      tweet.likes = Math.max(0, tweet.likes - 1);
+      tweet.likedBy = tweet.likedBy.filter((id) => String(id) !== String(userId));
     }
+    await tweet.save();
+    await tweet.populate("author");
     res.send(tweet);
   } catch (error) {
     return res.status(400).send({ error: error.message });
@@ -198,11 +200,20 @@ app.post("/retweet/:tweetid", async (req, res) => {
   try {
     const { userId } = req.body;
     const tweet = await Tweet.findById(req.params.tweetid);
-    if (!tweet.retweetedBy.includes(userId)) {
+    const alreadyRetweeted = tweet.retweetedBy.some(
+      (id) => String(id) === String(userId)
+    );
+    if (!alreadyRetweeted) {
       tweet.retweets += 1;
       tweet.retweetedBy.push(userId);
-      await tweet.save();
+    } else {
+      tweet.retweets = Math.max(0, tweet.retweets - 1);
+      tweet.retweetedBy = tweet.retweetedBy.filter(
+        (id) => String(id) !== String(userId)
+      );
     }
+    await tweet.save();
+    await tweet.populate("author");
     res.send(tweet);
   } catch (error) {
     return res.status(400).send({ error: error.message });

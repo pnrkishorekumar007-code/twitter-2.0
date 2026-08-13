@@ -14,7 +14,11 @@ export default function LoadingSpinner({ size = 'md', className }: LoadingSpinne
   };
 
   return (
-    <div className={cn("animate-spin rounded-full border-2 border-gray-300 border-t-blue-500", sizeClasses[size], className)}>
+    <div
+      role="status"
+      aria-live="polite"
+      className={cn("animate-spin rounded-full border-2 border-muted border-t-brand", sizeClasses[size], className)}
+    >
       <span className="sr-only">Loading...</span>
     </div>
   );

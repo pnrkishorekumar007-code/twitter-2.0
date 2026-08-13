@@ -21,14 +21,6 @@ export const metadata: Metadata = {
   },
 };
 
-const themeScript = `
-  try {
-    var t = localStorage.getItem('twiller-theme');
-    var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (dark) document.documentElement.classList.add('dark');
-  } catch (e) {}
-`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,9 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
+      <head />
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

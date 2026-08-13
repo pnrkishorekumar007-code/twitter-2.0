@@ -1,6 +1,7 @@
-import admin from "firebase-admin";
+import { initializeApp, cert } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 
-let initialized = false;
+let app = null;
 
 function buildServiceAccount() {
   const full = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -19,8 +20,10 @@ function buildServiceAccount() {
   return null;
 }
 
+// firebase-admin v14 is modular: the namespace no longer exposes .auth().
+// This wrapper keeps the old shape (getFirebaseAdmin().auth()) for callers.
 export function getFirebaseAdmin() {
-  if (!initialized) {
+  if (!app) {
     const serviceAccount = buildServiceAccount();
     if (!serviceAccount) {
       console.warn(
@@ -28,17 +31,35 @@ export function getFirebaseAdmin() {
       );
       return null;
     }
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-    initialized = true;
+    app = initializeApp({ credential: cert(serviceAccount) });
   }
-  return admin;
+  return {
+    auth: () => getAuth(app),
+  };
 }
 
 // Updates the actual Firebase Auth password so the generated password works at login.
-export async function setFirebaseUserPassword(email, newPassword) {
+// identifier may be an email or a phone number (E.164 like "+919876543210").
+export async function setFirebaseUserPassword(identifier, newPassword) {
   const fbAdmin = getFirebaseAdmin();
   if (!fbAdmin) return false;
-  const userRecord = await fbAdmin.auth().getUserByEmail(email);
-  await fbAdmin.auth().updateUser(userRecord.uid, { password: newPassword });
+
+  const auth = fbAdmin.auth();
+  let uid = null;
+
+  try {
+    const userRecord = await auth.getUserByEmail(identifier);
+    uid = userRecord.uid;
+  } catch (emailErr) {
+    // Not an email (or no account with it) — try phone number.
+    try {
+      const phoneRecord = await auth.getUserByPhoneNumber(identifier);
+      uid = phoneRecord.uid;
+    } catch (phoneErr) {
+      throw new Error("No Firebase Auth account found for the given email/phone.");
+    }
+  }
+
+  await auth.updateUser(uid, { password: newPassword });
   return true;
 }

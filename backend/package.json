@@ -17,14 +17,20 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "firebase-admin": "^14.2.0",
+    "jsonwebtoken": "^9.0.3",
     "mongodb": "^6.19.0",
     "mongoose": "^8.18.0",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^6.9.16",
+    "nodemailer": "^9.0.5",
     "nodemon": "^3.1.10",
+    "pdfkit": "^0.19.1",
     "razorpay": "^2.9.5",
+    "socket.io": "^4.8.3",
     "streamifier": "^0.1.1",
-    "ua-parser-js": "^1.0.39",
-    "firebase-admin": "^12.7.0"
+    "ua-parser-js": "^1.0.39"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }
