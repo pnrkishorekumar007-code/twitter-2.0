@@ -92,9 +92,18 @@ LOGIN_OTP_TTL_MINUTES=5
 
 ## 7. Deploy the frontend (Vercel)
 
-1. Vercel → New Project → import the same repo, set **root directory to `twiller`**.
-2. Framework preset: Next.js (auto-detected).
-3. Add environment variable:
+This is a **monorepo** (`backend/` + `twiller/`). The frontend app lives in the `twiller/` subfolder, so Vercel **must** build from there.
+
+> **If your Vercel URL returns `404 Not Found` on `/`**, the project's Root Directory is pointing at the repo root instead of `twiller/` — the Next.js app was never built. Fix it, then redeploy (see step 4).
+
+Option A — existing project:
+1. Vercel → Project → **Settings → General → Root Directory**: set it to `twiller`.
+2. Framework preset: **Next.js**. Build: `npm run build`.
+3. **Deploy** → select main branch → Redeploy.
+
+Option B — fresh import (auto-detects the app via the root `workspaces` config):
+1. Vercel → New Project → import the same repo. Vercel detects the `twiller` workspace app automatically.
+2. Add environment variable:
 
 ```
 NEXT_PUBLIC_BACKEND_URL=https://twiller-backend.onrender.com
@@ -102,8 +111,8 @@ NEXT_PUBLIC_BACKEND_URL=https://twiller-backend.onrender.com
 
    (must start with `NEXT_PUBLIC_` or the browser can't see it — this was actually a bug in the original project that's now fixed.)
 
-4. Deploy. You'll get a URL like `https://twiller.vercel.app`.
-5. Go back to Render and make sure CORS isn't an issue — the backend uses `cors()` with no restrictions, so it already allows your Vercel domain.
+3. Deploy. You'll get a URL like `https://twiller.vercel.app`.
+4. Go back to Render and make sure CORS isn't an issue — the backend uses `cors()` with no restrictions, so it already allows your Vercel domain.
 
 ## 8. Connecting them locally (for development)
 
