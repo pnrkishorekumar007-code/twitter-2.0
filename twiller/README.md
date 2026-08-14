@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Twiller (frontend)
 
-## Getting Started
+Next.js 16 frontend for Twiller. The Express backend (`../backend`) is hosted separately on Render — Vercel only serves this Next.js app.
 
-First, run the development server:
+## Local development
 
 ```bash
+npm install
+cp .env.example .env.local   # fill in real values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open [http://localhost:3000](http://localhost:3000).
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push the repo to GitHub and import it in the [Vercel dashboard](https://vercel.com/new).
+2. Set the **Root Directory** to `twiller`. Keep `npm install` / `npm run build` defaults.
+3. Add these Environment Variables in Project → Settings → Environment Variables:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   | Variable | Example |
+   |---|---|
+   | `NEXT_PUBLIC_BACKEND_URL` | `https://your-backend.onrender.com` |
+   | `NEXT_PUBLIC_FIREBASE_API_KEY` | from Firebase Console |
+   | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `your-project.firebaseapp.com` |
+   | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | your Firebase project id |
+   | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | `your-project.firebasestorage.app` |
+   | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | from Firebase Console |
+   | `NEXT_PUBLIC_FIREBASE_APP_ID` | from Firebase Console |
+   | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | `G-XXXXXXX` |
+   | `NEXT_PUBLIC_IMGBB_KEY` | imgbb API key (optional) |
+   | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Razorpay test-mode key id |
+
+4. Add the Vercel URL to the backend's CORS allowlist (backend `FRONTEND_ORIGIN` env var on Render) so cookies and API calls work cross-origin.
+5. Deploy.
+
+`NEXT_PUBLIC_*` variables are inlined at build time, so changes require a redeploy.
+
+## Notes
+
+- The app uses `next/font` (Geist) and builds fully static pages.
+- `next.config.ts` pins `turbopack.root` to this directory so the repo's multiple lockfiles don't confuse build root detection.
+- No files in this directory should be committed beyond `.env.example` (see `.gitignore`).
