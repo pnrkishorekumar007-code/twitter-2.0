@@ -123,16 +123,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!auth) {
         throw new Error("Firebase not configured. Add NEXT_PUBLIC_FIREBASE_* env vars.");
       }
-      // Mock authentication - in real app, this would call an API
+// Authenticate credentials with Firebase without persisting session.
       const usercred = await signInWithEmailAndPassword(auth, email, password);
-      const firebaseuser = usercred.user;
-      const res = await axiosInstance.get("/loggedinuser", {
-        params: { email: firebaseuser.email },
-      });
-      if (res.data) {
-        setUser(res.data);
-        localStorage.setItem("twitter-user", JSON.stringify(res.data));
-      }
+      // Sign out immediately to prevent onAuthStateChanged from setting user before OTP verification.
+      await signOut(auth);
+      // No user state is set here; OTP verification will call completeLogin.
+
     } finally {
       setIsLoading(false);
     }

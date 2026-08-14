@@ -36,7 +36,7 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3">
+      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.12)] px-4 py-3">
         <h1 className="text-xl font-bold text-foreground">Search</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           Find people by name or @username
@@ -50,7 +50,7 @@ export default function SearchPage() {
             placeholder="Search people"
             aria-label="Search people"
             autoFocus
-            className="w-full rounded-full bg-muted pl-12 pr-4 py-3 text-foreground placeholder:text-muted-foreground outline-none border border-transparent focus:border-brand focus:ring-4 focus:ring-brand/20 transition-all"
+            className="w-full rounded-full bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] pl-12 pr-4 py-3 text-foreground placeholder:text-muted-foreground outline-none focus:border-brand focus:ring-4 focus:ring-brand/20 transition-all"
           />
         </div>
       </div>
@@ -117,14 +117,14 @@ export default function SearchPage() {
               variants={staggerContainer}
               initial="hidden"
               animate="visible"
-              className="rounded-2xl border border-border bg-card overflow-hidden"
+              className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl shadow-lg overflow-hidden"
             >
               {results.map((u, i) => (
                 <motion.div
                   key={u._id}
                   variants={fadeUp}
-                  className={`flex items-center justify-between px-4 py-3 hover:bg-accent/60 transition-colors ${
-                    i !== results.length - 1 ? "border-b border-border" : ""
+                  className={`flex items-center justify-between px-4 py-3 hover:bg-white/[0.04] transition-all duration-200 ${
+                    i !== results.length - 1 ? "border-b border-white/[0.06]" : ""
                   }`}
                 >
                   <div className="flex items-center space-x-3 min-w-0">

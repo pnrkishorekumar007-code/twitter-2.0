@@ -79,7 +79,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border">
+      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
         <div className="px-4 py-3 flex items-center gap-4">
           <Button
             variant="ghost"
@@ -108,7 +108,7 @@ export default function SettingsPage() {
           </TabsList>
 
           <TabsContent value="account" className="mt-0">
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-5 shadow-lg">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16 shrink-0">
                   <AvatarImage src={user.avatar} alt={user.displayName} />
@@ -133,7 +133,7 @@ export default function SettingsPage() {
               {user.bio && <p className="mt-4 text-foreground text-sm">{user.bio}</p>}
             </div>
 
-            <div className="mt-5 rounded-2xl border border-border bg-card p-5">
+            <div className="mt-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-5 shadow-lg">
               <div className="flex items-center gap-3">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand/15">
                   <Lock className="h-5 w-5 text-brand" />
@@ -187,7 +187,7 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="appearance" className="mt-0">
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-5 shadow-lg space-y-4">
               <div>
                 <p className="text-foreground font-semibold">Appearance</p>
                 <p className="text-muted-foreground text-sm mt-0.5">

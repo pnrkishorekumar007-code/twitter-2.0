@@ -64,10 +64,10 @@ export default function FollowListModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.96, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full sm:max-w-md max-h-[85vh] bg-background border border-border rounded-2xl flex flex-col overflow-hidden"
+            className="w-full sm:max-w-md max-h-[85vh] bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] shadow-[0_0_40px_rgba(0,0,0,0.5)] rounded-2xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
+            <div className="flex items-center gap-4 px-4 py-3 border-b border-white/[0.06]">
               <Button
                 variant="ghost"
                 size="icon"
@@ -112,11 +112,11 @@ export default function FollowListModal({
                   </p>
                 </div>
               ) : (
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-white/[0.06]">
                   {users.map((u) => (
                     <div
                       key={u._id}
-                      className="flex items-center justify-between px-4 py-3 hover:bg-accent/60 transition-colors"
+                      className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.04] transition-all duration-200"
                     >
                       <div className="flex items-center space-x-3 min-w-0">
                         <Avatar className="h-10 w-10 shrink-0">

@@ -77,10 +77,10 @@ export default function Sidebar({ currentPage = "home", onNavigate }: SidebarPro
         variant="ghost"
         aria-current={item.current ? "page" : undefined}
         className={cn(
-          "group relative w-full justify-start text-xl py-3 px-3 lg:px-4 rounded-full transition-colors duration-200",
+          "group relative w-full justify-start text-xl py-3 px-3 lg:px-4 rounded-full transition-all duration-200",
           item.current
-            ? "bg-accent/70 text-foreground"
-            : "text-foreground hover:bg-accent"
+            ? "bg-brand/10 text-foreground shadow-[0_0_12px_rgba(29,155,240,0.15)]"
+            : "text-foreground hover:bg-accent/70"
         )}
         onClick={() => onNavigate?.(item.page)}
       >
@@ -121,7 +121,7 @@ export default function Sidebar({ currentPage = "home", onNavigate }: SidebarPro
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex flex-col h-screen w-full border-r border-border bg-background">
+      <div className="flex flex-col h-screen w-full border-r border-white/[0.06] bg-background/95 backdrop-blur-xl">
         <div className="px-3 lg:px-4 py-3 flex justify-center lg:justify-start">
           <motion.button
             whileHover={{ scale: 1.08 }}
@@ -164,7 +164,7 @@ export default function Sidebar({ currentPage = "home", onNavigate }: SidebarPro
           </div>
         </nav>
 
-        <div className="p-2 lg:p-3 border-t border-border space-y-1">
+        <div className="p-2 lg:p-3 border-t border-white/[0.06] space-y-1">
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

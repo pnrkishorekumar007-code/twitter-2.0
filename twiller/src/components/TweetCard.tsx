@@ -122,11 +122,11 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
     <>
       <article
         onClick={openDetail}
-        className="group cursor-pointer border-b border-border bg-background hover:bg-accent/50 transition-colors duration-150"
+        className="group cursor-pointer border-b border-border/50 bg-background hover:bg-white/[0.03] transition-all duration-200"
       >
         <div className="p-4">
           <div className="flex space-x-3">
-            <Avatar className="h-11 w-11 shrink-0 transition-shadow duration-200 group-hover:shadow-[0_0_0_1px_rgba(29,155,240,0.3)]">
+            <Avatar className="h-11 w-11 shrink-0 transition-all duration-300 group-hover:shadow-[0_0_0_2px_rgba(29,155,240,0.4)] group-hover:scale-105">
               <AvatarImage
                 src={tweetstate.author.avatar}
                 alt={tweetstate.author.displayName}
@@ -196,7 +196,7 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
               )}
 
               {tweetstate.image && (
-                <div className="mt-3 rounded-2xl overflow-hidden border border-border bg-muted transition-shadow duration-200 group-hover:shadow-lg">
+                <div className="mt-3 rounded-2xl overflow-hidden border border-white/[0.06] bg-muted transition-all duration-300 group-hover:shadow-xl group-hover:shadow-brand/5">
                   <img
                     src={tweetstate.image}
                     alt=""

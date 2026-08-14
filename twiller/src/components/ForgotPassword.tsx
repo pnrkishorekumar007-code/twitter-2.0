@@ -125,7 +125,7 @@ export default function ForgotPassword() {
                   setIdentifier(e.target.value);
                   if (fieldError) setFieldError("");
                 }}
-                className="pl-10 bg-transparent border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-brand/30"
+                className="pl-10 bg-white/[0.03] border-white/[0.1] text-foreground placeholder:text-muted-foreground focus-visible:ring-brand/30"
                 disabled={loading}
               />
               <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />

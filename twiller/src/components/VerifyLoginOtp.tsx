@@ -142,7 +142,7 @@ export default function VerifyLoginOtp() {
 
   const renderNoSession = () => (
     <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
-      <Card className="w-full max-w-md bg-black border-gray-800 shadow-2xl shadow-black/60">
+      <Card className="w-full max-w-md bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] shadow-[0_0_40px_rgba(0,0,0,0.5)]">
         <CardContent className="p-6 sm:p-8 text-center space-y-4">
           <span className="grid place-items-center h-12 w-12 rounded-full bg-brand-gradient animate-gradient text-white shadow-lg shadow-brand/40 mx-auto">
             <ShieldCheck className="h-6 w-6" />
@@ -167,7 +167,7 @@ export default function VerifyLoginOtp() {
   if (!session) return renderNoSession();
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-black/30 backdrop-blur-xl text-white flex flex-col relative overflow-hidden">
       {/* Ambient brand background (matches forgot-password page) */}
       <div
         className="absolute inset-0 opacity-30 bg-brand-gradient animate-gradient"
@@ -181,7 +181,7 @@ export default function VerifyLoginOtp() {
           <TwillerBrand />
         </Link>
 
-        <Card className="w-full max-w-md bg-black border-gray-800 shadow-2xl shadow-black/60">
+        <Card className="w-full max-w-md bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] shadow-[0_0_40px_rgba(0,0,0,0.5)]">
           <CardContent className="p-6 sm:p-8 space-y-5">
             <div className="flex items-center gap-3">
               <span className="grid place-items-center h-10 w-10 rounded-full bg-brand-gradient animate-gradient text-white shadow-lg shadow-brand/40">
@@ -214,7 +214,7 @@ export default function VerifyLoginOtp() {
                 autoFocus
                 maxLength={6}
                 disabled={verifying || sending}
-                className="h-14 text-center text-2xl tracking-[0.5em] bg-transparent border-gray-600 text-white placeholder-gray-500 focus:border-blue-500"
+                className="h-14 text-center text-2xl tracking-[0.5em] bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-500 focus:border-brand focus:ring-brand/30"
               />
               {session?.method === "google" && (
                 <p className="text-xs text-gray-500">
@@ -234,7 +234,7 @@ export default function VerifyLoginOtp() {
             </div>
 
             <Button
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-full text-base"
+              className="w-full bg-brand-gradient animate-gradient text-white font-bold py-3 rounded-full text-base shadow-lg shadow-brand/30 hover:brightness-110 hover:scale-[1.02] transition-all"
               disabled={!canVerify}
               onClick={handleVerify}
             >

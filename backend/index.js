@@ -1,6 +1,7 @@
 import http from "http";
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import User from "./models/user.js";
@@ -13,13 +14,15 @@ import paymentRoutes from "./routes/payment.js";
 import audioRoutes from "./routes/audio.js";
 import userRoutes from "./routes/user.js";
 import followRoutes from "./routes/follow.js";
+import { ensureOtpVerified } from "./middleware/otpGuardMiddleware.js";
 
 import { requireTweetLimit, incrementTweetUsed } from "./middleware/tweetLimit.js";
 
 dotenv.config();
 const app = express();
-app.use(cors());
+app.use(cors({ origin: process.env.FRONTEND_ORIGIN || "http://localhost:3000", credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 const server = http.createServer(app);
 initSocket(server);
@@ -30,6 +33,13 @@ app.get("/", (req, res) => {
 
 app.use("/auth", authRoutes);
 app.use("/payment", paymentRoutes);
+// OTP protection middleware for all routes except the open auth/registration flows
+app.use((req, res, next) => {
+  const open = ["/auth", "/register", "/login", "/login/start", "/login/verify", "/send-login-otp", "/verify-login-otp"]; // paths that do not require OTP
+  if (open.some(p => req.path.startsWith(p))) return next();
+  return ensureOtpVerified(req, res, next);
+});
+
 app.use("/", audioRoutes); // /audio/otp/request, /audio/upload
 app.use("/", userRoutes); // /notifications/:email, /language/otp*, /profile/*
 app.use("/api", userRoutes); // alias so /api/profile/update and /api/profile/banner also work

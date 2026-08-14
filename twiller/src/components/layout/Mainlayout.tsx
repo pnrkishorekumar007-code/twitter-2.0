@@ -107,10 +107,10 @@ const Mainlayout = ({ children }: { children: React.ReactNode }) => {
 
     content = (
       <div className="min-h-screen bg-background text-foreground flex justify-center">
-        <div className="hidden md:block w-[88px] lg:w-[280px] shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto">
+        <div className="hidden md:block w-[88px] lg:w-[280px] shrink-0 sticky top-0 h-screen overflow-y-auto">
           <Sidebar currentPage={currentPage} onNavigate={(page) => setCurrentPage(page as AppPage)} />
         </div>
-        <main className="flex-1 max-w-[600px] border-x border-border pb-20 md:pb-0 min-w-0">
+        <main className="flex-1 max-w-[600px] border-x border-white/[0.06] pb-20 md:pb-0 min-w-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentPage}

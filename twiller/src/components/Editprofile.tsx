@@ -210,10 +210,10 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.96, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-2xl bg-card border border-border text-foreground max-h-[90vh] overflow-y-auto rounded-2xl"
+            className="w-full max-w-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] shadow-[0_0_40px_rgba(0,0,0,0.5)] text-foreground max-h-[90vh] overflow-y-auto rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <CardHeader className="relative pb-4 border-b border-border">
+            <CardHeader className="relative pb-4 border-b border-white/[0.06]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <Button
@@ -230,7 +230,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                 <Button
                   type="submit"
                   form="edit-profile-form"
-                  className="bg-foreground text-background hover:opacity-90 font-semibold rounded-full px-6"
+                  className="bg-brand-gradient animate-gradient text-white font-bold px-6 shadow-lg shadow-brand/30 hover:brightness-110 hover:scale-[1.02] transition-all rounded-full"
                   disabled={isLoading || imageBusy !== null}
                 >
                   {isLoading ? (
@@ -381,7 +381,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                       onChange={(e) =>
                         handleInputChange("displayName", e.target.value)
                       }
-                      className="bg-transparent border-input text-foreground placeholder:text-muted-foreground focus:border-brand"
+                      className="bg-white/[0.03] border-white/[0.1] text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30"
                       placeholder="Your display name"
                       maxLength={50}
                       disabled={isLoading}
@@ -405,7 +405,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                       id="bio"
                       value={formData.bio}
                       onChange={(e) => handleInputChange("bio", e.target.value)}
-                      className="bg-transparent border-input text-foreground placeholder:text-muted-foreground focus:border-brand resize-none min-h-[100px]"
+                      className="bg-white/[0.03] border-white/[0.1] text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30 resize-none min-h-[100px]"
                       placeholder="Tell the world about yourself"
                       maxLength={160}
                       disabled={isLoading}
@@ -432,7 +432,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                         onChange={(e) =>
                           handleInputChange("location", e.target.value)
                         }
-                        className="pl-10 bg-transparent border-input text-foreground placeholder:text-muted-foreground focus:border-brand"
+                        className="pl-10 bg-white/[0.03] border-white/[0.1] text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30"
                         placeholder="Where are you located?"
                         maxLength={30}
                         disabled={isLoading}
@@ -462,7 +462,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                         onChange={(e) =>
                           handleInputChange("website", e.target.value)
                         }
-                        className="pl-10 bg-transparent border-input text-foreground placeholder:text-muted-foreground focus:border-brand"
+                        className="pl-10 bg-white/[0.03] border-white/[0.1] text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30"
                         placeholder="Your website URL"
                         maxLength={100}
                         disabled={isLoading}

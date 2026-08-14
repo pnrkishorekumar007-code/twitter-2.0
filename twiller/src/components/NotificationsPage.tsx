@@ -59,7 +59,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3">
+      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.12)] px-4 py-3">
         <h1 className="text-xl font-bold text-foreground">{t("notifications")}</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           Follows and keyword alerts about tweets you care about

@@ -75,7 +75,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border">
+      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
         <div className="px-4 py-3 flex items-center gap-4">
           <ArrowLeft
             className="h-5 w-5 cursor-pointer text-muted-foreground hover:text-foreground"
@@ -114,7 +114,7 @@ export default function ProfilePage() {
 
       <div className="px-4">
         <div className="flex items-start justify-between">
-          <Avatar className="h-28 w-28 border-4 border-background -mt-14 bg-accent shadow-xl">
+          <Avatar className="h-28 w-28 border-4 border-background -mt-14 bg-accent shadow-2xl transition-transform hover:scale-105 duration-300">
             <AvatarImage src={user.avatar} alt={user.displayName} />
             <AvatarFallback className="text-4xl">
               {user.displayName[0]}
@@ -227,7 +227,7 @@ export default function ProfilePage() {
       </div>
 
       <Tabs defaultValue="posts" className="w-full mt-4">
-        <TabsList className="w-full grid grid-cols-5 bg-transparent border-b border-border rounded-none h-auto p-0">
+        <TabsList className="w-full grid grid-cols-5 bg-transparent border-b border-white/[0.06] rounded-none h-auto p-0">
           <TabsTrigger value="posts" className={tabClass}>Posts</TabsTrigger>
           <TabsTrigger value="replies" className={tabClass}>Replies</TabsTrigger>
           <TabsTrigger value="media" className={tabClass}>Media</TabsTrigger>

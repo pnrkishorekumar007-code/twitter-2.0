@@ -159,25 +159,25 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md bg-black border-gray-800 text-white">
-        <CardHeader className="relative pb-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-4 top-4 text-white hover:bg-gray-900"
-            onClick={onClose}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-          <div className="text-center">
-            <div className="mb-6 flex justify-center">
-              <TwitterLogo size="xl" className="text-white" />
+        <Card className="w-full max-w-md bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] animate-fade-up">
+          <CardHeader className="relative pb-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-4 text-white/70 hover:bg-white/10 hover:text-white transition-colors duration-200"
+              onClick={onClose}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+            <div className="text-center">
+              <div className="mb-6 flex justify-center">
+                <TwitterLogo size="xl" className="text-white" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-white">
+                {mode === 'login' ? 'Sign in to X' : 'Create your account'}
+              </CardTitle>
             </div>
-            <CardTitle className="text-2xl font-bold">
-              {mode === 'login' ? 'Sign in to X' : 'Create your account'}
-            </CardTitle>
-          </div>
-        </CardHeader>
+          </CardHeader>
 
         <CardContent className="space-y-6">
           {errors.general && (
@@ -199,7 +199,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                       placeholder="Your display name"
                       value={formData.displayName}
                       onChange={(e) => handleInputChange('displayName', e.target.value)}
-                      className="pl-10 bg-transparent border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                      className="pl-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
                       disabled={isLoading}
                     />
                   </div>
@@ -218,7 +218,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                       placeholder="username"
                       value={formData.username}
                       onChange={(e) => handleInputChange('username', e.target.value)}
-                      className="pl-8 bg-transparent border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                      className="pl-8 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
                       disabled={isLoading}
                     />
                   </div>
@@ -239,7 +239,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                   placeholder="Enter your email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="pl-10 bg-transparent border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                  className="pl-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
                   disabled={isLoading}
                 />
               </div>
@@ -258,7 +258,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
-                  className="pl-10 pr-10 bg-transparent border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                  className="pl-10 pr-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
                   disabled={isLoading}
                 />
                 <Button
@@ -290,7 +290,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
             <Button
               type="submit"
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-full text-lg"
+              className="w-full bg-brand-gradient animate-gradient text-white font-bold py-3 rounded-full text-lg shadow-lg shadow-brand/30 hover:brightness-110 hover:scale-[1.02] transition-all"
               disabled={isLoading}
             >
               {isLoading ? (

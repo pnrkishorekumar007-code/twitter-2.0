@@ -129,7 +129,6 @@ router.post("/login/verify", deviceDetect, async (req, res) => {
     user.loginHistory.unshift({ ...req.deviceInfo, loggedInAt: new Date() });
     user.loginHistory = user.loginHistory.slice(0, 25);
     await user.save();
-    await recordLogin({ userId: user._id, deviceInfo: req.deviceInfo, loginMethod: "email" });
     return res.status(200).send({ user });
   } catch (error) {
     return res.status(400).send({ error: error.message });
@@ -237,14 +236,7 @@ router.post("/login", deviceDetect, async (req, res) => {
 
     // 4. MICROSOFT EDGE / IE — and every other non-Chrome browser — login
     // immediately; the login is recorded in LoginHistory and a JWT is issued.
-    await recordLogin({ userId: user._id, deviceInfo: req.deviceInfo, loginMethod: method });
-
-    return res.status(200).send({
-      success: true,
-      requiresOtp: false,
-      user,
-      token: signAuthToken({ userId: user._id.toString(), email: user.email }),
-    });
+ 
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -334,11 +326,14 @@ router.post("/verify-login-otp", deviceDetect, async (req, res) => {
 
     await recordLogin({ userId: user._id, deviceInfo: req.deviceInfo, loginMethod });
 
+    const authToken = signAuthToken({ userId: user._id.toString(), email: user.email });
+    // Set auth token as HttpOnly cookie for subsequent protected requests
+    res.cookie('auth_token', authToken, { httpOnly: true, sameSite: 'strict' });
     return res.status(200).send({
       success: true,
       message: "Login verified.",
       user,
-      token: signAuthToken({ userId: user._id.toString(), email: user.email }),
+      token: authToken,
     });
   } catch (error) {
     return res.status(400).send({ error: error.message });

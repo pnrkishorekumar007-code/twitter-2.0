@@ -155,7 +155,7 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
     "grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-accent transition-colors";
 
   return (
-    <div className="border-b border-border">
+    <div className="border-b border-white/[0.06]">
       <form onSubmit={handleSubmit} className="flex gap-3 p-4">
         <Avatar className="h-11 w-11 shrink-0">
           <AvatarImage src={user.avatar} alt={user.displayName} />

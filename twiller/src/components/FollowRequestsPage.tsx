@@ -52,7 +52,7 @@ export default function FollowRequestsPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border">
+      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
         <div className="px-4 py-3 flex items-center gap-4">
           <Button
             variant="ghost"
@@ -78,7 +78,7 @@ export default function FollowRequestsPage() {
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className="rounded-2xl border border-border bg-card p-4 flex items-center gap-3"
+                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl shadow-lg p-4 flex items-center gap-3"
               >
                 <Skeleton className="h-12 w-12 rounded-full" />
                 <div className="flex-1 space-y-2">
@@ -123,7 +123,7 @@ export default function FollowRequestsPage() {
               <motion.div
                 key={request._id}
                 variants={fadeUp}
-                className="rounded-2xl border border-border bg-card p-4 flex items-center gap-3"
+                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl shadow-lg hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] p-4 flex items-center gap-3 transition-all duration-300"
               >
                 <Avatar className="h-12 w-12 shrink-0">
                   <AvatarImage

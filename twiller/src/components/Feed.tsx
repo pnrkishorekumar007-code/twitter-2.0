@@ -16,19 +16,19 @@ import { MessageSquareDashed } from "lucide-react";
 
 function TweetSkeleton() {
   return (
-    <div className="flex gap-3 p-4 border-b border-border" aria-hidden>
-      <Skeleton className="h-12 w-12 rounded-full shrink-0" />
+    <div className="flex gap-3 p-4 border-b border-border/50 animate-pulse" aria-hidden>
+      <Skeleton className="h-12 w-12 rounded-full shrink-0 bg-white/5" />
       <div className="flex-1 space-y-3 pt-1">
         <div className="flex items-center gap-2">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-4 w-32 bg-white/5 rounded-full" />
+          <Skeleton className="h-3 w-20 bg-white/5 rounded-full" />
         </div>
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-4 w-full bg-white/5 rounded-full" />
+        <Skeleton className="h-4 w-3/4 bg-white/5 rounded-full" />
         <div className="flex gap-6 pt-2">
-          <Skeleton className="h-4 w-10" />
-          <Skeleton className="h-4 w-10" />
-          <Skeleton className="h-4 w-10" />
+          <Skeleton className="h-4 w-10 bg-white/5 rounded-full" />
+          <Skeleton className="h-4 w-10 bg-white/5 rounded-full" />
+          <Skeleton className="h-4 w-10 bg-white/5 rounded-full" />
         </div>
       </div>
     </div>
@@ -85,9 +85,9 @@ const Feed = () => {
 
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-xl border-b border-border">
+      <div className="sticky top-0 z-20 bg-background/70 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-foreground">Home</h1>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">Home</h1>
           {user && (
             <Avatar className="h-8 w-8 md:hidden">
               <AvatarImage src={user.avatar} alt={user.displayName} />
@@ -122,13 +122,13 @@ const Feed = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="py-16 px-6 text-center"
+            className="py-20 px-6 text-center"
           >
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-muted mb-4">
-              <MessageSquareDashed className="h-7 w-7 text-muted-foreground" />
+            <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-brand/10 mb-5 animate-glow-pulse">
+              <MessageSquareDashed className="h-9 w-9 text-brand" />
             </div>
-            <p className="text-2xl font-bold text-foreground">Nothing here yet</p>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-2xl font-bold text-gradient">Nothing here yet</p>
+            <p className="text-muted-foreground mt-2 text-base">
               Be the first to share something great.
             </p>
           </motion.div>
