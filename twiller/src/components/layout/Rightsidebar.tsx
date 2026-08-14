@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import axiosInstance from "@/lib/axiosInstance";
 import FollowButton from "../FollowButton";
 import type { FollowUser } from "@/lib/types";
+import { useLanguage } from "@/context/LanguageContext";
 
 const trends = [
   { category: "Sports · Trending", tag: "#Cricket", posts: "24.5K posts" },
@@ -17,6 +18,7 @@ const trends = [
 ];
 
 export default function RightSidebar() {
+  const { t } = useLanguage();
   const [suggestions, setSuggestions] = useState<FollowUser[]>([]);
 
   useEffect(() => {
@@ -34,19 +36,36 @@ export default function RightSidebar() {
     };
   }, []);
 
+  const openSearch = () => {
+    window.dispatchEvent(new CustomEvent("twiller:go-search"));
+  };
+
+  const openTrend = (tag: string) => {
+    sessionStorage.setItem("twiller-search-q", tag.replace(/^#/, ""));
+    window.dispatchEvent(new CustomEvent("twiller:go-search"));
+  };
+
   return (
-    <div className="w-full space-y-4 sticky top-0">
+    <div className="w-full space-y-4">
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+      <form
+        className="relative"
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          openSearch();
+        }}
+      >
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search"
-          className="pl-12 bg-white/[0.04] border-white/[0.06] text-foreground placeholder:text-muted-foreground rounded-full py-3 focus-visible:border-brand focus-visible:ring-brand/20 focus-visible:ring-[3px] backdrop-blur-xl"
+          placeholder={t("explore")}
+          aria-label={t("explore")}
+          className="pl-12 bg-accent/60 border-border text-foreground placeholder:text-muted-foreground rounded-full py-3 focus-visible:border-brand focus-visible:ring-brand/20 focus-visible:ring-[3px]"
         />
-      </div>
+      </form>
 
       {/* Premium */}
-      <Card className="bg-white/[0.03] backdrop-blur-xl border-white/[0.06] rounded-2xl overflow-hidden">
+      <Card className="rounded-2xl border-border bg-card/60 backdrop-blur-xl overflow-hidden">
         <div className="h-1 bg-brand-gradient animate-gradient" />
         <CardContent className="p-4">
           <h3 className="text-foreground text-xl font-extrabold mb-2 flex items-center gap-2">
@@ -69,7 +88,7 @@ export default function RightSidebar() {
       </Card>
 
       {/* Trends */}
-      <Card className="bg-white/[0.03] backdrop-blur-xl border-white/[0.06] rounded-2xl overflow-hidden">
+      <Card className="rounded-2xl border-border bg-card/60 backdrop-blur-xl overflow-hidden">
         <CardContent className="p-0">
           <h3 className="text-foreground text-xl font-extrabold px-4 py-3">
             What&apos;s happening
@@ -78,10 +97,11 @@ export default function RightSidebar() {
             {trends.map((trend) => (
               <button
                 key={trend.tag}
-                className="w-full text-left px-4 py-3 hover:bg-white/[0.04] transition-all duration-200"
+                onClick={() => openTrend(trend.tag)}
+                className="w-full text-left px-4 py-3 hover:bg-accent/60 transition-all duration-200"
               >
                 <p className="text-xs text-muted-foreground">{trend.category}</p>
-                <p className="text-foreground font-bold text-[15px]">{trend.tag}</p>
+                <p className="text-foreground font-bold text-[15px] truncate">{trend.tag}</p>
                 <p className="text-xs text-muted-foreground">{trend.posts}</p>
               </button>
             ))}
@@ -96,7 +116,7 @@ export default function RightSidebar() {
       </Card>
 
       {/* Who to follow */}
-      <Card className="bg-white/[0.03] backdrop-blur-xl border-white/[0.06] rounded-2xl overflow-hidden">
+      <Card className="rounded-2xl border-border bg-card/60 backdrop-blur-xl overflow-hidden">
         <CardContent className="p-0">
           <h3 className="text-foreground text-xl font-extrabold px-4 py-3">
             You might like
@@ -115,7 +135,7 @@ export default function RightSidebar() {
               {suggestions.map((user) => (
                 <div
                   key={user._id}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.04] transition-all duration-200"
+                  className="flex items-center justify-between px-4 py-3 hover:bg-accent/60 transition-all duration-200"
                 >
                   <div className="flex items-center space-x-3 min-w-0">
                     <Avatar className="h-10 w-10 shrink-0">

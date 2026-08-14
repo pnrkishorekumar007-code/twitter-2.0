@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { memo, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -13,9 +14,11 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useBookmarks } from "@/context/BookmarksContext";
 import axiosInstance from "@/lib/axiosInstance";
 import TweetDetailModal from "./TweetDetailModal";
 import AudioPlayer from "./audio/AudioPlayer";
+import ImageFallback from "./ui/ImageFallback";
 import { motion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { formatNumber, timeAgo } from "@/lib/format";
@@ -37,31 +40,34 @@ function ActionButton({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "group flex items-center gap-0.5 text-muted-foreground rounded-full transition-colors duration-150",
-        activeClass
-      )}
-    >
-      <span className="grid h-8 w-8 place-items-center rounded-full transition-colors duration-150">
-        {children}
-      </span>
-      {count !== undefined && (
-        <span className="text-[13px] transition-colors duration-150">{count}</span>
-      )}
-    </button>
+      <button
+        type="button"
+        aria-label={label}
+        aria-pressed={active}
+        onClick={onClick}
+        className={cn(
+          "group flex items-center gap-0.5 text-muted-foreground rounded-full transition-colors duration-150",
+          activeClass
+        )}
+      >
+        <span className="grid h-9 w-9 place-items-center rounded-full transition-colors duration-150 active:scale-90">
+          {children}
+        </span>
+        {count !== undefined && (
+          <span className="text-[13px] transition-colors duration-150">{count}</span>
+        )}
+      </button>
   );
 }
 
 function TweetCardInner({ tweet }: { tweet: Tweet }) {
   const { user } = useAuth();
+  const { isBookmarked, toggleBookmark } = useBookmarks();
   const [tweetstate, settweetstate] = useState(tweet);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [bookmarked, setBookmarked] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const bookmarked = isBookmarked(tweetstate._id);
 
   const likeTweet = async (tweetId: string) => {
     try {
@@ -122,9 +128,9 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
     <>
       <article
         onClick={openDetail}
-        className="group cursor-pointer border-b border-border/50 bg-background hover:bg-white/[0.03] transition-all duration-200"
+        className="group cursor-pointer border-b border-border/50 bg-background hover:bg-accent/50 transition-all duration-200"
       >
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           <div className="flex space-x-3">
             <Avatar className="h-11 w-11 shrink-0 transition-all duration-300 group-hover:shadow-[0_0_0_2px_rgba(29,155,240,0.4)] group-hover:scale-105">
               <AvatarImage
@@ -137,8 +143,8 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
             </Avatar>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center text-[15px] leading-5">
-                <span className="font-bold text-foreground truncate max-w-[45%] hover:underline cursor-pointer">
+              <div className="flex items-center text-[15px] leading-5 min-w-0">
+                <span className="font-bold text-foreground truncate min-w-0 max-w-[55%] hover:underline cursor-pointer">
                   {tweetstate.author.displayName || "Unknown User"}
                 </span>
                 {tweetstate.author.verified && (
@@ -147,18 +153,18 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
                     aria-label="Verified"
                   />
                 )}
-                <span className="text-muted-foreground truncate ml-1">
+                <span className="text-muted-foreground truncate min-w-0 ml-1">
                   @{tweetstate.author.username || "unknown"}
                 </span>
-                <span className="text-muted-foreground mx-1">·</span>
-                <span className="text-muted-foreground shrink-0">
+                <span className="text-muted-foreground mx-1 shrink-0">·</span>
+                <span className="text-muted-foreground shrink-0 whitespace-nowrap">
                   {timeAgo(tweetstate.timestamp)}
                 </span>
-                <div className="ml-auto">
+                <div className="ml-auto shrink-0">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="p-0 h-8 w-8 rounded-full hover:bg-brand/10"
+                    className="p-0 h-9 w-9 rounded-full hover:bg-brand/10 active:scale-90 transition-all"
                     onClick={(e) => e.stopPropagation()}
                     aria-label="More"
                   >
@@ -168,7 +174,7 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
               </div>
 
               {tweetstate.content && (
-                <div className="text-foreground mt-0.5 leading-relaxed break-words whitespace-pre-wrap text-[15px]">
+                <div className="text-foreground mt-0.5 leading-relaxed break-words whitespace-pre-wrap text-[15px] [overflow-wrap:anywhere]">
                   {tweetstate.content}
                 </div>
               )}
@@ -196,13 +202,24 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
               )}
 
               {tweetstate.image && (
-                <div className="mt-3 rounded-2xl overflow-hidden border border-white/[0.06] bg-muted transition-all duration-300 group-hover:shadow-xl group-hover:shadow-brand/5">
-                  <img
-                    src={tweetstate.image}
-                    alt=""
-                    loading="lazy"
-                    className="w-full h-auto max-h-96 object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                  />
+                <div className="relative mt-3 aspect-[3/2] w-full overflow-hidden rounded-2xl border border-border bg-muted transition-all duration-300 group-hover:shadow-xl group-hover:shadow-brand/5">
+                  {imageFailed ? (
+                    <ImageFallback />
+                  ) : (
+                    <Image
+                      src={tweetstate.image}
+                      alt=""
+                      fill
+                      unoptimized
+                      sizes="(max-width: 640px) 100vw, 600px"
+                      loading="lazy"
+                      onError={() => {
+                        console.warn("[tweet-image] failed to load:", tweetstate.image);
+                        setImageFailed(true);
+                      }}
+                      className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                    />
+                  )}
                 </div>
               )}
 
@@ -263,7 +280,7 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
                   activeClass="hover:bg-brand/10 hover:text-brand"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setBookmarked((b) => !b);
+                    toggleBookmark(tweetstate._id);
                   }}
                 >
                   <Bookmark

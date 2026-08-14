@@ -17,6 +17,7 @@ export default function LanguageSwitcher() {
   const { lang, t, requestLanguageOtp, verifyLanguageOtp } = useLanguage();
   const [pending, setPending] = useState<LangCode | null>(null);
   const [channel, setChannel] = useState("email");
+  const [deliveredTo, setDeliveredTo] = useState<string | undefined>(undefined);
   const [devCode, setDevCode] = useState<string | undefined>(undefined);
   const [resendAfterSec, setResendAfterSec] = useState(60);
   const [modalOpen, setModalOpen] = useState(false);
@@ -27,6 +28,7 @@ export default function LanguageSwitcher() {
       const res = await requestLanguageOtp(code);
       setPending(code);
       setChannel(res.channel);
+      setDeliveredTo(res.deliveredTo);
       setDevCode(res.devCode);
       setResendAfterSec(res.resendAfterSec ?? 60);
       setModalOpen(true);
@@ -37,9 +39,15 @@ export default function LanguageSwitcher() {
 
   const handleResend = async () => {
     if (!pending) return;
-    const res = await requestLanguageOtp(pending);
-    setDevCode(res.devCode);
-    setResendAfterSec(res.resendAfterSec ?? 60);
+    try {
+      const res = await requestLanguageOtp(pending);
+      setChannel(res.channel);
+      setDeliveredTo(res.deliveredTo);
+      setDevCode(res.devCode);
+      setResendAfterSec(res.resendAfterSec ?? 60);
+    } catch (err) {
+      alert(getErrorMessage(err));
+    }
   };
 
   return (
@@ -68,7 +76,7 @@ export default function LanguageSwitcher() {
         <OtpModal
           open={modalOpen}
           title={t("language_switch_verify")}
-          description={channel === "email" ? t("otp_channel_email") : t("otp_channel_sms")}
+          description={(deliveredTo ?? channel) === "email" ? t("otp_channel_email") : t("otp_channel_sms")}
           devCode={devCode}
           onVerify={async (code) => {
             await verifyLanguageOtp(pending, code);

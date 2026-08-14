@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import {
   Heart,
@@ -15,9 +16,11 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Skeleton } from "./ui/skeleton";
 import AudioPlayer from "./audio/AudioPlayer";
+import ImageFallback from "./ui/ImageFallback";
 import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/axiosInstance";
 import { AnimatePresence, motion } from "@/lib/motion";
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { formatNumber, fullDate, timeAgo } from "@/lib/format";
 import type { Tweet, TweetReply } from "@/lib/types";
 
@@ -38,6 +41,14 @@ export default function TweetDetailModal({
   const [reply, setReply] = useState("");
   const [posting, setPosting] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  // Reset the image fallback whenever the modal targets a different tweet
+  // (guarded "adjust state during render" pattern — no effect involved).
+  const [imageResetKey, setImageResetKey] = useState<string | null>(null);
+  if (tweetId !== imageResetKey) {
+    setImageResetKey(tweetId);
+    setImageFailed(false);
+  }
 
   const loading = tweetId !== null && tweetId !== loadedId;
 
@@ -70,6 +81,8 @@ export default function TweetDetailModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  useLockBodyScroll(tweetId !== null);
 
   const isLiked = !!user && tweet?.likedBy?.includes(user._id);
   const isRetweet = !!user && tweet?.retweetedBy?.includes(user._id);
@@ -169,11 +182,11 @@ export default function TweetDetailModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.96, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full sm:max-w-xl max-h-full h-full sm:h-auto sm:max-h-[85vh] bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] shadow-[0_0_40px_rgba(0,0,0,0.5)] rounded-none sm:rounded-2xl flex flex-col overflow-hidden"
+            className="w-full sm:max-w-xl max-h-full h-full sm:h-auto sm:max-h-[85vh] bg-card/95 backdrop-blur-2xl border border-border shadow-[0_0_40px_rgba(0,0,0,0.5)] rounded-none sm:rounded-2xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center gap-4 px-4 py-3 border-b border-white/[0.06]">
+            <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
               <Button
                 variant="ghost"
                 size="icon"
@@ -236,18 +249,30 @@ export default function TweetDetailModal({
                     </div>
 
                     {tweet.content && (
-                      <p className="text-foreground text-xl leading-relaxed mt-4 whitespace-pre-wrap break-words">
+                      <p className="text-foreground text-xl leading-relaxed mt-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                         {tweet.content}
                       </p>
                     )}
 
                     {tweet.image && (
-                      <div className="mt-3 rounded-2xl overflow-hidden border border-white/[0.06] bg-white/[0.02]">
-                        <img
-                          src={tweet.image}
-                          alt=""
-                          className="w-full h-auto max-h-96 object-cover"
-                        />
+                      <div className="relative mt-3 aspect-[3/2] w-full overflow-hidden rounded-2xl border border-border bg-muted/40">
+                        {imageFailed ? (
+                          <ImageFallback />
+                        ) : (
+                          <Image
+                            src={tweet.image}
+                            alt=""
+                            fill
+                            unoptimized
+                            sizes="(max-width: 640px) 100vw, 600px"
+                            loading="lazy"
+                            onError={() => {
+                              console.warn("[tweet-image] failed to load:", tweet.image);
+                              setImageFailed(true);
+                            }}
+                            className="object-cover"
+                          />
+                        )}
                       </div>
                     )}
 
@@ -319,7 +344,7 @@ export default function TweetDetailModal({
                   </div>
 
                   {/* Reply composer */}
-                  <div className="flex gap-3 px-4 py-3 border-y border-white/[0.06]">
+                  <div className="flex gap-3 px-4 py-3 border-y border-border">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={user?.avatar} alt={user?.displayName} />
                       <AvatarFallback>{user?.displayName?.[0]}</AvatarFallback>
@@ -346,7 +371,7 @@ export default function TweetDetailModal({
                   </div>
 
                   {/* Replies */}
-                  <div className="divide-y divide-white/[0.06]">
+                  <div className="divide-y divide-border">
                     {(tweet.replies || []).length === 0 ? (
                       <div className="p-8 text-center">
                         <p className="font-bold text-foreground text-lg">

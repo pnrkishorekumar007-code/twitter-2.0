@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 // Supported language codes — kept in sync with the frontend's translations.ts.
-export const LANGUAGE_CODES = ["en", "es", "hi", "pt", "zh", "fr"];
+export const LANGUAGE_CODES = ["en", "es", "hi", "pt", "zh", "fr", "ta"];
 
 // OTP guarding a language change. Only the HMAC hash of the code is ever
 // stored — the plaintext is delivered (email for French, SMS otherwise) and

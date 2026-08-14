@@ -52,6 +52,7 @@ export function initSocket(httpServer) {
         .lean();
       if (user) {
         socket.data.userId = String(user._id);
+        socket.join(`user:${String(user._id)}`);
         if (user.keywordNotifications !== false) {
           socket.join("keyword-tweets");
         }
@@ -79,4 +80,11 @@ export function getIO() {
 export function broadcastKeywordTweet(payload) {
   if (!io) return;
   io.to("keyword-tweets").emit("keyword-tweet", payload);
+}
+
+// Emits an event to a single user's private room ("user:<mongoId>"). Used for
+// direct-message delivery (message:new / conversation:update).
+export function emitToUser(userId, event, payload) {
+  if (!io || !userId) return;
+  io.to(`user:${String(userId)}`).emit(event, payload);
 }

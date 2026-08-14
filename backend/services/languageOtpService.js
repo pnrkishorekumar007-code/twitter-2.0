@@ -60,6 +60,7 @@ const LANGUAGE_NAMES = {
   pt: "Portuguese",
   zh: "Chinese",
   fr: "French",
+  ta: "Tamil",
 };
 
 // Exact copy per spec: French selection uses this email.
@@ -87,7 +88,7 @@ function smsTemplate({ code }) {
  * correct channel (email for French, SMS otherwise). Any previous code for the
  * user is purged so only the newest code can be redeemed.
  *
- * @returns {Promise<{ channel: string, expiresAt: Date, devCode?: string }>}
+ * @returns {Promise<{ channel: string, deliveredTo: "email"|"sms", expiresAt: Date, devCode?: string }>}
  */
 export async function sendLanguageOtp({ userId, targetLanguage, emailTo, phone, name }) {
   if (!LANGUAGE_CODES.includes(targetLanguage)) {
@@ -108,12 +109,14 @@ export async function sendLanguageOtp({ userId, targetLanguage, emailTo, phone, 
   });
 
   let devCode;
+  let deliveredTo;
   if (channel === "email") {
     const mailResult = await sendMail({
       to: emailTo,
       subject: "Language Change Verification",
       html: languageOtpEmailTemplate({ name, code, targetLanguage }),
     });
+    deliveredTo = "email";
     devCode = mailResult?.skipped ? code : undefined;
   } else {
     const smsResult = await sendSms({
@@ -124,11 +127,14 @@ export async function sendLanguageOtp({ userId, targetLanguage, emailTo, phone, 
       // Dev fallback (free tier): deliver the "mobile" OTP to the email so the
       // flow still completes end-to-end until a real SMS provider is added.
       const mailResult = await sendMobileOtpFallback({ emailTo, text: smsTemplate({ code }) });
+      deliveredTo = "email";
       devCode = mailResult?.skipped ? code : undefined;
+    } else {
+      deliveredTo = "sms";
     }
   }
 
-  return { channel, expiresAt, devCode };
+  return { channel, deliveredTo, expiresAt, devCode };
 }
 
 // Newest OTP document for a user (used to enforce the 60s resend cooldown).

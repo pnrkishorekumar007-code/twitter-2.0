@@ -7,7 +7,7 @@ This adds all 6 mentor tasks on top of the original training project, plus a UI/
  3. **Login history + device-aware auth** (browser/OS/device/IP logged, Chrome → email OTP, Microsoft Edge → no extra step, mobile → 10 AM–1 PM IST only)
  4. **Audio tweets** (record or upload, email OTP before upload, 5 min / 100 MB limits, 2–7 PM IST window)
  5. **Browser notifications** for tweets containing "cricket" or "science", toggle in profile settings
- 6. **6-language support** (English, Spanish, Hindi, Portuguese, Chinese, French) — French switch needs an email OTP, others need a "mobile" OTP (see note below)
+ 6. **7-language support** (English, Spanish, Hindi, Portuguese, Chinese, French, Tamil) — French switch needs an email OTP, others need a "mobile" OTP (see note below)
  7. **Advanced login security** (session JWTs, hashed 6-digit login OTPs, resend cooldown + rate limiting, paginated login history tab in the profile)
 
 Everything is real, working code — not stubs — but a few features need **free third-party accounts** to actually run. Nothing costs money in test/free mode.
@@ -252,7 +252,7 @@ No extra env vars are needed — `socket.io` (backend) and `socket.io-client` (f
 
 ### How it works
 
-Six languages are supported (English, Spanish, Hindi, Portuguese, Chinese, French) — the task-6 feature, now upgraded to the same production-grade OTP pattern as login:
+Seven languages are supported (English, Spanish, Hindi, Portuguese, Chinese, French, Tamil) — the task-6 feature, now upgraded to the same production-grade OTP pattern as login:
 
 | Language | Verification channel |
 |---|---|
@@ -297,7 +297,7 @@ backend/
 
 twiller/src/
   context/LanguageContext.tsx        # request/verify flow, per-session hydration
-  lib/translations.ts                # all 6 languages (t() falls back to en)
+  lib/translations.ts                # all 7 languages (t() falls back to en)
   components/language/LanguageSettingsCard.tsx  # settings UI (selector + OTP modal)
   components/language/LanguageSwitcher.tsx      # compact dropdown (nav usage)
   components/otp/OtpModal.tsx        # shared OTP modal (resend countdown, devCode)

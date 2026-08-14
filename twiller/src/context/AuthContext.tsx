@@ -124,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("Firebase not configured. Add NEXT_PUBLIC_FIREBASE_* env vars.");
       }
 // Authenticate credentials with Firebase without persisting session.
-      const usercred = await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email, password);
       // Sign out immediately to prevent onAuthStateChanged from setting user before OTP verification.
       await signOut(auth);
       // No user state is set here; OTP verification will call completeLogin.

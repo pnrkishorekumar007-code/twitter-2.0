@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Search, TrendingUp, Flame, Newspaper, Video } from "lucide-react";
+import { Search, TrendingUp, Flame, Newspaper, Video, Menu } from "lucide-react";
 import { motion, fadeUp, staggerContainer } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -18,17 +18,26 @@ export default function ExplorePage() {
 
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.12)] px-4 py-3">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search"
-            aria-label="Search"
-            className="w-full rounded-full bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] pl-12 pr-4 py-3 text-foreground placeholder:text-muted-foreground outline-none focus:border-brand focus:ring-4 focus:ring-brand/20 transition-all"
-          />
+      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-border shadow-[0_1px_3px_rgba(0,0,0,0.12)] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
+            className="md:hidden grid h-10 w-10 shrink-0 place-items-center rounded-full text-foreground hover:bg-accent transition-colors active:scale-95"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search"
+              aria-label="Search"
+              className="w-full rounded-full bg-card/60 backdrop-blur-xl border border-border pl-12 pr-4 py-3 text-foreground placeholder:text-muted-foreground outline-none focus:border-brand focus:ring-4 focus:ring-brand/20 transition-all"
+            />
+          </div>
         </div>
       </div>
 
@@ -42,7 +51,7 @@ export default function ExplorePage() {
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
-          className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl shadow-lg overflow-hidden"
+          className="rounded-2xl border border-border bg-card/60 backdrop-blur-xl shadow-lg overflow-hidden"
         >
           {TRENDS.filter((tr) => tr.tag.toLowerCase().includes(query.toLowerCase())).map(
             (trend, i) => (
@@ -50,8 +59,8 @@ export default function ExplorePage() {
                 key={trend.tag}
                 variants={fadeUp}
                 className={cn(
-                  "w-full text-left px-4 py-4 hover:bg-white/[0.04] transition-all duration-200 flex items-center justify-between",
-                  i !== TRENDS.length - 1 && "border-b border-white/[0.06]"
+                  "w-full text-left px-4 py-4 hover:bg-accent/60 transition-all duration-200 flex items-center justify-between",
+                  i !== TRENDS.length - 1 && "border-b border-border"
                 )}
               >
                 <div className="min-w-0">

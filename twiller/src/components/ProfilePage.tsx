@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import Image from "next/image";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Calendar,
@@ -11,6 +12,7 @@ import {
   BadgeCheck,
   UserPlus,
   Lock,
+  Menu,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "./ui/button";
@@ -43,6 +45,7 @@ export default function ProfilePage() {
   } | null>(null);
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [loading, setloading] = useState(true);
+  const [bannerFailed, setBannerFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,28 +64,50 @@ export default function ProfilePage() {
     };
   }, []);
 
+  const userTweets = useMemo(
+    () => (user ? tweets.filter((t) => t.author?._id === user._id) : []),
+    [tweets, user]
+  );
+  const userLiked = useMemo(
+    () => (user ? tweets.filter((t) => t.likedBy?.includes(user._id)) : []),
+    [tweets, user]
+  );
+  const userMedia = useMemo(
+    () => userTweets.filter((t) => t.image || t.type === "audio"),
+    [userTweets]
+  );
+  const userReplies = useMemo(
+    () => (user ? tweets.flatMap((t) => t.replies || []).filter((r) => r.user?._id === user._id) : []),
+    [tweets, user]
+  );
+
   if (!user) return null;
 
-  const userTweets = tweets.filter((t) => t.author?._id === user._id);
-  const userLiked = tweets.filter((t) => t.likedBy?.includes(user._id));
-  const userMedia = userTweets.filter((t) => t.image || t.type === "audio");
-  const userReplies = tweets
-    .flatMap((t) => t.replies || [])
-    .filter((r) => r.user?._id === user._id);
-
   const tabClass =
-    "rounded-none bg-transparent h-12 flex-1 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand text-muted-foreground font-semibold border-b border-transparent hover:bg-accent/60";
+    "rounded-none bg-transparent h-11 sm:h-12 flex-1 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand text-muted-foreground font-semibold border-b border-transparent hover:bg-accent/60 text-[13px] sm:text-sm";
 
   return (
-    <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
-        <div className="px-4 py-3 flex items-center gap-4">
-          <ArrowLeft
-            className="h-5 w-5 cursor-pointer text-muted-foreground hover:text-foreground"
-            onClick={() => window.history.back()}
-          />
-          <div>
-            <h1 className="text-lg font-bold text-foreground">
+    <div className="min-h-dvh">
+      <div className="sticky top-0 z-20 bg-background/70 backdrop-blur-2xl border-b border-border/60 shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
+        <div className="px-2 sm:px-4 py-2.5 flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden rounded-full text-foreground"
+            aria-label={user.displayName}
+            onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("twiller:go-back"))}
+            className="rounded-full p-2 -ml-1 hover:bg-accent transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-5 w-5 text-foreground" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-foreground truncate">
               {user.displayName}
             </h1>
             <p className="text-xs text-muted-foreground">
@@ -92,19 +117,27 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Banner */}
-      <div className="relative h-48 bg-brand-gradient animate-gradient overflow-hidden">
-        {user.banner ? (
-          <img
+      {/* Banner — responsive ratio (16:9 mobile, 3:1 like X from sm+), never fixed height */}
+      <div className="relative aspect-video sm:aspect-[3/1] w-full bg-brand-gradient animate-gradient overflow-hidden">
+        {user.banner && !bannerFailed ? (
+          <Image
             src={user.banner}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover"
+            fill
+            unoptimized
+            sizes="(max-width: 640px) 100vw, 600px"
+            loading="lazy"
+            onError={() => {
+              console.warn("[banner] failed to load:", user.banner);
+              setBannerFailed(true);
+            }}
+            className="object-cover"
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/25" />
         )}
         <button
-          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+          className="absolute top-3 right-3 z-10 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
           aria-label="Change banner"
           onClick={() => setShowEditModal(true)}
         >
@@ -114,9 +147,9 @@ export default function ProfilePage() {
 
       <div className="px-4">
         <div className="flex items-start justify-between">
-          <Avatar className="h-28 w-28 border-4 border-background -mt-14 bg-accent shadow-2xl transition-transform hover:scale-105 duration-300">
+          <Avatar className="h-20 w-20 md:h-25 md:w-25 xl:h-35 xl:w-35 border-4 border-background -mt-10 md:-mt-12 xl:-mt-14 bg-accent shadow-2xl transition-transform hover:scale-105 duration-300">
             <AvatarImage src={user.avatar} alt={user.displayName} />
-            <AvatarFallback className="text-4xl">
+            <AvatarFallback className="text-2xl md:text-3xl xl:text-4xl">
               {user.displayName[0]}
             </AvatarFallback>
           </Avatar>
@@ -124,7 +157,7 @@ export default function ProfilePage() {
             <Button
               variant="outline"
               onClick={() => setShowEditModal(true)}
-              className="rounded-full border-border text-foreground hover:bg-accent font-bold"
+              className="rounded-full border-border text-foreground hover:bg-accent font-bold h-9 sm:h-10 px-4 sm:px-5 text-sm"
             >
               Edit profile
             </Button>
@@ -142,56 +175,67 @@ export default function ProfilePage() {
       </div>
 
       <div className="mt-4 px-4 space-y-1">
-        <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-1.5">
+        <h1 className="text-xl sm:text-2xl font-extrabold text-foreground flex items-center gap-1.5 break-words">
           {user.displayName}
           {user.verified && (
             <BadgeCheck className="h-5 w-5 text-brand shrink-0" />
           )}
         </h1>
-        <p className="text-muted-foreground flex items-center gap-1.5">
+        <p className="text-muted-foreground flex items-center gap-1.5 truncate">
           @{user.username}
           {user.accountType === "private" && (
             <Lock className="h-3.5 w-3.5" aria-label="Private account" />
           )}
         </p>
-        {user.bio && <p className="mt-2 text-foreground text-[15px]">{user.bio}</p>}
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mt-2">
+        {user.bio && (
+          <p className="mt-2 text-foreground text-[15px] break-words whitespace-pre-wrap">
+            {user.bio}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground mt-2">
           {user.location && (
-            <span className="flex items-center gap-1">
-              <MapPin className="h-4 w-4" />
-              {user.location}
+            <span className="flex items-center gap-1 min-w-0">
+              <MapPin className="h-4 w-4 shrink-0" />
+              <span className="truncate">{user.location}</span>
             </span>
           )}
           {user.website && (
-            <a className="flex items-center gap-1 hover:underline cursor-pointer text-brand">
-              <LinkIcon className="h-4 w-4" />
-              {user.website}
+            <a
+              className="flex items-center gap-1 hover:underline cursor-pointer text-brand min-w-0"
+              onClick={() => window.open(user.website, "_blank", "noopener,noreferrer")}
+            >
+              <LinkIcon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{user.website}</span>
             </a>
           )}
           {user.joinedDate && (
             <span className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
+              <Calendar className="h-4 w-4 shrink-0" />
               Joined {new Date(user.joinedDate).toLocaleDateString()}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-5 mt-3 text-sm">
-          <span className="text-foreground font-bold">{userTweets.length}</span>
-          <span className="text-muted-foreground">Posts</span>
-          <span className="text-foreground font-bold">{userLiked.length}</span>
-          <span className="text-muted-foreground">Likes</span>
-          <span className="text-foreground font-bold">{userReplies.length}</span>
-          <span className="text-muted-foreground">Replies</span>
+        <div className="flex items-center gap-4 sm:gap-5 mt-3 text-sm flex-wrap">
+          <span className="flex items-center gap-1.5">
+            <span className="text-foreground font-bold">{userTweets.length}</span>
+            <span className="text-muted-foreground">Posts</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="text-foreground font-bold">{userLiked.length}</span>
+            <span className="text-muted-foreground">Likes</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="text-foreground font-bold">{userReplies.length}</span>
+            <span className="text-muted-foreground">Replies</span>
+          </span>
         </div>
 
         <div className="flex items-center gap-5 mt-2 text-sm">
           <button
             type="button"
             className="hover:underline"
-            onClick={() =>
-              setListModal({ kind: "following", userId: user._id })
-            }
+            onClick={() => setListModal({ kind: "following", userId: user._id })}
           >
             <span className="text-foreground font-bold">
               {user.following?.length ?? 0}
@@ -201,9 +245,7 @@ export default function ProfilePage() {
           <button
             type="button"
             className="hover:underline"
-            onClick={() =>
-              setListModal({ kind: "followers", userId: user._id })
-            }
+            onClick={() => setListModal({ kind: "followers", userId: user._id })}
           >
             <span className="text-foreground font-bold">
               {user.followers?.length ?? 0}
@@ -220,20 +262,20 @@ export default function ProfilePage() {
               window.dispatchEvent(new CustomEvent("twiller:go-follow-requests"))
             }
           >
-            <UserPlus className="h-4 w-4 text-brand" />
+            <UserPlus className="h-4 w-4 text-brand shrink-0" />
             Follow requests
           </button>
         )}
       </div>
 
       <Tabs defaultValue="posts" className="w-full mt-4">
-        <TabsList className="w-full grid grid-cols-5 bg-transparent border-b border-white/[0.06] rounded-none h-auto p-0">
+        <TabsList className="w-full grid grid-cols-5 bg-transparent border-b border-border rounded-none h-auto p-0">
           <TabsTrigger value="posts" className={tabClass}>Posts</TabsTrigger>
           <TabsTrigger value="replies" className={tabClass}>Replies</TabsTrigger>
           <TabsTrigger value="media" className={tabClass}>Media</TabsTrigger>
           <TabsTrigger value="liked" className={tabClass}>Likes</TabsTrigger>
           <TabsTrigger value="login-history" className={tabClass}>
-            <span className="truncate px-1">Login history</span>
+            <span className="truncate px-0.5">Login history</span>
           </TabsTrigger>
         </TabsList>
 
@@ -262,7 +304,7 @@ export default function ProfilePage() {
           ) : (
             <div className="divide-y divide-border">
               {userReplies.map((r, i) => (
-                <div key={i} className="flex gap-3 px-4 py-4">
+                <div key={r._id || i} className="flex gap-3 px-4 py-4">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user.avatar} alt={user.displayName} />
                     <AvatarFallback>{user.displayName[0]}</AvatarFallback>
@@ -272,7 +314,7 @@ export default function ProfilePage() {
                       <span className="font-semibold text-foreground text-sm">{user.displayName}</span>
                       <span className="text-muted-foreground text-xs">@{user.username}</span>
                     </div>
-                    <p className="text-foreground text-sm mt-1 whitespace-pre-wrap break-words">{r.content}</p>
+                    <p className="text-foreground text-sm mt-1 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{r.content}</p>
                   </div>
                 </div>
               ))}

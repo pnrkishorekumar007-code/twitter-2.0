@@ -30,7 +30,7 @@ interface TweetComposerProps {
 }
 
 const EMOJIS = [
-  "😂", "😍", "🤔", "🔥", "❤️", "👍", "🎉", "😢", "😮", "🙏",
+  "😂", "😍", "🤝", "🔥", "❤️", "👇", "🎉", "😢", "😮", "🙏",
   "💯", "✨", "🥳", "😎", "🤯", "👏", "💪", "🚀", "🎯", "🌈",
   "🐦", "☕", "🏆", "🌍", "🧠", "📣",
 ];
@@ -41,6 +41,7 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [imageurl, setimageurl] = useState("");
+  const [imageFailed, setImageFailed] = useState(false);
   const [showAudio, setShowAudio] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -109,7 +110,20 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
           params: { key: apiKey },
         }
       );
-      setimageurl(res.data.data.url);
+      // Prefer the direct image file URL (display_url). `data.url` may point
+      // to imgbb's HTML viewer page, which would render as a broken image.
+      const url =
+        res.data?.data?.display_url ||
+        res.data?.data?.image?.url ||
+        res.data?.data?.url;
+      console.debug("[tweet-image] upload response:", {
+        imageField: res.data?.data?.url,
+        displayUrl: res.data?.data?.display_url,
+        usedUrl: url,
+      });
+      if (!url) throw new Error("Image upload failed. Please try again.");
+      setimageurl(url);
+      setImageFailed(false);
       toast("Image attached", "success");
     } catch (error) {
       toast(
@@ -155,7 +169,7 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
     "grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-accent transition-colors";
 
   return (
-    <div className="border-b border-white/[0.06]">
+    <div className="border-b border-border">
       <form onSubmit={handleSubmit} className="flex gap-3 p-4">
         <Avatar className="h-11 w-11 shrink-0">
           <AvatarImage src={user.avatar} alt={user.displayName} />
@@ -175,11 +189,23 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
 
           {imageurl && (
             <div className="relative mt-2">
-              <img
-                src={imageurl}
-                alt="Tweet preview"
-                className="rounded-2xl border border-border max-h-60 w-full object-cover"
-              />
+              {imageFailed ? (
+                <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-border bg-muted/60 text-muted-foreground">
+                  <div className="flex flex-col items-center gap-2">
+                    <ImageIcon className="h-6 w-6" />
+                    <span className="text-xs">Image unavailable</span>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={imageurl}
+                  alt="Tweet preview"
+                  loading="lazy"
+                  decoding="async"
+                  onError={() => setImageFailed(true)}
+                  className="rounded-2xl border border-border max-h-60 w-full h-auto object-cover"
+                />
+              )}
               <button
                 type="button"
                 onClick={() => setimageurl("")}
@@ -239,16 +265,16 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
               >
                 <Smile className="h-5 w-5" />
               </button>
-              <button type="button" className={mutedIconClass} aria-label="Schedule">
+              <button type="button" className={cn(mutedIconClass, "hidden sm:grid")} aria-label="Schedule">
                 <Calendar className="h-5 w-5" />
               </button>
-              <button type="button" className={mutedIconClass} aria-label="Analytics">
+              <button type="button" className={cn(mutedIconClass, "hidden sm:grid")} aria-label="Analytics">
                 <BarChart3 className="h-5 w-5" />
               </button>
-              <button type="button" className={mutedIconClass} aria-label="Location">
+              <button type="button" className={cn(mutedIconClass, "hidden sm:grid")} aria-label="Location">
                 <MapPin className="h-5 w-5" />
               </button>
-              <button type="button" className={mutedIconClass} aria-label="Audience">
+              <button type="button" className={cn(mutedIconClass, "hidden sm:grid")} aria-label="Audience">
                 <Globe className="h-5 w-5" />
               </button>
             </div>
@@ -314,13 +340,13 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
                 transition={{ duration: 0.15 }}
                 className="overflow-hidden"
               >
-                <div className="mt-3 grid grid-cols-8 gap-1 rounded-2xl border border-border bg-popover p-3">
+                <div className="mt-3 grid grid-cols-6 sm:grid-cols-8 gap-1 rounded-2xl border border-border bg-popover p-3">
                   {EMOJIS.map((e) => (
                     <button
                       key={e}
                       type="button"
                       onClick={() => insertEmoji(e)}
-                      className="grid h-9 w-9 place-items-center rounded-full text-xl hover:bg-accent transition-colors"
+                      className="grid aspect-square place-items-center rounded-full text-xl hover:bg-accent transition-colors"
                       aria-label={`Add emoji ${e}`}
                     >
                       {e}

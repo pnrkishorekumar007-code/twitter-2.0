@@ -1,6 +1,7 @@
-export type LangCode = "en" | "es" | "hi" | "pt" | "zh" | "fr";
+export type LangCode = "en" | "es" | "hi" | "pt" | "zh" | "fr" | "ta";
 
 export const LANGUAGES: { code: LangCode; label: string; requiresEmailOtp: boolean }[] = [
+  { code: "ta", label: "தமிழ்", requiresEmailOtp: false },
   { code: "en", label: "English", requiresEmailOtp: false },
   { code: "es", label: "Español", requiresEmailOtp: false },
   { code: "hi", label: "हिन्दी", requiresEmailOtp: false },
@@ -9,7 +10,7 @@ export const LANGUAGES: { code: LangCode; label: string; requiresEmailOtp: boole
   { code: "fr", label: "Français", requiresEmailOtp: true },
 ];
 
-// App-wide UI strings in all 6 languages. Every component should read from
+// App-wide UI strings in all 7 languages. Every component should read from
 // useLanguage().t(key) instead of hardcoding English text; missing keys fall
 // back to the English value. Extend this map as you translate more screens.
 export const translations: Record<LangCode, Record<string, string>> = {
@@ -299,5 +300,50 @@ export const translations: Record<LangCode, Record<string, string>> = {
     forgot_subtitle: "Nous vous enverrons un nouveau mot de passe par e-mail.",
     audio_tweet: "Tweet audio",
     audio_tweet_desc: "Enregistrez ou envoyez un tweet audio (5 minutes max).",
+  },
+  ta: {
+    home: "முகப்பு", explore: "ஆராய்க", notifications: "அறிவிப்புகள்", messages: "செய்திகள்",
+    bookmarks: "புத்தகக்குறிகள்", profile: "சுயவிவரம்", more: "மேலும்", premium: "பிரீமியம்",
+    whats_happening: "என்ன நடக்கிறது?", post: "பதிவு", tweet: "பதிவு",
+    login: "உள்நுழை", signup: "பதிவு செய்க", forgot_password: "கடவுச்சொல்லை மறந்துவிட்டீர்களா?",
+    email: "மின்னஞ்சல்", password: "கடவுச்சொல்", name: "பெயர்", username: "பயனர் பெயர்",
+    google_login: "Google மூலம் தொடரவும்",
+    login_title: "Twiller இல் உள்நுழைக", signup_title: "உங்கள் கணக்கை உருவாக்குங்கள்",
+    forgot_title: "கடவுச்சொல் மறந்துவிட்டது",
+    reset_password: "கடவுச்சொல்லை மீட்டமை",
+    back_to_login: "உள்நுழைவுக்குத் திரும்பு",
+    settings: "அமைப்புகள்", settings_title: "அமைப்புகள்",
+    login_history: "உள்நுழைவு வரலாறு",
+    language: "மொழி", language_title: "மொழி",
+    language_desc: "மொழியை மாற்ற ஒரு முறை சரிபார்ப்பு குறியீடு தேவை.",
+    current_language: "தற்போதைய மொழி",
+    language_switch_verify: "மொழியை மாற்றச் சரிபார்க்கவும்",
+    otp_channel_email: "உங்கள் மின்னஞ்சலுக்குச் சரிபார்ப்பு குறியீட்டை அனுப்பியுள்ளோம்.",
+    otp_channel_sms: "உங்கள் பதிவுசெய்யப்பட்ட மொபைல் எண்ணுக்குச் சரிபார்ப்பு குறியீட்டை அனுப்பியுள்ளோம்.",
+    otp_placeholder: "6 இலக்க குறியீடு", otp_verify: "சரிபார்க்கவும்", otp_cancel: "ரத்து செய்க",
+    otp_verifying: "சரிபார்க்கப்படுகிறது...", otp_resend: "குறியீட்டை மீண்டும் அனுப்பு", otp_resend_in: "குறியீட்டை மீண்டும் அனுப்பு",
+    otp_sending: "அனுப்பப்படுகிறது...", otp_dev_code: "டெவ் பயன்முறை — மின்னஞ்சல் அமைக்கப்படவில்லை. உங்கள் குறியீடு:",
+    lang_success: "மொழி வெற்றிகரமாக மாற்றப்பட்டது.",
+    notif_pref: "அறிவிப்புகள்",
+    keyword_notif: "முக்கிய சொல் அறிவிப்புகள்",
+    notif_desc: "ஒரு ட்வீட் உங்கள் முக்கிய சொற்களில் ஒன்றைக் குறிப்பிடும்போது பாப்அப் பெறுங்கள்.",
+    browser_permission: "உலாவி அனுமதி",
+    allowed: "அனுமதிக்கப்பட்டது", blocked: "தடுக்கப்பட்டது", not_requested: "கோரப்படவில்லை", unsupported: "ஆதரிக்கப்படவில்லை",
+    enable_browser_notif: "உலாவி அறிவிப்புகளை இயக்கவும்",
+    blocked_message: "உலாவி அறிவிப்புகள் முடக்கப்பட்டுள்ளன. உலாவி அமைப்புகளில் இயக்கவும்.",
+    keywords_monitored: "கண்காணிக்கப்படும் முக்கிய சொற்கள்",
+    no_keywords: "இன்னும் முக்கிய சொற்கள் கண்காணிக்கப்படவில்லை. தொடங்க அறிவிப்புகளை இயக்கவும்.",
+    enabled: "இயக்கப்பட்டது", disabled: "முடக்கப்பட்டது",
+    save: "சேமி", saving: "சேமிக்கப்படுகிறது…",
+    notif_saved_on: "அறிவிப்புகள் இயக்கப்பட்டன — உங்கள் முக்கிய சொற்களை ஒரு ட்வீட் குறிப்பிடும்போது பாப்அப் கிடைக்கும்.",
+    notif_saved_off: "அறிவிப்புகள் முடக்கப்பட்டன.",
+    notif_save_error: "உங்கள் விருப்பத்தைச் சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
+    upgrade_plan: "உங்கள் திட்டத்தை மேம்படுத்துங்கள்",
+    plans: "திட்டங்கள்", free_plan: "இலவசம்", bronze_plan: "வெண்கலம்", silver_plan: "வெள்ளி", gold_plan: "தங்கம்",
+    per_month: "/மாதம்", subscribe: "சந்தா", subscription_active: "உங்கள் சந்தா செயலில் உள்ளது",
+    pay_now: "இப்போது செலுத்துங்கள்",
+    forgot_subtitle: "உங்கள் மின்னஞ்சலுக்குப் புதிய கடவுச்சொல்லை அனுப்புவோம்.",
+    audio_tweet: "ஆடியோ ட்வீட்",
+    audio_tweet_desc: "ஆடியோ ட்வீட்டைப் பதிவு செய்யவும் அல்லது பதிவேற்றவும் (அதிகபட்சம் 5 நிமிடங்கள்).",
   },
 };

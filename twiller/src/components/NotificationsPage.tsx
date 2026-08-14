@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { BellRing, BellOff, Settings2, UserPlus } from "lucide-react";
+import { BellRing, BellOff, Settings2, UserPlus, Menu } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -59,11 +59,22 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.12)] px-4 py-3">
-        <h1 className="text-xl font-bold text-foreground">{t("notifications")}</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Follows and keyword alerts about tweets you care about
-        </p>
+      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-border shadow-[0_1px_3px_rgba(0,0,0,0.12)] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
+            className="md:hidden grid h-10 w-10 shrink-0 place-items-center rounded-full text-foreground hover:bg-accent transition-colors active:scale-95"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">{t("notifications")}</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Follows and keyword alerts about tweets you care about
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="divide-y divide-border">

@@ -54,7 +54,11 @@ const UserSchema = new mongoose.Schema({
   accountType: { type: String, enum: ["public", "private"], default: "public" },
 
   // Task 6: language
-  preferredLanguage: { type: String, enum: ["en", "es", "hi", "pt", "zh", "fr"], default: "en" },
+  preferredLanguage: {
+    type: String,
+    enum: ["en", "es", "hi", "pt", "zh", "fr", "ta"],
+    default: "en",
+  },
 });
 
 export default mongoose.model("User", UserSchema);

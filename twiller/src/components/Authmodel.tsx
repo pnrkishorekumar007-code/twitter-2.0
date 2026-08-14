@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 
@@ -15,6 +15,7 @@ import TwitterLogo from './Twitterlogo';
 import axiosInstance from '@/lib/axiosInstance';
 import { getErrorMessage } from '@/lib/types';
 import { getClientInfo } from '@/lib/clientInfo';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
 
 
@@ -46,6 +47,17 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
   } else if (!isOpen && lastOpen) {
     setLastOpen(false);
   }
+
+  useLockBodyScroll(isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -158,8 +170,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-md bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] animate-fade-up">
+    <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
+        <Card className="w-full max-w-md my-auto max-h-[90dvh] overflow-y-auto bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] animate-fade-up">
           <CardHeader className="relative pb-6">
             <Button
               variant="ghost"

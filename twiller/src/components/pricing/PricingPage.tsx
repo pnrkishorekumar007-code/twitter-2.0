@@ -5,7 +5,7 @@ import { Button } from "../ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "../Toast";
 import axiosInstance from "@/lib/axiosInstance";
-import { BadgeCheck, Clock, Crown, Loader2, Sparkles } from "lucide-react";
+import { BadgeCheck, Clock, Crown, Loader2, Sparkles, Menu } from "lucide-react";
 import { motion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/types";
@@ -196,13 +196,24 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen">
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3">
-        <h1 className="text-xl font-extrabold text-foreground flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-brand" />
-          Twiller Premium
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Payments open daily 10:00–11:00 AM IST only.
-        </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
+            className="md:hidden grid h-10 w-10 shrink-0 place-items-center rounded-full text-foreground hover:bg-accent transition-colors active:scale-95"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div>
+            <h1 className="text-xl font-extrabold text-foreground flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-brand" />
+              Twiller Premium
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Payments open daily 10:00–11:00 AM IST only.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="p-4 space-y-4">
@@ -241,7 +252,7 @@ export default function PricingPage() {
           </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           {PLAN_ORDER.map((key, index) => {
             const meta = PLAN_META[key];
             const price = plans[key]?.price ?? 0;

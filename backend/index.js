@@ -14,9 +14,12 @@ import paymentRoutes from "./routes/payment.js";
 import audioRoutes from "./routes/audio.js";
 import userRoutes from "./routes/user.js";
 import followRoutes from "./routes/follow.js";
+import bookmarkRoutes from "./routes/bookmarks.js";
+import messageRoutes from "./routes/messages.js";
 import { ensureOtpVerified } from "./middleware/otpGuardMiddleware.js";
 
 import { requireTweetLimit, incrementTweetUsed } from "./middleware/tweetLimit.js";
+import { requireAnyAuth } from "./middleware/auth.js";
 
 dotenv.config();
 const app = express();
@@ -45,6 +48,10 @@ app.use("/", userRoutes); // /notifications/:email, /language/otp*, /profile/*
 app.use("/api", userRoutes); // alias so /api/profile/update and /api/profile/banner also work
 app.use("/", followRoutes); // /users/follow/:id, /users/followers/:id, ...
 app.use("/api", followRoutes); // alias so /api/users/* also works
+app.use("/", bookmarkRoutes); // /bookmarks, /bookmarks/ids, /bookmarks/:tweetId
+app.use("/api", bookmarkRoutes); // alias so /api/bookmarks* also works
+app.use("/", messageRoutes); // /messages/conversations, /messages/:id, /messages/send
+app.use("/api", messageRoutes); // alias so /api/messages* also works
 
 app.use((err, req, res, next) => {
   if (err?.name === "MulterError") {
@@ -155,6 +162,28 @@ app.get("/tweet/:id", async (req, res) => {
       .populate("author")
       .populate("replies.user");
     if (!tweet) return res.status(404).send({ error: "Tweet not found" });
+    return res.status(200).send(tweet);
+  } catch (error) {
+    return res.status(400).send({ error: error.message });
+  }
+});
+// get the signed-in user's following feed — ONLY tweets from accounts the
+// current user follows, newest first. The `following` array only ever contains
+// accepted follows (public follows + approved private requests), so private
+// pending requests are excluded automatically.
+app.get(["/tweets/following", "/feed/following"], requireAnyAuth, async (req, res) => {
+  try {
+    const current = await User.findOne({ email: req.user?.email || "" });
+    if (!current) return res.status(404).send({ error: "User not found" });
+
+    const following = (current.following || []).map((id) => id.toString());
+
+    if (following.length === 0) return res.status(200).send([]);
+
+    const tweet = await Tweet.find({ author: { $in: following } })
+      .sort({ timestamp: -1 })
+      .populate("author");
+
     return res.status(200).send(tweet);
   } catch (error) {
     return res.status(400).send({ error: error.message });

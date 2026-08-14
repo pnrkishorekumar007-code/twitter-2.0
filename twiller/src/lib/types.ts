@@ -98,11 +98,35 @@ export interface FollowRequest {
   sender: FollowUser;
 }
 
+// Direct message. senderId is the populated author object after a GET.
+export interface Message {
+  _id: string;
+  conversationId: string;
+  senderId: string | TweetAuthor;
+  receiverId: string;
+  text: string;
+  read: boolean;
+  readAt?: string | null;
+  createdAt: string;
+}
+
+// A 1:1 direct-message conversation with the other participant flattened to
+// otherUser and the current user's unread count precomputed by the server.
+export interface Conversation {
+  _id: string;
+  participants: TweetAuthor[];
+  otherUser?: TweetAuthor | null;
+  lastMessage?: string;
+  lastMessageAt?: string;
+  lastSenderId?: string | null;
+  unreadCount?: number;
+  updatedAt?: string;
+}
+
 export function getErrorMessage(
   err: unknown,
   fallback = "Something went wrong. Please try again."
-): string {
-  if (typeof err === "object" && err !== null) {
+): string {  if (typeof err === "object" && err !== null) {
     const e = err as {
       response?: { data?: { error?: unknown; message?: unknown } };
       message?: unknown;

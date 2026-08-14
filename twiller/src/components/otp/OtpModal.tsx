@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { getErrorMessage } from "@/lib/types";
 import { useLanguage } from "@/context/LanguageContext";
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 
 interface OtpModalProps {
   open: boolean;
@@ -43,6 +44,17 @@ export default function OtpModal({
     setPrevOpen(open);
     if (open) setCountdown(resendCooldownSec);
   }
+
+  useLockBodyScroll(open);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
   useEffect(() => {
     if (!open || !onResend) {
@@ -103,8 +115,17 @@ export default function OtpModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+    <div
+      className="fixed inset-0 bg-black/70 flex items-start sm:items-center justify-center z-50 p-4 backdrop-blur-sm overflow-y-auto"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
+      <div
+        className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm my-auto max-h-[90dvh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h3 className="text-foreground text-xl font-bold mb-1">{title}</h3>
         <p className="text-muted-foreground text-sm mb-4">{description}</p>
         {devCode && (
@@ -115,7 +136,7 @@ export default function OtpModal({
         )}
         <Input
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
           placeholder={t("otp_placeholder")}
           maxLength={6}
           className="mb-2 text-foreground"

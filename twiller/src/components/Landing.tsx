@@ -1,25 +1,31 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import AuthModal from "./Authmodel";
 import TwitterLogo, { TwillerBrand } from "./Twitterlogo";
 import { useAuth } from "@/context/AuthContext";
-import Feed from "./Feed";
 import { Sparkles } from "lucide-react";
 
 export default function LandingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
   const { user, googlesignin } = useAuth();
+  const router = useRouter();
+
+  // Signed-in users land on the home feed at /home.
+  useEffect(() => {
+    if (user) {
+      router.replace("/home");
+    }
+  }, [user, router]);
 
   const openAuthModal = (mode: "login" | "signup") => {
     setAuthMode(mode);
     setShowAuthModal(true);
   };
-  if (user) {
-    return <Feed />;
-  }
+
   return (
     <div className="min-h-screen bg-black text-white flex overflow-hidden">
       {/* Left side - animated logo */}

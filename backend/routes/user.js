@@ -228,7 +228,7 @@ async function requestLanguageOtpHandler(req, res) {
     }
 
     const channel = getChannelForLanguage(targetLanguage);
-    const { expiresAt, devCode } = await sendLanguageOtp({
+    const { expiresAt, devCode, deliveredTo } = await sendLanguageOtp({
       userId: user._id,
       targetLanguage,
       emailTo: user.email,
@@ -242,6 +242,7 @@ async function requestLanguageOtpHandler(req, res) {
           ? "Verification code sent to your email."
           : "Verification code sent to your registered mobile number.",
       channel,
+      deliveredTo,
       expiresAt,
       resendAfterSec: RESEND_COOLDOWN_MS / 1000,
       devCode,

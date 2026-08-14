@@ -30,6 +30,7 @@ export default function LanguageSettingsCard() {
 
   const [pending, setPending] = useState<LangCode | null>(null);
   const [channel, setChannel] = useState<"email" | "sms">("email");
+  const [deliveredTo, setDeliveredTo] = useState<"email" | "sms" | undefined>(undefined);
   const [devCode, setDevCode] = useState<string | undefined>(undefined);
   const [resendAfterSec, setResendAfterSec] = useState(60);
   const [modalOpen, setModalOpen] = useState(false);
@@ -46,6 +47,7 @@ export default function LanguageSettingsCard() {
       const res = await requestLanguageOtp(code);
       setPending(code);
       setChannel(res.channel === "email" ? "email" : "sms");
+      setDeliveredTo(res.deliveredTo === "sms" ? "sms" : "email");
       setDevCode(res.devCode);
       setResendAfterSec(res.resendAfterSec ?? 60);
       setModalOpen(true);
@@ -58,9 +60,16 @@ export default function LanguageSettingsCard() {
 
   const handleResend = async () => {
     if (!pending) return;
-    const res = await requestLanguageOtp(pending);
-    setDevCode(res.devCode);
-    setResendAfterSec(res.resendAfterSec ?? 60);
+    setError(null);
+    try {
+      const res = await requestLanguageOtp(pending);
+      setChannel(res.channel === "email" ? "email" : "sms");
+      setDeliveredTo(res.deliveredTo === "sms" ? "sms" : "email");
+      setDevCode(res.devCode);
+      setResendAfterSec(res.resendAfterSec ?? 60);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
   };
 
   const handleVerify = async (code: string) => {
@@ -138,7 +147,7 @@ export default function LanguageSettingsCard() {
         <OtpModal
           open={modalOpen}
           title={t("language_switch_verify")}
-          description={channel === "email" ? t("otp_channel_email") : t("otp_channel_sms")}
+          description={(deliveredTo ?? channel) === "email" ? t("otp_channel_email") : t("otp_channel_sms")}
           devCode={devCode}
           onVerify={handleVerify}
           onResend={handleResend}

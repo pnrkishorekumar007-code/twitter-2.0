@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Search, Users, UserPlus } from "lucide-react";
+import { Search, Users, UserPlus, Menu } from "lucide-react";
 import { motion, fadeUp, staggerContainer } from "@/lib/motion";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { BadgeCheck } from "lucide-react";
@@ -11,7 +11,17 @@ import axiosInstance from "@/lib/axiosInstance";
 import type { FollowUser } from "@/lib/types";
 
 export default function SearchPage() {
-  const [query, setQuery] = useState("");
+  // Pre-fill the search box from a trend click in the right sidebar.
+  const [query, setQuery] = useState(() => {
+    if (typeof window !== "undefined") {
+      const prefilled = sessionStorage.getItem("twiller-search-q");
+      if (prefilled) {
+        sessionStorage.removeItem("twiller-search-q");
+        return prefilled;
+      }
+    }
+    return "";
+  });
   const [results, setResults] = useState<FollowUser[] | null>(null);
 
   useEffect(() => {
@@ -36,11 +46,22 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.12)] px-4 py-3">
-        <h1 className="text-xl font-bold text-foreground">Search</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Find people by name or @username
-        </p>
+      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-border shadow-[0_1px_3px_rgba(0,0,0,0.12)] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
+            className="md:hidden grid h-10 w-10 shrink-0 place-items-center rounded-full text-foreground hover:bg-accent transition-colors active:scale-95"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Search</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Find people by name or @username
+            </p>
+          </div>
+        </div>
         <div className="relative mt-3">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <input
@@ -50,7 +71,7 @@ export default function SearchPage() {
             placeholder="Search people"
             aria-label="Search people"
             autoFocus
-            className="w-full rounded-full bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] pl-12 pr-4 py-3 text-foreground placeholder:text-muted-foreground outline-none focus:border-brand focus:ring-4 focus:ring-brand/20 transition-all"
+            className="w-full rounded-full bg-card/60 backdrop-blur-xl border border-border pl-12 pr-4 py-3 text-foreground placeholder:text-muted-foreground outline-none focus:border-brand focus:ring-4 focus:ring-brand/20 transition-all"
           />
         </div>
       </div>
@@ -117,14 +138,14 @@ export default function SearchPage() {
               variants={staggerContainer}
               initial="hidden"
               animate="visible"
-              className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl shadow-lg overflow-hidden"
+              className="rounded-2xl border border-border bg-card/60 backdrop-blur-xl shadow-lg overflow-hidden"
             >
               {results.map((u, i) => (
                 <motion.div
                   key={u._id}
                   variants={fadeUp}
-                  className={`flex items-center justify-between px-4 py-3 hover:bg-white/[0.04] transition-all duration-200 ${
-                    i !== results.length - 1 ? "border-b border-white/[0.06]" : ""
+                  className={`flex items-center justify-between px-4 py-3 hover:bg-accent/60 transition-all duration-200 ${
+                    i !== results.length - 1 ? "border-b border-border" : ""
                   }`}
                 >
                   <div className="flex items-center space-x-3 min-w-0">

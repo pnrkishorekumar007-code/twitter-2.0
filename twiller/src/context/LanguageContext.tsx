@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
 import axiosInstance from "../lib/axiosInstance";
 import { LangCode, translations, LANGUAGES } from "../lib/translations";
@@ -10,7 +10,7 @@ interface LanguageContextType {
   t: (key: string) => string;
   requestLanguageOtp: (
     target: LangCode
-  ) => Promise<{ channel: string; devCode?: string; resendAfterSec?: number }>;
+  ) => Promise<{ channel: string; deliveredTo?: string; devCode?: string; resendAfterSec?: number }>;
   verifyLanguageOtp: (target: LangCode, code: string) => Promise<boolean>;
   getCurrentLanguage: () => Promise<LangCode | undefined>;
 }
@@ -49,7 +49,12 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Reconcile with the authoritative server value once per session (GET
   // /language/current). Guarantees the persisted preference wins after
   // refresh/new session even if localStorage was cleared.
+  //
+  // A locally-made switch must never be clobbered by a slow in-flight server
+  // sync (the GET can resolve AFTER the user already switched). localOverrideRef
+  // is set on every successful switch, and once set it wins for this session.
   const [syncedEmail, setSyncedEmail] = useState<string | null>(null);
+  const localOverrideRef = useRef(false);
   const email = user?.email;
   useEffect(() => {
     if (!email || syncedEmail === email) return;
@@ -58,7 +63,12 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       try {
         const res = await axiosInstance.get("/language/current");
         const serverLang = res.data?.preferredLanguage as LangCode | undefined;
-        if (!cancelled && serverLang && LANGUAGES.some((l) => l.code === serverLang)) {
+        if (
+          !cancelled &&
+          serverLang &&
+          LANGUAGES.some((l) => l.code === serverLang) &&
+          !localOverrideRef.current
+        ) {
           setLang(serverLang);
         }
       } catch {
@@ -75,13 +85,29 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const t = (key: string) => translations[lang]?.[key] ?? translations.en[key] ?? key;
 
+  // Keep the document in sync with the active language so the browser and the
+  // CSS (see globals.css) can adapt: <html lang> for screen readers/translators,
+  // data-lang to trigger script-appropriate fonts, sizing and line-height.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = "ltr";
+    document.documentElement.setAttribute("data-lang", lang);
+  }, [lang]);
+
   // POST /language/request-otp — French → email OTP, everything else → mobile.
+  // `deliveredTo` reports where the code actually went (email fallback is used
+  // when no SMS provider is configured), so the UI can say the right thing.
   const requestLanguageOtp = async (target: LangCode) => {
     if (!user) throw new Error("Log in first");
     const res = await axiosInstance.post("/language/request-otp", {
       targetLanguage: target,
     });
-    return res.data as { channel: string; devCode?: string; resendAfterSec?: number };
+    return res.data as {
+      channel: string;
+      deliveredTo?: string;
+      devCode?: string;
+      resendAfterSec?: number;
+    };
   };
 
   // POST /language/verify-otp → short-lived language-change token, then
@@ -95,11 +121,25 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const languageToken = verify.data?.languageToken;
     if (!languageToken) throw new Error("Verification failed. Please try again.");
 
-    await axiosInstance.put("/language/change", {
-      targetLanguage: target,
-      languageToken,
-    });
+    // The token is valid for 10 minutes, so a transient failure on the change
+    // request is retried once rather than forcing the user to re-request a code.
+    try {
+      await axiosInstance.put("/language/change", {
+        targetLanguage: target,
+        languageToken,
+      });
+    } catch (firstErr) {
+      try {
+        await axiosInstance.put("/language/change", {
+          targetLanguage: target,
+          languageToken,
+        });
+      } catch {
+        throw firstErr;
+      }
+    }
 
+    localOverrideRef.current = true;
     setLang(target);
     localStorage.setItem("twiller-lang", target);
     return true;
@@ -115,7 +155,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     <LanguageContext.Provider
       value={{ lang, t, requestLanguageOtp, verifyLanguageOtp, getCurrentLanguage }}
     >
-      {children}
+      <div className={`lang-font lang-${lang}`} dir="ltr">
+        {children}
+      </div>
     </LanguageContext.Provider>
   );
 };

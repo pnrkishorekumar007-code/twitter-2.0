@@ -33,6 +33,7 @@ import {
 import { TwillerBrand } from "../Twitterlogo";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useMessages } from "@/context/MessagesContext";
 import ThemeToggle from "../ThemeToggle";
 import { motion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,9 @@ import { cn } from "@/lib/utils";
 interface SidebarProps {
   currentPage?: string;
   onNavigate?: (page: string) => void;
+  /** Render the full-width (labels visible) variant — used inside the mobile drawer. */
+  forceExpanded?: boolean;
+  className?: string;
 }
 
 interface NavItem {
@@ -48,18 +52,25 @@ interface NavItem {
   current: boolean;
   page: string;
   badge?: boolean;
+  count?: number;
 }
 
-export default function Sidebar({ currentPage = "home", onNavigate }: SidebarProps) {
+export default function Sidebar({
+  currentPage = "home",
+  onNavigate,
+  forceExpanded = false,
+  className,
+}: SidebarProps) {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
+  const { unreadTotal } = useMessages();
 
   const navigation: NavItem[] = [
     { name: t("home"), icon: Home, current: currentPage === "home", page: "home" },
     { name: t("explore"), icon: Search, current: currentPage === "explore", page: "explore" },
     { name: "People", icon: Users, current: currentPage === "search", page: "search" },
     { name: t("notifications"), icon: Bell, current: currentPage === "notifications", page: "notifications", badge: true },
-    { name: t("messages"), icon: Mail, current: currentPage === "messages", page: "messages" },
+    { name: t("messages"), icon: Mail, current: currentPage === "messages", page: "messages", count: unreadTotal },
     { name: t("bookmarks"), icon: Bookmark, current: currentPage === "bookmarks", page: "bookmarks" },
     { name: t("profile"), icon: User, current: currentPage === "profile", page: "profile" },
     { name: t("premium"), icon: Sparkles, current: currentPage === "pricing", page: "pricing" },
@@ -78,6 +89,7 @@ export default function Sidebar({ currentPage = "home", onNavigate }: SidebarPro
         aria-current={item.current ? "page" : undefined}
         className={cn(
           "group relative w-full justify-start text-xl py-3 px-3 lg:px-4 rounded-full transition-all duration-200",
+          forceExpanded ? "justify-start" : "justify-center lg:justify-start",
           item.current
             ? "bg-brand/10 text-foreground shadow-[0_0_12px_rgba(29,155,240,0.15)]"
             : "text-foreground hover:bg-accent/70"
@@ -97,10 +109,16 @@ export default function Sidebar({ currentPage = "home", onNavigate }: SidebarPro
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand" />
             </span>
           )}
+          {item.count != null && item.count > 0 && (
+            <span className="absolute -top-1.5 -right-2 grid min-w-[18px] h-[18px] place-items-center rounded-full bg-brand px-1 text-[11px] font-bold text-white">
+              {item.count > 99 ? "99+" : item.count}
+            </span>
+          )}
         </span>
         <span
           className={cn(
-            "ml-4 hidden lg:inline truncate",
+            "ml-4 truncate",
+            forceExpanded ? "inline" : "hidden lg:inline",
             item.current && "font-bold"
           )}
         >
@@ -109,7 +127,9 @@ export default function Sidebar({ currentPage = "home", onNavigate }: SidebarPro
       </Button>
     );
 
-    if (item.page === "messages" || item.page === "bookmarks") return button;
+    if (item.page === "messages" || item.page === "bookmarks" || forceExpanded) {
+      return button;
+    }
 
     return (
       <Tooltip>
@@ -121,8 +141,18 @@ export default function Sidebar({ currentPage = "home", onNavigate }: SidebarPro
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex flex-col h-screen w-full border-r border-white/[0.06] bg-background/95 backdrop-blur-xl">
-        <div className="px-3 lg:px-4 py-3 flex justify-center lg:justify-start">
+      <div
+        className={cn(
+          "flex flex-col w-full border-r border-border/60 bg-background/95 backdrop-blur-xl",
+          className
+        )}
+      >
+        <div
+          className={cn(
+            "px-3 lg:px-4 py-3",
+            forceExpanded ? "flex justify-start" : "flex justify-center lg:justify-start"
+          )}
+        >
           <motion.button
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
@@ -131,30 +161,40 @@ export default function Sidebar({ currentPage = "home", onNavigate }: SidebarPro
             onClick={() => onNavigate?.("home")}
           >
             <TwillerBrand
-              wordmarkClassName="hidden lg:inline"
+              wordmarkClassName={forceExpanded ? "inline" : "hidden lg:inline"}
               className="justify-center"
             />
           </motion.button>
         </div>
 
-        <nav className="flex-1 px-2 lg:px-2 overflow-y-auto py-1" aria-label="Primary">
+        <nav className="flex-1 px-2 overflow-y-auto py-1" aria-label="Primary">
           <ul className="space-y-1">
             {navigation.map((item) => (
-              <li key={item.page} className="flex justify-center lg:justify-start">
+              <li
+                key={item.page}
+                className={cn(
+                  forceExpanded ? "flex justify-start" : "flex justify-center lg:justify-start"
+                )}
+              >
                 {renderNavButton(item)}
               </li>
             ))}
           </ul>
 
-          <div className="mt-4 px-1 lg:px-2 flex justify-center lg:justify-start">
+          <div
+            className={cn(
+              "mt-4 px-1 lg:px-2",
+              forceExpanded ? "flex justify-start" : "flex justify-center lg:justify-start"
+            )}
+          >
             <Button
               onClick={focusComposer}
               className="w-full bg-brand-gradient animate-gradient text-white font-bold py-3 rounded-full text-lg shadow-lg shadow-brand/30 hover:brightness-110 transition-all"
             >
-              <span className="grid lg:hidden place-items-center">
+              <span className={cn(forceExpanded ? "hidden" : "grid lg:hidden place-items-center")}>
                 <PenSquare className="h-6 w-6" />
               </span>
-              <span className="hidden lg:inline">
+              <span className={forceExpanded ? "inline" : "hidden lg:inline"}>
                 <span className="inline-flex items-center gap-2">
                   <PenSquare className="h-5 w-5" />
                   {t("post")}
@@ -164,19 +204,24 @@ export default function Sidebar({ currentPage = "home", onNavigate }: SidebarPro
           </div>
         </nav>
 
-        <div className="p-2 lg:p-3 border-t border-white/[0.06] space-y-1">
+        <div className="p-2 lg:p-3 border-t border-border/60 space-y-1">
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="w-full justify-start p-2 lg:p-3 rounded-full hover:bg-accent"
+                  className="w-full justify-center lg:justify-start p-2 lg:p-3 rounded-full hover:bg-accent"
                 >
                   <Avatar className="h-10 w-10 shrink-0">
                     <AvatarImage src={user.avatar} alt={user.displayName} />
                     <AvatarFallback>{user.displayName[0]}</AvatarFallback>
                   </Avatar>
-                  <span className="flex-1 text-left min-w-0 hidden lg:block">
+                  <span
+                    className={cn(
+                      "flex-1 text-left min-w-0",
+                      forceExpanded ? "block" : "hidden lg:block"
+                    )}
+                  >
                     <span className="block text-foreground font-semibold truncate">
                       {user.displayName}
                     </span>
@@ -184,7 +229,12 @@ export default function Sidebar({ currentPage = "home", onNavigate }: SidebarPro
                       @{user.username}
                     </span>
                   </span>
-                  <MoreHorizontal className="h-5 w-5 text-muted-foreground shrink-0 hidden lg:block" />
+                  <MoreHorizontal
+                    className={cn(
+                      "h-5 w-5 text-muted-foreground shrink-0",
+                      forceExpanded ? "block" : "hidden lg:block"
+                    )}
+                  />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 rounded-2xl p-1.5">
@@ -215,7 +265,7 @@ export default function Sidebar({ currentPage = "home", onNavigate }: SidebarPro
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <div className="hidden lg:flex justify-end px-2 pt-1">
+          <div className={cn("flex justify-end px-2 pt-1", forceExpanded ? "flex" : "hidden lg:flex")}>
             <ThemeToggle />
           </div>
         </div>

@@ -168,9 +168,27 @@
   }
   html {
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  /* Never allow horizontal scroll regardless of content width. */
+  html,
+  body {
+    overflow-x: clip;
+    overscroll-behavior-y: none;
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+  img,
+  video,
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+  button {
+    touch-action: manipulation;
   }
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-brand;
@@ -241,4 +259,77 @@
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Language-adaptive typography
+   LanguageContext sets data-lang on <html> and adds a `lang-<code>` class to
+   the app wrapper. Denser scripts (Tamil, Devanagari, CJK) get a slightly
+   larger base font-size so all rem-based text AND layout stay proportional,
+   plus script-appropriate font stacks and line-heights. Latin languages keep
+   the default Geist setup.
+   --------------------------------------------------------------------------- */
+
+html[data-lang="ta"],
+html[data-lang="zh"] {
+  font-size: 17px;
+}
+
+html[data-lang="hi"] {
+  font-size: 16.5px;
+}
+
+.lang-font {
+  font-family: var(--font-geist-sans), "Segoe UI", system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.01em;
+}
+
+.lang-ta {
+  font-family: var(--font-noto-tamil), var(--font-geist-sans), "Nirmala UI", "Latha", system-ui, sans-serif;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}
+
+.lang-hi {
+  font-family: var(--font-noto-devanagari), var(--font-geist-sans), "Nirmala UI", "Mangal", system-ui, sans-serif;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}
+
+.lang-zh {
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+}
+
+/* Hide scrollbars while keeping the content scrollable (nav rail, tabs). */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Full-height with dynamic viewport units + safe-area fallbacks for mobile. */
+@utility min-h-dvh {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+@utility h-dvh {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Line-clamp helpers for truncating long tweet previews to N lines. */
+@utility line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@utility line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

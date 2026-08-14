@@ -10,7 +10,7 @@ import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import LoadingSpinner from "./loading-spinner";
-import { AnimatePresence, motion } from "@/lib/motion";
+import ModalShell from "./ui/ModalShell";
 import { useToast } from "./Toast";
 import { getErrorMessage } from "@/lib/types";
 import axios from "axios";
@@ -193,27 +193,8 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
   };
 
   return (
-    <AnimatePresence>
-      {isopen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Edit profile"
-          onClick={onclose}
-        >
-          <motion.div
-            initial={{ scale: 0.96, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.96, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] shadow-[0_0_40px_rgba(0,0,0,0.5)] text-foreground max-h-[90vh] overflow-y-auto rounded-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <CardHeader className="relative pb-4 border-b border-white/[0.06]">
+    <ModalShell open={isopen} onClose={onclose} label="Edit profile" maxWidth="max-w-2xl">
+            <CardHeader className="relative pb-4 border-b border-border shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <Button
@@ -245,7 +226,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
               </div>
             </CardHeader>
 
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-y-auto flex-1">
               {error.general && (
                 <div className="bg-destructive/10 border border-destructive/40 rounded-lg p-3 text-destructive text-sm m-4">
                   {error.general}
@@ -381,7 +362,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                       onChange={(e) =>
                         handleInputChange("displayName", e.target.value)
                       }
-                      className="bg-white/[0.03] border-white/[0.1] text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30"
+                      className="text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30"
                       placeholder="Your display name"
                       maxLength={50}
                       disabled={isLoading}
@@ -405,7 +386,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                       id="bio"
                       value={formData.bio}
                       onChange={(e) => handleInputChange("bio", e.target.value)}
-                      className="bg-white/[0.03] border-white/[0.1] text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30 resize-none min-h-[100px]"
+                      className="text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30 resize-none min-h-[100px]"
                       placeholder="Tell the world about yourself"
                       maxLength={160}
                       disabled={isLoading}
@@ -432,7 +413,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                         onChange={(e) =>
                           handleInputChange("location", e.target.value)
                         }
-                        className="pl-10 bg-white/[0.03] border-white/[0.1] text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30"
+                        className="pl-10 text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30"
                         placeholder="Where are you located?"
                         maxLength={30}
                         disabled={isLoading}
@@ -462,7 +443,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                         onChange={(e) =>
                           handleInputChange("website", e.target.value)
                         }
-                        className="pl-10 bg-white/[0.03] border-white/[0.1] text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30"
+                        className="pl-10 text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30"
                         placeholder="Your website URL"
                         maxLength={100}
                         disabled={isLoading}
@@ -480,10 +461,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                 </div>
               </form>
             </CardContent>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    </ModalShell>
   );
 };
 

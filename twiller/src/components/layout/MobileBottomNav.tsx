@@ -1,7 +1,14 @@
 "use client";
 
 import React from "react";
-import { Home, Search, Bell, User, PenSquare } from "lucide-react";
+import {
+  Home,
+  Search,
+  Bell,
+  User,
+  PenSquare,
+  Menu,
+} from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -11,11 +18,13 @@ import { cn } from "@/lib/utils";
 interface MobileBottomNavProps {
   currentPage?: string;
   onNavigate?: (page: string) => void;
+  onOpenMenu?: () => void;
 }
 
 export default function MobileBottomNav({
   currentPage = "home",
   onNavigate,
+  onOpenMenu,
 }: MobileBottomNavProps) {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -34,10 +43,10 @@ export default function MobileBottomNav({
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/[0.06] bg-background/70 backdrop-blur-2xl shadow-[0_-1px_3px_rgba(0,0,0,0.12)] px-2 pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/60 bg-background/70 backdrop-blur-2xl shadow-[0_-1px_3px_rgba(0,0,0,0.12)] px-1 pb-[env(safe-area-inset-bottom)]"
       aria-label="Mobile navigation"
     >
-      <div className="flex items-center justify-around h-16">
+      <div className="relative flex items-center justify-around h-16">
         {items.slice(0, 2).map((item) => (
           <NavButton
             key={item.page}
@@ -49,20 +58,15 @@ export default function MobileBottomNav({
           />
         ))}
 
-        {/* Center Post action */}
-        <button
-          onClick={focusComposer}
-          className="relative flex flex-col items-center justify-center"
-          aria-label={t("post")}
-        >
-          <motion.span
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="grid place-items-center h-12 w-12 rounded-full bg-brand-gradient text-white shadow-lg shadow-brand/40 hover:brightness-110 transition-all"
-          >
-            <PenSquare className="h-6 w-6" />
-          </motion.span>
-        </button>
+        {/* Menu button — opens the slide-out drawer with all destinations */}
+        <NavButton
+          key="menu"
+          label={t("more")}
+          icon={Menu}
+          page="menu"
+          current={false}
+          onNavigate={onOpenMenu}
+        />
 
         {items.slice(2).map((item) => (
           <NavButton
@@ -76,6 +80,17 @@ export default function MobileBottomNav({
           />
         ))}
       </div>
+
+      {/* Floating compose action above the nav bar (X-style FAB) */}
+      <motion.button
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={focusComposer}
+        aria-label={t("post")}
+        className="absolute right-4 bottom-[calc(env(safe-area-inset-bottom)+3.75rem)] grid h-14 w-14 place-items-center rounded-full bg-brand-gradient text-white shadow-lg shadow-brand/40 hover:brightness-110 transition-all"
+      >
+        <PenSquare className="h-6 w-6" />
+      </motion.button>
     </nav>
   );
 }
@@ -99,9 +114,10 @@ function NavButton({
     <button
       onClick={() => onNavigate?.(page)}
       aria-current={current ? "page" : undefined}
+      aria-label={label}
       className={cn(
-        "flex flex-col items-center justify-center gap-0.5 px-4 py-1 rounded-xl transition-all",
-        current ? "text-brand" : "text-muted-foreground hover:text-foreground"
+        "relative flex min-h-11 min-w-14 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1 transition-all active:scale-95",
+        current ? "text-foreground" : "text-muted-foreground hover:text-foreground"
       )}
     >
       <span className="relative grid place-items-center">
@@ -111,10 +127,10 @@ function NavButton({
             <AvatarFallback>{label[0]}</AvatarFallback>
           </Avatar>
         ) : (
-          <Icon className="h-6 w-6" />
+          <Icon className="h-6 w-6" aria-hidden="true" />
         )}
         {current && !avatar && (
-          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-0.5 w-5 rounded-full bg-brand" />
+          <span className="absolute -bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-brand" />
         )}
       </span>
       <span className="text-[10px] font-medium">{label}</span>
