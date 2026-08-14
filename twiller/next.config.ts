@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { dirname } from "path";
+import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const nextConfig: NextConfig = {
@@ -20,7 +20,12 @@ const nextConfig: NextConfig = {
     ],
   },
   turbopack: {
-    root: dirname(fileURLToPath(import.meta.url)),
+    // The repo is a monorepo whose npm workspace root sits one level above this
+    // app (`package.json` at the repo root declares `workspaces: ["twiller"]`).
+    // On Vercel that install hoists `next` to the repo-root `node_modules`, so
+    // the workspace root must point there — otherwise Turbopack pins itself to
+    // this directory and cannot resolve `next`.
+    root: resolve(dirname(fileURLToPath(import.meta.url)), ".."),
   },
 };
 
