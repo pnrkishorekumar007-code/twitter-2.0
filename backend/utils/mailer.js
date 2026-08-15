@@ -7,7 +7,12 @@ let transporter = null;
 function getTransporter() {
   if (transporter) return transporter;
   transporter = nodemailer.createTransport({
-    service: "gmail",
+    // Gmail over port 587 + STARTTLS. Port 465 (implicit TLS, used by
+    // service:"gmail") is unreachable from some cloud hosts (e.g. Render).
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    requireTLS: true,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
