@@ -72,14 +72,21 @@ export async function sendOTP({ userId, emailTo, name }) {
   );
   await LoginOTP.create({ userId, otpHash: hashOtp(code), expiresAt });
 
-  const mailResult = await sendMail({
-    to: emailTo,
-    subject: "Login Verification Code",
-    html: loginOtpEmailTemplate({ name, code }),
-  });
+  let mailResult = { skipped: true };
+  try {
+    mailResult = await sendMail({
+      to: emailTo,
+      subject: "Login Verification Code",
+      html: loginOtpEmailTemplate({ name, code }),
+    });
+  } catch (error) {
+    // A broken/stalled SMTP connection must not block the login flow: the OTP
+    // is still issued and exposed via devCode so verification can complete.
+    console.error("Login OTP email failed:", error.message);
+  }
 
-  // Dev fallback: when SMTP isn't configured, expose the code so local testing
-  // can complete the flow. Never included when the email is actually sent.
+  // Dev fallback: when SMTP isn't configured (or the send failed), expose the
+  // code so the flow can still complete. Never included when the email is sent.
   const devCode = mailResult?.skipped ? code : undefined;
   return { expiresAt, devCode };
 }

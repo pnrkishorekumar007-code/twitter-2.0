@@ -18,6 +18,7 @@ interface PendingSession {
   email: string;
   expiresAt: number;
   method: string;
+  devCode?: string;
 }
 
 const DEFAULT_TTL_SECONDS = 5 * 60;
@@ -33,6 +34,7 @@ function readPendingSession(): PendingSession | null {
     email: localStorage.getItem("twiller-login-email") || "",
     expiresAt: storedExpiry || Date.now() + DEFAULT_TTL_SECONDS * 1000,
     method: localStorage.getItem("twiller-login-method") || "email",
+    devCode: localStorage.getItem("twiller-login-dev-code") || undefined,
   };
 }
 
@@ -87,6 +89,7 @@ export default function VerifyLoginOtp() {
     localStorage.removeItem("twiller-login-email");
     localStorage.removeItem("twiller-login-expires-at");
     localStorage.removeItem("twiller-login-method");
+    localStorage.removeItem("twiller-login-dev-code");
   };
 
   const handleVerify = async () => {
@@ -123,7 +126,18 @@ export default function VerifyLoginOtp() {
       const expiresIn = Number(res.data?.expiresIn) || DEFAULT_TTL_SECONDS;
       const newExpiry = Date.now() + expiresIn * 1000;
       localStorage.setItem("twiller-login-expires-at", String(newExpiry));
-      setSession((s) => (s ? { ...s, expiresAt: newExpiry } : s));
+      if (res.data?.devCode) {
+        localStorage.setItem("twiller-login-dev-code", res.data.devCode);
+      }
+      setSession((s) =>
+        s
+          ? {
+              ...s,
+              expiresAt: newExpiry,
+              devCode: res.data?.devCode || s.devCode,
+            }
+          : s
+      );
       setCooldown(Number(res.data?.resendAfter) || RESEND_COOLDOWN_SECONDS);
       setCode("");
       toast("A new code has been sent to your email", "success");
@@ -199,6 +213,17 @@ export default function VerifyLoginOtp() {
             {error && (
               <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 text-red-400 text-sm">
                 {error}
+              </div>
+            )}
+
+            {session.devCode && (
+              <div className="bg-amber-900/20 border border-amber-700 rounded-lg p-3 text-amber-300 text-sm">
+                <p className="font-semibold mb-1">
+                  The code email couldn&apos;t be sent — use this code instead:
+                </p>
+                <p className="font-mono text-2xl font-bold tracking-[0.4em] text-amber-200">
+                  {session.devCode}
+                </p>
               </div>
             )}
 

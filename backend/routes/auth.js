@@ -236,7 +236,15 @@ router.post("/login", deviceDetect, async (req, res) => {
 
     // 4. MICROSOFT EDGE / IE — and every other non-Chrome browser — login
     // immediately; the login is recorded in LoginHistory and a JWT is issued.
- 
+    await recordLogin({ userId: user._id, deviceInfo: req.deviceInfo, loginMethod: method });
+    const authToken = signAuthToken({ userId: user._id.toString(), email: user.email });
+    res.cookie("auth_token", authToken, { httpOnly: true, sameSite: "strict" });
+    return res.status(200).send({
+      success: true,
+      requiresOtp: false,
+      user,
+      token: authToken,
+    });
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }

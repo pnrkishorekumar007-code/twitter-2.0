@@ -12,6 +12,12 @@ function getTransporter() {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    // Short timeouts so a stalled SMTP connection (e.g. Gmail blocking a cloud
+    // server's IP) fails fast instead of hanging login/OTP requests for minutes.
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    sendTimeout: 10000,
   });
   return transporter;
 }
