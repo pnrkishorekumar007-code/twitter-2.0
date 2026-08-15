@@ -1,9 +1,15 @@
 import http from "http";
+import dns from "dns";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+
+// Render's free tier has no IPv6 egress: Gmail SMTP resolves to an IPv6 address
+// first, and with the default "verbatim" DNS order the connection stalls until
+// timeout (ENETUNREACH). Prefer IPv4 globally so email/OTP sends complete.
+dns.setDefaultResultOrder("ipv4first");
 import User from "./models/user.js";
 import Tweet from "./models/tweet.js";
 import { initSocket } from "./socket.js";
