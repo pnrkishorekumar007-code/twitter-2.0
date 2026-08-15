@@ -110,31 +110,47 @@ export async function sendLanguageOtp({ userId, targetLanguage, emailTo, phone, 
 
   let devCode;
   let deliveredTo;
+  let mailError;
   if (channel === "email") {
-    const mailResult = await sendMail({
-      to: emailTo,
-      subject: "Language Change Verification",
-      html: languageOtpEmailTemplate({ name, code, targetLanguage }),
-    });
-    deliveredTo = "email";
-    devCode = mailResult?.skipped ? code : undefined;
-  } else {
-    const smsResult = await sendSms({
-      to: phone || "",
-      text: smsTemplate({ code }),
-    });
-    if (smsResult?.skipped) {
-      // Dev fallback (free tier): deliver the "mobile" OTP to the email so the
-      // flow still completes end-to-end until a real SMS provider is added.
-      const mailResult = await sendMobileOtpFallback({ emailTo, text: smsTemplate({ code }) });
+    try {
+      const mailResult = await sendMail({
+        to: emailTo,
+        subject: "Language Change Verification",
+        html: languageOtpEmailTemplate({ name, code, targetLanguage }),
+      });
       deliveredTo = "email";
       devCode = mailResult?.skipped ? code : undefined;
-    } else {
-      deliveredTo = "sms";
+    } catch (error) {
+      // Email delivery failed (e.g. invalid Brevo key / blocked SMTP). Don't
+      // leave the user stuck: expose the code on screen, mirroring the login
+      // and audio-OTP fallback behavior.
+      deliveredTo = "email";
+      devCode = code;
+      mailError = error.message;
+    }
+  } else {
+    try {
+      const smsResult = await sendSms({
+        to: phone || "",
+        text: smsTemplate({ code }),
+      });
+      if (smsResult?.skipped) {
+        // Dev fallback (free tier): deliver the "mobile" OTP to the email so the
+        // flow still completes end-to-end until a real SMS provider is added.
+        const mailResult = await sendMobileOtpFallback({ emailTo, text: smsTemplate({ code }) });
+        deliveredTo = "email";
+        devCode = mailResult?.skipped ? code : undefined;
+      } else {
+        deliveredTo = "sms";
+      }
+    } catch (error) {
+      deliveredTo = "email";
+      devCode = code;
+      mailError = error.message;
     }
   }
 
-  return { channel, deliveredTo, expiresAt, devCode };
+  return { channel, deliveredTo, expiresAt, devCode, mailError };
 }
 
 // Newest OTP document for a user (used to enforce the 60s resend cooldown).
