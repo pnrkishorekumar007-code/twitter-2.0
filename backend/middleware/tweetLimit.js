@@ -79,9 +79,12 @@ export async function requireTweetLimit(req, res, next) {
 }
 
 // Releases a reserved tweet slot when the tweet failed to persist.
+// Uses an aggregation pipeline so the decrement and the lower bound of 0 can be
+// applied to the same field in one atomic update — combining $inc and $max on
+// one path in a single update document makes MongoDB throw a path conflict.
 export async function rollbackTweetUsed(author) {
   await User.updateOne(
     { _id: author },
-    { $inc: { tweetsUsed: -1 }, $max: { tweetsUsed: 0 } }
+    [{ $set: { tweetsUsed: { $max: [0, { $subtract: ["$tweetsUsed", 1] }] } } }]
   );
 }
