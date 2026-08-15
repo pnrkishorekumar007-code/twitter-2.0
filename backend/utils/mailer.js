@@ -1,14 +1,45 @@
 import nodemailer from "nodemailer";
 
-// Uses Gmail SMTP with an App Password (free) by default.
-// Set EMAIL_USER + EMAIL_PASS (16-char Gmail App Password) in .env
+// Email delivery.
+
+async function sendViaBrevo({ to, subject, html, attachments }) {
+  const fromEmail =
+    process.env.BREVO_FROM_EMAIL || process.env.EMAIL_USER || "noreply@twiller.app";
+  const payload = {
+    sender: { email: fromEmail, name: process.env.BREVO_FROM_NAME || "Twiller" },
+    to: [{ email: to }],
+    subject,
+    htmlContent: html,
+  };
+  if (attachments && attachments.length) {
+    payload.attachment = attachments.map((a) => ({
+      name: a.filename,
+      content: Buffer.isBuffer(a.content) ? a.content.toString("base64") : a.content,
+    }));
+  }
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": process.env.BREVO_API_KEY,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Brevo error ${res.status}: ${text.slice(0, 300)}`);
+  }
+  return { delivered: true };
+}
+
+// Gmail SMTP over port 587 + STARTTLS. Port 465 (implicit TLS, used by
+// service:"gmail") is unreachable from some cloud hosts (e.g. Render).
 let transporter = null;
 
 function getTransporter() {
   if (transporter) return transporter;
   transporter = nodemailer.createTransport({
-    // Gmail over port 587 + STARTTLS. Port 465 (implicit TLS, used by
-    // service:"gmail") is unreachable from some cloud hosts (e.g. Render).
     host: "smtp.gmail.com",
     port: 587,
     secure: false,
@@ -28,6 +59,9 @@ function getTransporter() {
 }
 
 export async function sendMail({ to, subject, html, attachments }) {
+  if (process.env.BREVO_API_KEY) {
+    return sendViaBrevo({ to, subject, html, attachments });
+  }
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.warn("⚠️ EMAIL_USER/EMAIL_PASS not set — email not sent, logging instead:");
     console.log({ to, subject, html });
