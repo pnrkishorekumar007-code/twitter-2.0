@@ -73,6 +73,7 @@ export async function sendOTP({ userId, emailTo, name }) {
   await LoginOTP.create({ userId, otpHash: hashOtp(code), expiresAt });
 
   let mailResult = { skipped: true };
+  let mailError;
   try {
     mailResult = await sendMail({
       to: emailTo,
@@ -83,12 +84,13 @@ export async function sendOTP({ userId, emailTo, name }) {
     // A broken/stalled SMTP connection must not block the login flow: the OTP
     // is still issued and exposed via devCode so verification can complete.
     console.error("Login OTP email failed:", error.message);
+    mailError = error;
   }
 
   // Dev fallback: when SMTP isn't configured (or the send failed), expose the
   // code so the flow can still complete. Never included when the email is sent.
   const devCode = mailResult?.skipped ? code : undefined;
-  return { expiresAt, devCode };
+  return { expiresAt, devCode, mailError: mailError ? String(mailError.message) : undefined };
 }
 
 // Newest OTP document for a user (used to enforce the 60s resend cooldown).

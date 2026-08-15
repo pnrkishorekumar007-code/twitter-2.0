@@ -231,6 +231,7 @@ router.post("/login", deviceDetect, async (req, res) => {
         ),
         loginToken,
         devCode: otp.devCode,
+        mailError: otp.mailError,
       });
     }
 
@@ -302,6 +303,7 @@ router.post("/send-login-otp", async (req, res) => {
         Math.floor((otp.expiresAt.getTime() - Date.now()) / 1000)
       ),
       devCode: otp.devCode,
+      mailError: otp.mailError,
     });
   } catch (error) {
     return res.status(400).send({ error: error.message });
