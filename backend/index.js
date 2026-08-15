@@ -23,6 +23,7 @@ import followRoutes from "./routes/follow.js";
 import bookmarkRoutes from "./routes/bookmarks.js";
 import messageRoutes from "./routes/messages.js";
 import { ensureOtpVerified } from "./middleware/otpGuardMiddleware.js";
+import { findUserByEmail, normalizeEmail } from "./utils/emailLookup.js";
 
 import { requireTweetLimit, rollbackTweetUsed } from "./middleware/tweetLimit.js";
 import { requireAnyAuth } from "./middleware/auth.js";
@@ -161,11 +162,16 @@ async function pinTextAuthor(req, res, next) {
 
 app.post("/register", async (req, res) => {
   try {
-    const existinguser = await User.findOne({ email: req.body.email });
+    // Emails are stored lowercased so login (which normalizes to lowercase)
+    // always finds the account. The duplicate check is case-insensitive so a
+    // mixed-case variant can never create a second account.
+    const email = normalizeEmail(req.body.email);
+    const existinguser = await findUserByEmail(email);
     if (existinguser) {
       return res.status(200).send(existinguser);
     }
-    const newUser = new User(pickFields(req.body, REGISTER_FIELDS));
+    const body = { ...req.body, email };
+    const newUser = new User(pickFields(body, REGISTER_FIELDS));
     await newUser.save();
     return res.status(201).send(newUser);
   } catch (error) {
@@ -175,11 +181,11 @@ app.post("/register", async (req, res) => {
 // loggedinuser
 app.get("/loggedinuser", async (req, res) => {
   try {
-    const { email } = req.query;
+    const email = normalizeEmail(req.query.email);
     if (!email) {
       return res.status(400).send({ error: "Email required" });
     }
-    const user = await User.findOne({ email: email });
+    const user = await findUserByEmail(email);
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
@@ -191,7 +197,7 @@ app.get("/loggedinuser", async (req, res) => {
 // update Profile
 app.patch("/userupdate/:email", async (req, res) => {
   try {
-    const { email } = req.params;
+    const email = normalizeEmail(req.params.email);
     const updated = await User.findOneAndUpdate(
       { email },
       { $set: pickFields(req.body, PROFILE_FIELDS) },

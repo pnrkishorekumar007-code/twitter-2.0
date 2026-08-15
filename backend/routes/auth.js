@@ -21,6 +21,7 @@ import {
 } from "../services/loginOtpService.js";
 import { recordLogin } from "../services/loginHistoryService.js";
 import { getFirebaseAdmin } from "../utils/firebaseAdmin.js";
+import { findUserByEmail } from "../utils/emailLookup.js";
 
 const router = express.Router();
 
@@ -80,7 +81,7 @@ function authorizeLoginToken({ email, loginToken }) {
 router.post("/login/start", deviceDetect, async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    const user = await findUserByEmail(email);
     if (!user) return res.status(404).send({ error: "User not found" });
 
     const { deviceType } = req.deviceInfo;
@@ -161,7 +162,7 @@ router.post("/login", deviceDetect, async (req, res) => {
     const method = req.body?.method === "google" ? "google" : "email";
     if (!email) return res.status(400).send({ error: "Email is required." });
 
-    const user = await User.findOne({ email });
+    const user = await findUserByEmail(email);
     if (!user) return res.status(404).send({ error: "User not found" });
 
     // Best-effort hardening: when a Firebase ID token is attached, make sure it
@@ -386,9 +387,11 @@ router.post("/forgot-password", async (req, res) => {
       });
     }
 
-    // Locate the account (email exact, phone exact, then phone-digits fallback
-    // so "+919876543210" finds a user stored as "9876543210").
-    let user = await User.findOne({ $or: [{ email: identifier }, { phone: identifier }] });
+    // Locate the account (email case-insensitive, phone exact, then phone-digits
+    // fallback so "+919876543210" finds a user stored as "9876543210").
+    let user = isEmail
+      ? await findUserByEmail(identifier)
+      : await User.findOne({ phone: identifier });
     if (!user && isPhone) {
       // Guard: an all-zero / blank number must not collapse to the empty
       // suffix regex /$/ which matches every user and resets the FIRST
