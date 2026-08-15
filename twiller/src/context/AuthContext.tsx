@@ -25,6 +25,7 @@ export interface User {
   bio?: string;
   joinedDate: string;
   email: string;
+  phone?: string;
   website: string;
   location: string;
   verified?: boolean;
@@ -50,7 +51,8 @@ interface AuthContextType {
     email: string,
     password: string,
     username: string,
-    displayName: string
+    displayName: string,
+    phone?: string
   ) => Promise<void>;
   updateProfile: (profileData: {
     displayName: string;
@@ -59,6 +61,7 @@ interface AuthContextType {
     website: string;
     avatar: string;
     banner?: string;
+    phone?: string;
   }) => Promise<void>;
   updateBanner: (bannerUrl: string) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -138,7 +141,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     email: string,
     password: string,
     username: string,
-    displayName: string
+    displayName: string,
+    phone?: string
   ) => {
     setIsLoading(true);
     try {
@@ -157,6 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         displayName,
         avatar: user.photoURL || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
         email: user.email,
+        ...(phone ? { phone } : {}),
       };
       const res = await axiosInstance.post("/register", newuser);
       if (res.data) {

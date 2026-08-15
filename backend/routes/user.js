@@ -28,6 +28,7 @@ const PROFILE_EDITABLE_FIELDS = [
   "avatar",
   "banner",
   "accountType",
+  "phone",
 ];
 
 /**

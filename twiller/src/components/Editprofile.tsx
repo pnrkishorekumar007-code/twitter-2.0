@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import React, { useState } from "react";
 import { CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Camera, ImagePlus, LinkIcon, MapPin, X } from "lucide-react";
+import { Camera, ImagePlus, LinkIcon, MapPin, Phone, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
@@ -66,6 +66,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
     website: user?.website || "",
     avatar: user?.avatar || "",
     banner: user?.banner || "",
+    phone: user?.phone || "",
   });
   const [error, setError] = useState<Record<string, string>>({});
   if (!isopen || !user) return null;
@@ -88,6 +89,13 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
 
     if (formData.location && formData.location.length > 30) {
       newErrors.location = "Location must be 30 characters or less";
+    }
+
+    if (
+      formData.phone &&
+      !/^[+]?[0-9\s\-()]{7,20}$/.test(formData.phone)
+    ) {
+      newErrors.phone = "Enter a valid phone number (with country code)";
     }
 
     setError(newErrors);
@@ -456,6 +464,30 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                       <p className="text-muted-foreground ml-auto">
                         {formData.website.length}/100
                       </p>
+                    </div>
+                  </div>
+                  {/* Phone */}
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-foreground">
+                      Phone
+                    </Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) =>
+                          handleInputChange("phone", e.target.value)
+                        }
+                        className="pl-10 text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-brand/30"
+                        placeholder="+91XXXXXXXXXX (for SMS verification)"
+                        maxLength={20}
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      {error.phone && <p className="text-red-500">{error.phone}</p>}
                     </div>
                   </div>
                 </div>

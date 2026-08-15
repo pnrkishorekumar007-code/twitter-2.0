@@ -131,6 +131,7 @@ const PROFILE_FIELDS = [
   "avatar",
   "banner",
   "accountType",
+  "phone",
 ];
 
 function pickFields(body, allowed) {

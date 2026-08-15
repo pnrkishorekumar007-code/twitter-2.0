@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, Phone } from 'lucide-react';
 
 import LoadingSpinner from './loading-spinner';
 import { Button } from './ui/button';
@@ -34,7 +34,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
     email: '',
     password: '',
     username: '',
-    displayName: ''
+    displayName: '',
+    phone: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -43,7 +44,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
     setLastOpen(true);
     setMode(initialMode);
     setErrors({});
-    setFormData({ email: '', password: '', username: '', displayName: '' });
+    setFormData({ email: '', password: '', username: '', displayName: '', phone: '' });
   } else if (!isOpen && lastOpen) {
     setLastOpen(false);
   }
@@ -87,6 +88,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
       if (!formData.displayName.trim()) {
         newErrors.displayName = 'Display name is required';
+      }
+
+      if (formData.phone && !/^[+]?[0-9\s\-()]{7,20}$/.test(formData.phone)) {
+        newErrors.phone = 'Enter a valid phone number (with country code)';
       }
     }
 
@@ -137,10 +142,16 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
           });
         }
       } else {
-        await signup(formData.email, formData.password, formData.username, formData.displayName);
+        await signup(
+          formData.email,
+          formData.password,
+          formData.username,
+          formData.displayName,
+          formData.phone || undefined
+        );
       }
       onClose();
-      setFormData({ email: '', password: '', username: '', displayName: '' });
+      setFormData({ email: '', password: '', username: '', displayName: '', phone: '' });
       setErrors({});
     } catch (error) {
       // If the device gate rejected the login (e.g. mobile outside the IST
@@ -175,7 +186,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
   const switchMode = () => {
     setMode(mode === 'login' ? 'signup' : 'login');
     setErrors({});
-    setFormData({ email: '', password: '', username: '', displayName: '' });
+    setFormData({ email: '', password: '', username: '', displayName: '', phone: '' });
   };
 
   return (
@@ -245,6 +256,25 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                   </div>
                   {errors.username && (
                     <p className="text-red-400 text-sm">{errors.username}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-white">Phone (optional)</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+91XXXXXXXXXX"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      className="pl-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  {errors.phone && (
+                    <p className="text-red-400 text-sm">{errors.phone}</p>
                   )}
                 </div>
               </>

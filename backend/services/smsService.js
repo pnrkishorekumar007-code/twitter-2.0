@@ -1,14 +1,18 @@
-// SMS delivery for "mobile" OTPs (all languages except French).
+// SMS delivery for "mobile" OTPs (all languages except French) and the phone
+// forgot-password flow.
 //
-// The project ships on free tiers, so no SMS provider is configured by
-// default: when SMS_PROVIDER_API_KEY / SMS_PROVIDER_SECRET are missing, the
-// "SMS" OTP is delivered to the user's email instead (dev fallback) so the
-// end-to-end flow still works. To enable real SMS, pick a provider (Twilio,
-// MSG91, Vonage, ...) and fill in the one place below.
+// Provider: Twilio (free tier works for testing with a verified recipient).
+// Configure via env vars:
+//   SMS_PROVIDER_API_KEY  = Twilio Account SID
+//   SMS_PROVIDER_SECRET   = Twilio Auth Token
+//   SMS_FROM              = your Twilio sender number (E.164, e.g. +1xxxxxxx)
+//
+// When these are missing the SMS is NOT delivered — the caller falls back to
+// email (dev mode) so the end-to-end flow still works on free tiers.
 import { sendMail } from "../utils/mailer.js";
 
 /**
- * Sends an SMS via the configured provider.
+ * Sends an SMS via Twilio.
  *
  * @param {object} opts
  * @param {string} opts.to    E.164 recipient number, e.g. "+919876543210"
@@ -27,40 +31,37 @@ export async function sendSms({ to, text }) {
     return { skipped: true };
   }
 
-  // ---------------------------------------------------------------
-  // PROVIDER HOOK — swap the implementation below for your provider.
-  // Example (Twilio-style REST):
-  //   const res = await fetch("https://api.twilio.com/2010-04-01/Accounts/" + apiKey + "/Messages.json", {
-  //     method: "POST",
-  //     headers: {
-  //       "Authorization": "Basic " + Buffer.from(`${apiKey}:${secret}`).toString("base64"),
-  //       "Content-Type": "application/x-www-form-urlencoded",
-  //     },
-  //     body: new URLSearchParams({ From: process.env.SMS_FROM, To: to, Body: text }),
-  //   });
-  //   if (!res.ok) throw new Error("SMS provider error: " + res.status);
-  //   return { ok: true };
-  // ---------------------------------------------------------------
-
-  // Pluggable generic endpoint: set SMS_PROVIDER_URL to a webhook that
-  // accepts { to, text } and authenticates with the API key in the header.
-  const providerUrl = process.env.SMS_PROVIDER_URL;
-  if (providerUrl) {
-    const res = await fetch(providerUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ to, text }),
-    });
-    if (!res.ok) throw new Error(`SMS provider error: ${res.status}`);
-    return { ok: true };
+  if (!to) {
+    return { skipped: true };
   }
 
-  // No provider URL configured either — treat as not deliverable so the caller
-  // can fall back to the email dev channel.
-  return { skipped: true };
+  // Twilio REST API: https://www.twilio.com/docs/messaging/api
+  const res = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(
+      apiKey
+    )}/Messages.json`,
+    {
+      method: "POST",
+      headers: {
+        Authorization:
+          "Basic " +
+          Buffer.from(`${apiKey}:${secret}`).toString("base64"),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        From: process.env.SMS_FROM,
+        To: to,
+        Body: text,
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error(`SMS provider error: ${res.status} ${detail}`);
+    throw new Error(`SMS provider error: ${res.status}`);
+  }
+  return { ok: true };
 }
 
 /**

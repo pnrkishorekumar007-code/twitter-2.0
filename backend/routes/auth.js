@@ -6,6 +6,7 @@ import { issueOtp, verifyOtp } from "../utils/otp.js";
 import { generateLetterPassword } from "../utils/passwordGenerator.js";
 import { setFirebaseUserPassword } from "../utils/firebaseAdmin.js";
 import { sendPasswordResetEmail } from "../utils/mailer.js";
+import { sendSms } from "../services/smsService.js";
 import {
   signAuthToken,
   signLoginToken,
@@ -428,14 +429,37 @@ router.post("/forgot-password", async (req, res) => {
       console.error("Firebase password update failed:", err.message);
     }
 
-    // Phone recovery: return the generated password for testing.
+    // Phone recovery: send the new password by SMS (never returned on screen
+    // when a provider is configured).
     if (isPhone) {
-      return res.status(200).send({
-        success: true,
-        message: "Password reset successful.",
-        newPassword,
-        firebaseUpdated,
-      });
+      try {
+        const smsResult = await sendSms({
+          to: user.phone || identifier,
+          text: `Your new Twiller password is: ${newPassword}`,
+        });
+        if (smsResult?.skipped) {
+          return res.status(200).send({
+            success: true,
+            message: "Password reset successful.",
+            newPassword,
+            firebaseUpdated,
+            note: "No SMS provider is configured — your new password is shown here instead.",
+          });
+        }
+        return res.status(200).send({
+          success: true,
+          message: "Password reset successful. Your new password has been sent to your phone.",
+          firebaseUpdated,
+        });
+      } catch (smsErr) {
+        console.error("Password reset SMS failed:", smsErr.message);
+        return res.status(200).send({
+          success: true,
+          message: "Password reset successful.",
+          newPassword,
+          note: "The SMS could not be sent — your new password is shown here instead.",
+        });
+      }
     }
 
     // Email recovery: send the password by email.
