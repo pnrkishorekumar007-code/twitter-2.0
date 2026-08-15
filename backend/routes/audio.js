@@ -111,7 +111,7 @@ async function sendOtpHandler(req, res) {
       });
     }
 
-    const { expiresAt, devCode } = await sendAudioOTP({
+    const { expiresAt, devCode, mailError } = await sendAudioOTP({
       userId: req.audioUser._id,
       emailTo: req.audioUser.email,
       name: req.audioUser.displayName || req.audioUser.username,
@@ -119,10 +119,13 @@ async function sendOtpHandler(req, res) {
 
     return res.status(200).send({
       success: true,
-      message: "Verification code sent to your email.",
+      message: mailError
+        ? "The email could not be sent - use the code shown instead."
+        : "Verification code sent to your email.",
       expiresAt,
       resendAfterSec: RESEND_COOLDOWN_MS / 1000,
       devCode,
+      mailError,
     });
   } catch (error) {
     return specError(res, 400, error.message);
