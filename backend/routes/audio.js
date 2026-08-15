@@ -6,7 +6,7 @@ import Tweet from "../models/tweet.js";
 import AudioTweet from "../models/AudioTweet.js";
 import { uploadAudio } from "../middleware/upload.js";
 import { requireISTWindow } from "../middleware/timeWindow.js";
-import { requireTweetLimit, incrementTweetUsed } from "../middleware/tweetLimit.js";
+import { requireTweetLimit, rollbackTweetUsed } from "../middleware/tweetLimit.js";
 import { requireAnyAuth } from "../middleware/auth.js";
 import { verifyAuthToken } from "../utils/jwt.js";
 import { rateLimit } from "../utils/rateLimiter.js";
@@ -164,6 +164,8 @@ router.post("/audio/verify-otp", requireAnyAuth, resolveAudioUser, async (req, r
 });
 
 // POST /audio/upload — OTP-verified upload, only inside the IST window.
+// requireTweetLimit reserves the tweet slot atomically, so every early-exit
+// path below must release it with rollbackTweetUsed before responding.
 router.post(
   "/audio/upload",
   requireAnyAuth,
@@ -172,6 +174,14 @@ router.post(
   resolveAudioUser,
   requireTweetLimit,
   async (req, res) => {
+    const releaseSlot = () =>
+      rollbackTweetUsed(req.audioUser._id).catch(() => {});
+    const fail = (status, message) => {
+      releaseSlot();
+      return specError(res, status, message);
+    };
+
+    let persisted = false;
     try {
       // Authorization: short-lived audio-upload token from /audio/verify-otp,
       // or (legacy) the code itself verified inline.
@@ -191,14 +201,14 @@ router.post(
         authorized = otpResult.ok;
       }
       if (!authorized) {
-        return specError(res, 401, "Upload not authorized. Verify your code first.");
+        return fail(401, "Upload not authorized. Verify your code first.");
       }
 
       if (!req.file) {
-        return specError(res, 400, "No audio file provided");
+        return fail(400, "No audio file provided");
       }
       if (req.file.size > MAX_SIZE_BYTES) {
-        return specError(res, 400, "Audio size must not exceed 100 MB.");
+        return fail(400, "Audio size must not exceed 100 MB.");
       }
 
       // Upload to Cloudinary (audio is treated as "video" resource type).
@@ -218,7 +228,7 @@ router.post(
         serverDuration > 0 ? serverDuration : Number(durationSeconds || 0);
       if (duration > MAX_DURATION_SEC) {
         await getCloudinary().uploader.destroy(result.public_id).catch(() => {});
-        return specError(res, 400, "Audio must not exceed 5 minutes.");
+        return fail(400, "Audio must not exceed 5 minutes.");
       }
 
       const safeCaption = String(caption || "").trim().slice(0, 500);
@@ -232,6 +242,7 @@ router.post(
         audioSizeBytes: req.file.size,
       });
       await tweet.save();
+      persisted = true;
       notifyKeywordTweet(tweet);
 
       const audioTweet = await AudioTweet.create({
@@ -244,8 +255,6 @@ router.post(
         caption: safeCaption,
       });
 
-      await incrementTweetUsed(req.audioUser._id);
-
       return res.status(201).send({
         success: true,
         message: "Audio tweet posted.",
@@ -253,6 +262,7 @@ router.post(
         audioTweet,
       });
     } catch (error) {
+      if (!persisted) releaseSlot();
       return specError(res, 400, error.message);
     }
   }

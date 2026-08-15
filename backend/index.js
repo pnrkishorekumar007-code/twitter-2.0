@@ -24,7 +24,7 @@ import bookmarkRoutes from "./routes/bookmarks.js";
 import messageRoutes from "./routes/messages.js";
 import { ensureOtpVerified } from "./middleware/otpGuardMiddleware.js";
 
-import { requireTweetLimit, incrementTweetUsed } from "./middleware/tweetLimit.js";
+import { requireTweetLimit, rollbackTweetUsed } from "./middleware/tweetLimit.js";
 import { requireAnyAuth } from "./middleware/auth.js";
 
 dotenv.config();
@@ -105,14 +105,66 @@ mongoose
     console.error("❌ MongoDB connection error:", err.message);
   });
 
-//Register
+// Register — only whitelisted profile fields are persisted. Plan/tweet-limit
+// fields are never accepted from the client (otherwise anyone could self-assign
+// GOLD just by posting { subscriptionPlan: "GOLD" }).
+const REGISTER_FIELDS = [
+  "username",
+  "displayName",
+  "avatar",
+  "email",
+  "phone",
+  "banner",
+  "bio",
+  "location",
+  "website",
+  "preferredLanguage",
+];
+
+// Only these profile fields are editable through the (legacy) unauthenticated
+// /userupdate/:email route. Subscription fields are strictly forbidden here.
+const PROFILE_FIELDS = [
+  "displayName",
+  "bio",
+  "location",
+  "website",
+  "avatar",
+  "banner",
+  "accountType",
+];
+
+function pickFields(body, allowed) {
+  const out = {};
+  for (const key of allowed) {
+    if (body[key] !== undefined) out[key] = body[key];
+  }
+  return out;
+}
+
+// Pins the tweet author to the authenticated session. The client-supplied
+// author id is ignored so users can't post (or burn quota) as someone else.
+async function pinTextAuthor(req, res, next) {
+  try {
+    const user = await User.findOne({ email: req.user?.email || "" });
+    if (!user) {
+      return res.status(404).send({ error: "User not found" });
+    }
+    req.body = req.body || {};
+    req.body.author = String(user._id);
+    req.body.authorId = String(user._id);
+    next();
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+}
+
 app.post("/register", async (req, res) => {
   try {
     const existinguser = await User.findOne({ email: req.body.email });
     if (existinguser) {
       return res.status(200).send(existinguser);
     }
-    const newUser = new User(req.body);
+    const newUser = new User(pickFields(req.body, REGISTER_FIELDS));
     await newUser.save();
     return res.status(201).send(newUser);
   } catch (error) {
@@ -141,7 +193,7 @@ app.patch("/userupdate/:email", async (req, res) => {
     const { email } = req.params;
     const updated = await User.findOneAndUpdate(
       { email },
-      { $set: req.body },
+      { $set: pickFields(req.body, PROFILE_FIELDS) },
       { new: true, upsert: false }
     );
     return res.status(200).send(updated);
@@ -153,12 +205,31 @@ app.patch("/userupdate/:email", async (req, res) => {
 // Tweet API
 
 // POST — enforces the subscription tweet-limit (per plan: FREE=1, BRONZE=3,
-// SILVER=5, GOLD=unlimited). The counter increments only on successful save.
-app.post("/post", requireTweetLimit, async (req, res) => {
+// SILVER=5, GOLD=unlimited). The counter increments only on successful save
+// and the author is pinned from the authenticated session.
+app.post("/post", pinTextAuthor, requireTweetLimit, async (req, res) => {
   try {
-    const tweet = new Tweet(req.body);
-    await tweet.save();
-    await incrementTweetUsed(req.body.author);
+    // Audio tweets must go through /audio/upload (OTP + 2-7PM window); posting
+    // one via the text endpoint would bypass those protections.
+    if (req.body?.type === "audio") {
+      await rollbackTweetUsed(req.body.author);
+      return res.status(400).send({
+        error: "Audio tweets must be posted through the audio upload flow.",
+      });
+    }
+
+    const tweet = new Tweet({
+      author: req.body.author,
+      content: String(req.body?.content || "").trim().slice(0, 200),
+      image: req.body?.image || null,
+      type: "text",
+    });
+    try {
+      await tweet.save();
+    } catch (saveErr) {
+      await rollbackTweetUsed(req.body.author);
+      throw saveErr;
+    }
     notifyKeywordTweet(tweet);
     await tweet.populate("author");
     return res.status(201).send(tweet);

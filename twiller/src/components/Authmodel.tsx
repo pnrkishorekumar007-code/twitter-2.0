@@ -26,7 +26,7 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) {
-  const { login, signup, logout, isLoading } = useAuth();
+  const { login, signup, logout, completeLogin, isLoading } = useAuth();
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
@@ -128,7 +128,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
         }
 
         if (loginRes.data?.token) {
-          localStorage.setItem('twiller-jwt', loginRes.data.token);
+          // Hydrate the session state (user + token) so direct logins on
+          // non-Chrome browsers actually sign the user in. The OTP flow calls
+          // completeLogin on the /verify-login-otp page instead.
+          completeLogin({
+            token: loginRes.data.token,
+            user: loginRes.data.user,
+          });
         }
       } else {
         await signup(formData.email, formData.password, formData.username, formData.displayName);

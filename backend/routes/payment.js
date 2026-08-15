@@ -93,6 +93,7 @@ router.post(
 router.post(
   "/verify",
   requireAnyAuth,
+  requirePaymentWindow,
   async (req, res) => {
     try {
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =

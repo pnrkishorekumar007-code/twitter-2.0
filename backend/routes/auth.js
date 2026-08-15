@@ -322,6 +322,17 @@ router.post("/verify-login-otp", deviceDetect, async (req, res) => {
     const user = await User.findById(authz.userId);
     if (!user) return res.status(404).send({ error: "User not found" });
 
+    // Re-enforce the mobile device window at verification time too: a mobile
+    // user who started login inside the window must not be able to complete it
+    // after it closes.
+    const { deviceType } = req.deviceInfo;
+    if (isMobileClass(deviceType) && !isWithinISTWindow(10, 0, 13, 0)) {
+      return res.status(403).send({
+        success: false,
+        message: "Mobile login is allowed only between 10:00 AM and 1:00 PM IST.",
+      });
+    }
+
     if (!code || !/^\d{6}$/.test(String(code))) {
       return res.status(400).send({ error: "Please enter the 6-digit code." });
     }
@@ -378,8 +389,13 @@ router.post("/forgot-password", async (req, res) => {
     // so "+919876543210" finds a user stored as "9876543210").
     let user = await User.findOne({ $or: [{ email: identifier }, { phone: identifier }] });
     if (!user && isPhone) {
+      // Guard: an all-zero / blank number must not collapse to the empty
+      // suffix regex /$/ which matches every user and resets the FIRST
+      // account's password instead of the intended one.
       const digits = normalizePhone(identifier).replace(/^0+/, "");
-      user = await User.findOne({ phone: { $regex: new RegExp(`${digits}$`) } });
+      if (digits.length >= 7) {
+        user = await User.findOne({ phone: { $regex: new RegExp(`${digits}$`) } });
+      }
     }
     if (!user) {
       return res.status(404).send({ error: "No account found with that email/phone" });

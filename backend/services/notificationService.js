@@ -2,17 +2,14 @@ import User from "../models/user.js";
 import { containsKeyword } from "../utils/keywordDetector.js";
 import { broadcastKeywordTweet } from "../socket.js";
 
-const MAX_CONTENT_LENGTH = 280;
-
-// Strip HTML, collapse whitespace, and cap the length so a notification body
-// is always short and clean.
+// Strip HTML and collapse whitespace so a notification body is clean. The
+// content is intentionally NOT truncated — the spec requires the full tweet.
 function sanitizeContent(text) {
   if (typeof text !== "string") return "";
   return text
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, MAX_CONTENT_LENGTH);
+    .trim();
 }
 
 /**

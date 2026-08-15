@@ -32,6 +32,7 @@ const UserSchema = new mongoose.Schema({
   },
   tweetLimit: { type: Number, default: 1 },
   tweetsUsed: { type: Number, default: 0 },
+  quotaMonth: { type: String, default: null }, // "YYYY-MM" (IST) — resets tweetsUsed monthly
   subscriptionStartDate: { type: Date, default: null },
   subscriptionEndDate: { type: Date, default: null },
   paymentStatus: { type: String, default: "inactive" },
