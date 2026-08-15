@@ -3,7 +3,7 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 import User from "../models/user.js";
 import Subscription from "../models/subscription.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAnyAuth } from "../middleware/auth.js";
 import { requirePaymentWindow } from "../middleware/paymentWindow.js";
 import { paymentWindowStatus } from "../utils/paymentWindow.js";
 import { PLANS, storedTweetLimit } from "../utils/plans.js";
@@ -43,7 +43,7 @@ router.get("/status", (req, res) => res.status(200).send(paymentWindowStatus()))
  */
 router.post(
   "/create-order",
-  requireAuth,
+  requireAnyAuth,
   requirePaymentWindow,
   async (req, res) => {
     try {
@@ -92,8 +92,7 @@ router.post(
  */
 router.post(
   "/verify",
-  requireAuth,
-  requirePaymentWindow,
+  requireAnyAuth,
   async (req, res) => {
     try {
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =

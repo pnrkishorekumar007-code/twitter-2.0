@@ -341,6 +341,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // block a successful Google sign-in.
       }
     } catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (
+        code === "auth/popup-closed-by-user" ||
+        code === "auth/cancelled-popup-request"
+      ) {
+        // User closed the popup / cancelled — not a failure.
+        console.log("Google sign-in popup closed by the user.");
+        return;
+      }
+      if (code === "auth/popup-blocked") {
+        alert("Pop-up blocked. Allow pop-ups for this site and try again.");
+        return;
+      }
       console.error("Google Sign-In Error:", error);
       alert(getErrorMessage(error, "Login failed"));
     } finally {

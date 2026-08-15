@@ -104,7 +104,7 @@ function loadRazorpayScript() {
 }
 
 export default function PricingPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, completeLogin } = useAuth();
   const { toast } = useToast();
   const [plans, setPlans] = useState<Partial<Record<PlanKey, PlanPricing>>>({});
   const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null);
@@ -164,7 +164,12 @@ export default function PricingPage() {
         prefill: { email: user.email, name: user.displayName },
         handler: async (response: RazorpayResponse) => {
           try {
-            await axiosInstance.post("/payment/verify", response);
+            const verifyRes = await axiosInstance.post("/payment/verify", response);
+            // Apply the freshly-activated plan immediately so the UI updates
+            // even before the follow-up refresh completes.
+            if (verifyRes.data?.user) {
+              completeLogin({ user: verifyRes.data.user });
+            }
             await refreshUser();
             toast("Subscription activated! Invoice emailed to you.", "success");
           } catch (err) {
