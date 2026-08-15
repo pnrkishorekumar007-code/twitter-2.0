@@ -10,7 +10,7 @@ interface LanguageContextType {
   t: (key: string) => string;
   requestLanguageOtp: (
     target: LangCode
-  ) => Promise<{ channel: string; deliveredTo?: string; devCode?: string; resendAfterSec?: number }>;
+  ) => Promise<{ channel: string; deliveredTo?: string; resendAfterSec?: number }>;
   verifyLanguageOtp: (target: LangCode, code: string) => Promise<boolean>;
   getCurrentLanguage: () => Promise<LangCode | undefined>;
 }
@@ -105,7 +105,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res.data as {
       channel: string;
       deliveredTo?: string;
-      devCode?: string;
       resendAfterSec?: number;
     };
   };

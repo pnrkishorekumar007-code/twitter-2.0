@@ -98,13 +98,13 @@ router.post("/login/start", deviceDetect, async (req, res) => {
     const isMicrosoft = isMicrosoftBrowser(browser);
 
     if (isChrome) {
-      const { devCode } = await issueOtp({
+      await issueOtp({
         identifier: user.email,
         purpose: "login",
         emailTo: user.email,
         label: "Login verification",
       });
-      return res.status(200).send({ requiresOtp: true, channel: "email", devCode });
+      return res.status(200).send({ requiresOtp: true, channel: "email" });
     }
 
     // Microsoft browsers (or anything else) skip extra auth
@@ -232,8 +232,6 @@ router.post("/login", deviceDetect, async (req, res) => {
           Math.floor((otp.expiresAt.getTime() - Date.now()) / 1000)
         ),
         loginToken,
-        devCode: otp.devCode,
-        mailError: otp.mailError,
       });
     }
 
@@ -304,8 +302,6 @@ router.post("/send-login-otp", async (req, res) => {
         1,
         Math.floor((otp.expiresAt.getTime() - Date.now()) / 1000)
       ),
-      devCode: otp.devCode,
-      mailError: otp.mailError,
     });
   } catch (error) {
     return res.status(400).send({ error: error.message });
@@ -444,9 +440,8 @@ router.post("/forgot-password", async (req, res) => {
           return res.status(200).send({
             success: true,
             message: "Password reset successful.",
-            newPassword,
             firebaseUpdated,
-            note: "No SMS provider is configured — your new password is shown here instead.",
+            note: "The new password could not be sent by SMS (no SMS provider configured).",
           });
         }
         return res.status(200).send({
@@ -459,8 +454,8 @@ router.post("/forgot-password", async (req, res) => {
         return res.status(200).send({
           success: true,
           message: "Password reset successful.",
-          newPassword,
-          note: "The SMS could not be sent — your new password is shown here instead.",
+          firebaseUpdated,
+          note: "The SMS could not be sent. Please contact support to recover your password.",
         });
       }
     }
@@ -471,9 +466,9 @@ router.post("/forgot-password", async (req, res) => {
       if (mailResult?.skipped) {
         return res.status(200).send({
           success: true,
-          message: "Password reset successful. Check your email for your new password.",
-          newPassword,
-          note: "EMAIL_USER/EMAIL_PASS are not configured, so the password could not be emailed — it is shown here instead.",
+          message: "Password reset successful.",
+          firebaseUpdated,
+          note: "The email could not be sent (email service not configured).",
         });
       }
       return res.status(200).send({
@@ -486,8 +481,8 @@ router.post("/forgot-password", async (req, res) => {
       return res.status(200).send({
         success: true,
         message: "Password reset successful.",
-        newPassword,
-        note: "The email could not be sent — your new password is shown here instead.",
+        firebaseUpdated,
+        note: "The email could not be sent. Please contact support to recover your password.",
       });
     }
   } catch (error) {

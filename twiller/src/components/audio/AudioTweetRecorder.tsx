@@ -22,7 +22,6 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
   const [error, setError] = useState("");
   const [posted, setPosted] = useState(false);
   const [otpOpen, setOtpOpen] = useState(false);
-  const [otpDevCode, setOtpDevCode] = useState<string | undefined>(undefined);
   const [audioToken, setAudioToken] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -45,7 +44,6 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
     setDuration(0);
     setCaption("");
     setAudioToken(null);
-    setOtpDevCode(undefined);
     setProgress(0);
     setError("");
   };
@@ -107,7 +105,6 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
   const sendOtp = async (openModal = true) => {
     if (!user) return;
     const res = await axiosInstance.post("/audio/send-otp", { email: user.email });
-    setOtpDevCode(res.data?.devCode);
     if (openModal) setOtpOpen(true);
   };
 
@@ -135,7 +132,6 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
       setDuration(0);
       setCaption("");
       setAudioToken(null);
-      setOtpDevCode(undefined);
       setPosted(true);
       onPosted();
     } catch (err) {
@@ -173,7 +169,6 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
     const token = res.data?.audioToken;
     if (!token) throw new Error("Verification incomplete. Please try again.");
     setAudioToken(token);
-    setOtpDevCode(undefined);
     // Modal closes after this resolves; upload runs with its own progress UI.
     void uploadWithToken(token);
   };
@@ -269,12 +264,11 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
         </Button>
       )}
 
-      <OtpModal
-        open={otpOpen}
-        title="Verify to post audio"
-        description="Enter the 6-digit code sent to your registered email."
-        devCode={otpDevCode}
-        onVerify={onVerify}
+        <OtpModal
+          open={otpOpen}
+          title="Verify to post audio"
+          description="Enter the 6-digit code sent to your registered email."
+          onVerify={onVerify}
         onClose={() => setOtpOpen(false)}
         onResend={onResend}
         resendCooldownSec={60}

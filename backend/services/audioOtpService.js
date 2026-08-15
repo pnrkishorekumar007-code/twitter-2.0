@@ -59,7 +59,7 @@ function audioOtpEmailTemplate({ name, code }) {
  * Creates a fresh audio-tweet OTP for a user and emails it. Any previous
  * unconsumed code is invalidated so only the newest code can be redeemed.
  *
- * @returns {Promise<{ expiresAt: Date, devCode?: string }>}
+ * @returns {Promise<{ expiresAt: Date }>}
  */
 export async function sendAudioOTP({ userId, emailTo, name }) {
   const code = generateOTP();
@@ -68,25 +68,17 @@ export async function sendAudioOTP({ userId, emailTo, name }) {
   await AudioTweetOTP.deleteMany({ userId });
   await AudioTweetOTP.create({ userId, otpHash: hashOtp(code), expiresAt });
 
-  let devCode;
-  let mailError;
-  try {
-    const mailResult = await sendMail({
-      to: emailTo,
-      subject: "Audio Tweet Verification Code",
-      html: audioOtpEmailTemplate({ name, code }),
-    });
-    // Dev fallback: when SMTP isn't configured, expose the code so local testing
-    // can complete the flow. Never included when the email is actually sent.
-    if (mailResult?.skipped) devCode = code;
-  } catch (error) {
-    // Email delivery failed (e.g. invalid Brevo key / blocked SMTP). Don't
-    // leave the user stuck: expose the code on screen so the audio tweet can
-    // still be posted, mirroring the login-OTP fallback behavior.
-    devCode = code;
-    mailError = error.message;
+  // The code is delivered to the user's email only — it is never shown on
+  // screen. Any delivery failure is surfaced to the caller as an error.
+  const mailResult = await sendMail({
+    to: emailTo,
+    subject: "Audio Tweet Verification Code",
+    html: audioOtpEmailTemplate({ name, code }),
+  });
+  if (mailResult?.skipped) {
+    throw new Error("The verification email could not be sent (email service not configured).");
   }
-  return { expiresAt, devCode, mailError };
+  return { expiresAt };
 }
 
 // Newest OTP document for a user (used to enforce the 60s resend cooldown).

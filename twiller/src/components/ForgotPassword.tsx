@@ -15,7 +15,6 @@ const PHONE_RE = /^\+?[\d\s().-]{7,20}$/;
 
 interface ResetResult {
   message?: string;
-  newPassword?: string;
   note?: string;
   firebaseUpdated?: boolean;
 }
@@ -52,12 +51,7 @@ export default function ForgotPassword() {
         identifier: identifier.trim(),
       });
       setResult(res.data);
-      toast(
-        res.data?.newPassword
-          ? "Password reset successful"
-          : "Check your email for the new password",
-        "success"
-      );
+      toast("Check your email for the new password", "success");
     } catch (err) {
       const msg = getErrorMessage(err);
       setFieldError(msg);
@@ -83,16 +77,6 @@ export default function ForgotPassword() {
             <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
             {result.message}
           </p>
-          {result.newPassword && (
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                New password
-              </p>
-              <p className="font-mono text-lg font-bold tracking-widest bg-black/40 border border-border rounded-lg px-3 py-2 break-all">
-                {result.newPassword}
-              </p>
-            </div>
-          )}
           {result.note && (
             <p className="text-xs text-amber-500">{result.note}</p>
           )}

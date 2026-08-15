@@ -60,7 +60,7 @@ function loginOtpEmailTemplate({ name, code }) {
  * Any previous unconsumed code for that user is invalidated so only the newest
  * code can be redeemed (prevents stale-code confusion/replay).
  *
- * @returns {Promise<{ expiresAt: Date, devCode?: string }>}
+ * @returns {Promise<{ expiresAt: Date }>}
  */
 export async function sendOTP({ userId, emailTo, name }) {
   const code = generateOTP();
@@ -72,25 +72,17 @@ export async function sendOTP({ userId, emailTo, name }) {
   );
   await LoginOTP.create({ userId, otpHash: hashOtp(code), expiresAt });
 
-  let mailResult = { skipped: true };
-  let mailError;
-  try {
-    mailResult = await sendMail({
-      to: emailTo,
-      subject: "Login Verification Code",
-      html: loginOtpEmailTemplate({ name, code }),
-    });
-  } catch (error) {
-    // A broken/stalled SMTP connection must not block the login flow: the OTP
-    // is still issued and exposed via devCode so verification can complete.
-    console.error("Login OTP email failed:", error.message);
-    mailError = error;
+  // The code is delivered to the user's email only — it is never shown on
+  // screen. Any delivery failure is surfaced to the caller as an error.
+  const mailResult = await sendMail({
+    to: emailTo,
+    subject: "Login Verification Code",
+    html: loginOtpEmailTemplate({ name, code }),
+  });
+  if (mailResult?.skipped) {
+    throw new Error("The verification email could not be sent (email service not configured).");
   }
-
-  // Dev fallback: when SMTP isn't configured (or the send failed), expose the
-  // code so the flow can still complete. Never included when the email is sent.
-  const devCode = mailResult?.skipped ? code : undefined;
-  return { expiresAt, devCode, mailError: mailError ? String(mailError.message) : undefined };
+  return { expiresAt };
 }
 
 // Newest OTP document for a user (used to enforce the 60s resend cooldown).

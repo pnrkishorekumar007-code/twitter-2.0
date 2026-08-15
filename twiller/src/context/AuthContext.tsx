@@ -320,9 +320,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             String(Date.now() + (res.data.expiresIn ?? 300) * 1000)
           );
           localStorage.setItem("twiller-login-method", "google");
-          if (res.data.devCode) {
-            localStorage.setItem("twiller-login-dev-code", res.data.devCode);
-          }
           router.push(`/verify-login-otp?email=${encodeURIComponent(userData.email)}`);
           return;
         }

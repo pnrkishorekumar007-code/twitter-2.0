@@ -124,9 +124,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             String(Date.now() + (loginRes.data.expiresIn ?? 300) * 1000)
           );
           localStorage.setItem('twiller-login-method', 'email');
-          if (loginRes.data.devCode) {
-            localStorage.setItem('twiller-login-dev-code', loginRes.data.devCode);
-          }
           onClose();
           router.push(`/verify-login-otp?email=${encodeURIComponent(formData.email)}`);
           return;

@@ -13,7 +13,6 @@ interface OtpModalProps {
   description: string;
   onVerify: (code: string) => Promise<void>;
   onClose: () => void;
-  devCode?: string;
   /** When provided, a "Resend code" button with countdown is shown. */
   onResend?: () => Promise<void>;
   resendCooldownSec?: number;
@@ -25,7 +24,6 @@ export default function OtpModal({
   description,
   onVerify,
   onClose,
-  devCode,
   onResend,
   resendCooldownSec = 60,
 }: OtpModalProps) {
@@ -128,12 +126,6 @@ export default function OtpModal({
       >
         <h3 className="text-foreground text-xl font-bold mb-1">{title}</h3>
         <p className="text-muted-foreground text-sm mb-4">{description}</p>
-        {devCode && (
-          <div className="bg-muted border border-border rounded-lg p-2 mb-2 text-center">
-            <p className="text-muted-foreground text-xs">{t("otp_dev_code")}</p>
-            <p className="text-foreground text-xl font-bold tracking-widest">{devCode}</p>
-          </div>
-        )}
         <Input
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}

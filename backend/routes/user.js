@@ -229,7 +229,7 @@ async function requestLanguageOtpHandler(req, res) {
     }
 
     const channel = getChannelForLanguage(targetLanguage);
-    const { expiresAt, devCode, deliveredTo, mailError } = await sendLanguageOtp({
+    const { expiresAt, deliveredTo } = await sendLanguageOtp({
       userId: user._id,
       targetLanguage,
       emailTo: user.email,
@@ -238,17 +238,14 @@ async function requestLanguageOtpHandler(req, res) {
     });
 
     return res.status(200).send({
-      message: mailError
-        ? "The email could not be sent - use the code shown instead."
-        : channel === "email"
-        ? "Verification code sent to your email."
-        : "Verification code sent to your registered mobile number.",
+      message:
+        channel === "email"
+          ? "Verification code sent to your email."
+          : "Verification code sent to your registered mobile number.",
       channel,
       deliveredTo,
       expiresAt,
       resendAfterSec: RESEND_COOLDOWN_MS / 1000,
-      devCode,
-      mailError,
     });
   } catch (error) {
     return res.status(400).send({ error: error.message });

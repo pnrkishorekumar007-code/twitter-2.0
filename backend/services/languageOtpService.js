@@ -88,7 +88,7 @@ function smsTemplate({ code }) {
  * correct channel (email for French, SMS otherwise). Any previous code for the
  * user is purged so only the newest code can be redeemed.
  *
- * @returns {Promise<{ channel: string, deliveredTo: "email"|"sms", expiresAt: Date, devCode?: string }>}
+ * @returns {Promise<{ channel: string, deliveredTo: "email"|"sms", expiresAt: Date }>}
  */
 export async function sendLanguageOtp({ userId, targetLanguage, emailTo, phone, name }) {
   if (!LANGUAGE_CODES.includes(targetLanguage)) {
@@ -108,49 +108,33 @@ export async function sendLanguageOtp({ userId, targetLanguage, emailTo, phone, 
     expiresAt,
   });
 
-  let devCode;
   let deliveredTo;
-  let mailError;
   if (channel === "email") {
-    try {
-      const mailResult = await sendMail({
-        to: emailTo,
-        subject: "Language Change Verification",
-        html: languageOtpEmailTemplate({ name, code, targetLanguage }),
-      });
-      deliveredTo = "email";
-      devCode = mailResult?.skipped ? code : undefined;
-    } catch (error) {
-      // Email delivery failed (e.g. invalid Brevo key / blocked SMTP). Don't
-      // leave the user stuck: expose the code on screen, mirroring the login
-      // and audio-OTP fallback behavior.
-      deliveredTo = "email";
-      devCode = code;
-      mailError = error.message;
+    const mailResult = await sendMail({
+      to: emailTo,
+      subject: "Language Change Verification",
+      html: languageOtpEmailTemplate({ name, code, targetLanguage }),
+    });
+    if (mailResult?.skipped) {
+      throw new Error("The verification email could not be sent (email service not configured).");
     }
+    deliveredTo = "email";
   } else {
-    try {
-      const smsResult = await sendSms({
-        to: phone || "",
-        text: smsTemplate({ code }),
-      });
-      if (smsResult?.skipped) {
-        // Dev fallback (free tier): deliver the "mobile" OTP to the email so the
-        // flow still completes end-to-end until a real SMS provider is added.
-        const mailResult = await sendMobileOtpFallback({ emailTo, text: smsTemplate({ code }) });
-        deliveredTo = "email";
-        devCode = mailResult?.skipped ? code : undefined;
-      } else {
-        deliveredTo = "sms";
-      }
-    } catch (error) {
+    const smsResult = await sendSms({
+      to: phone || "",
+      text: smsTemplate({ code }),
+    });
+    if (smsResult?.skipped) {
+      // Email fallback for the "mobile" channel until a real SMS provider is
+      // configured — the code still goes to the user's email, never on screen.
+      await sendMobileOtpFallback({ emailTo, text: smsTemplate({ code }) });
       deliveredTo = "email";
-      devCode = code;
-      mailError = error.message;
+    } else {
+      deliveredTo = "sms";
     }
   }
 
-  return { channel, deliveredTo, expiresAt, devCode, mailError };
+  return { channel, deliveredTo, expiresAt };
 }
 
 // Newest OTP document for a user (used to enforce the 60s resend cooldown).
