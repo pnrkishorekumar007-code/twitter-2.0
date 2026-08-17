@@ -25,9 +25,8 @@ export async function sendSms({ to, text }) {
 
   if (!apiKey || !secret) {
     console.warn(
-      "⚠️ SMS_PROVIDER_API_KEY / SMS_PROVIDER_SECRET not set — SMS not sent, logging instead:"
+      "⚠️ SMS_PROVIDER_API_KEY / SMS_PROVIDER_SECRET not set — SMS not sent, falling back to email."
     );
-    console.log({ to, text });
     return { skipped: true };
   }
 
@@ -35,33 +34,43 @@ export async function sendSms({ to, text }) {
     return { skipped: true };
   }
 
-  // Twilio REST API: https://www.twilio.com/docs/messaging/api
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(
-      apiKey
-    )}/Messages.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization:
-          "Basic " +
-          Buffer.from(`${apiKey}:${secret}`).toString("base64"),
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        From: process.env.SMS_FROM,
-        To: to,
-        Body: text,
-      }),
-    }
-  );
+  try {
+    // Twilio REST API: https://www.twilio.com/docs/messaging/api
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(
+        apiKey
+      )}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          Authorization:
+            "Basic " +
+            Buffer.from(`${apiKey}:${secret}`).toString("base64"),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          From: process.env.SMS_FROM,
+          To: to,
+          Body: text,
+        }),
+      }
+    );
 
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    console.error(`SMS provider error: ${res.status} ${detail}`);
-    throw new Error(`SMS provider error: ${res.status}`);
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      // 401 = bad credentials, 400 = invalid phone number, etc.
+      // Return skipped so the caller can fall back to email instead of crashing.
+      console.warn(
+        `⚠️ SMS provider error ${res.status}: ${detail.slice(0, 200)}. Falling back to email.`
+      );
+      return { skipped: true };
+    }
+    return { ok: true };
+  } catch (err) {
+    // Network error, DNS failure, timeout — fall back to email.
+    console.warn(`⚠️ SMS provider request failed: ${err.message}. Falling back to email.`);
+    return { skipped: true };
   }
-  return { ok: true };
 }
 
 /**

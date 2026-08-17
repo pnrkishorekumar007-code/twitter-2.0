@@ -1,10 +1,34 @@
 import nodemailer from "nodemailer";
 
-// Email delivery.
+// ---------------------------------------------------------------------------
+// Email delivery — Brevo (preferred) with automatic Gmail SMTP fallback.
+//
+// Hierarchy:
+//   1. Brevo Transactional Email API (when BREVO_API_KEY starts with xkeysib-)
+//   2. Gmail SMTP (when EMAIL_USER + EMAIL_PASS are set)
+//   3. Skip + log (no provider configured)
+//
+// If Brevo fails for any reason other than rate-limiting, the mailer
+// automatically falls back to Gmail SMTP so that OTP / transactional emails
+// are never silently dropped due to a single provider misconfiguration.
+// ---------------------------------------------------------------------------
+
+/** Human-readable Brevo status code messages (never expose API keys). */
+const BREVO_ERROR_MAP = {
+  400: "Brevo rejected the request — check that BREVO_FROM_EMAIL is a verified sender in your Brevo dashboard.",
+  401: "Brevo authentication failed — BREVO_API_KEY is invalid or has been revoked. Check the key on Render.",
+  429: "Brevo rate limit reached — too many requests. Please wait before retrying.",
+};
+
+function brevoStatusMessage(status) {
+  return BREVO_ERROR_MAP[status] || `Brevo returned HTTP ${status}.`;
+}
 
 async function sendViaBrevo({ to, subject, html, attachments }) {
+  const apiKey = process.env.BREVO_API_KEY;
   const fromEmail =
     process.env.BREVO_FROM_EMAIL || process.env.EMAIL_USER || "noreply@twiller.app";
+
   const payload = {
     sender: { email: fromEmail, name: process.env.BREVO_FROM_NAME || "Twiller" },
     to: [{ email: to }],
@@ -17,24 +41,30 @@ async function sendViaBrevo({ to, subject, html, attachments }) {
       content: Buffer.isBuffer(a.content) ? a.content.toString("base64") : a.content,
     }));
   }
+
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
-      "api-key": process.env.BREVO_API_KEY,
+      "api-key": apiKey,
       "Content-Type": "application/json",
       Accept: "application/json",
     },
     body: JSON.stringify(payload),
   });
+
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Brevo error ${res.status}: ${text.slice(0, 300)}`);
+    const err = new Error(`Brevo error ${res.status}: ${text.slice(0, 300)}`);
+    err.brevoStatus = res.status;
+    throw err;
   }
-  return { delivered: true };
+  return { delivered: true, provider: "brevo" };
 }
 
-// Gmail SMTP over port 587 + STARTTLS. Port 465 (implicit TLS, used by
+// ---------------------------------------------------------------------------
+// Gmail SMTP — port 587 + STARTTLS. Port 465 (implicit TLS, used by
 // service:"gmail") is unreachable from some cloud hosts (e.g. Render).
+// ---------------------------------------------------------------------------
 let transporter = null;
 
 function getTransporter() {
@@ -58,26 +88,67 @@ function getTransporter() {
   return transporter;
 }
 
-export async function sendMail({ to, subject, html, attachments }) {
-  if (process.env.BREVO_API_KEY) {
-    return sendViaBrevo({ to, subject, html, attachments });
-  }
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.warn("⚠️ EMAIL_USER/EMAIL_PASS not set — email not sent, logging instead:");
-    console.log({ to, subject, html });
-    return { skipped: true };
-  }
+async function sendViaGmail({ to, subject, html, attachments }) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return null;
   const t = getTransporter();
-  return t.sendMail({
+  await t.sendMail({
     from: `"Twiller" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     html,
     attachments,
   });
+  return { delivered: true, provider: "gmail" };
 }
 
-// Password-reset email with the generated password.
+// ---------------------------------------------------------------------------
+// Main export — tries Brevo first, falls back to Gmail, then skips.
+// ---------------------------------------------------------------------------
+export async function sendMail({ to, subject, html, attachments }) {
+  const hasBrevoKey = !!process.env.BREVO_API_KEY;
+  const brevoKeyFormat = hasBrevoKey && process.env.BREVO_API_KEY.startsWith("xkeysib-");
+
+  // ── Attempt 1: Brevo Transactional Email API ──────────────────────────
+  if (hasBrevoKey) {
+    if (!brevoKeyFormat) {
+      // Wrong key type — warn and skip straight to Gmail SMTP.
+      console.warn(
+        "⚠️ BREVO_API_KEY does not start with 'xkeysib-'. The key type is wrong " +
+        "(expected a Brevo API key, got something else). Falling back to Gmail SMTP."
+      );
+    } else {
+      try {
+        return await sendViaBrevo({ to, subject, html, attachments });
+      } catch (err) {
+        const status = err.brevoStatus || 0;
+        const msg = brevoStatusMessage(status);
+        console.error(`⚠️ Brevo failed (${status}): ${msg}`);
+
+        // 429 = Brevo rate limit. Do NOT fall back to Gmail — the user needs
+        // to wait regardless of provider. Throw so the route handler returns 429.
+        if (status === 429) {
+          throw new Error("Email provider rate limit reached. Please wait before requesting another OTP.");
+        }
+
+        // For 400, 401, 5xx, and unknown errors: fall through to Gmail SMTP.
+      }
+    }
+  }
+
+  // ── Attempt 2: Gmail SMTP fallback ────────────────────────────────────
+  const gmailResult = await sendViaGmail({ to, subject, html, attachments });
+  if (gmailResult) return gmailResult;
+
+  // ── No provider configured ────────────────────────────────────────────
+  console.warn("⚠️ No email provider configured (BREVO_API_KEY or EMAIL_USER/EMAIL_PASS).");
+  console.warn("   Email not sent — to:", to, "subject:", subject);
+  return { skipped: true };
+}
+
+// ---------------------------------------------------------------------------
+// Transactional email templates
+// ---------------------------------------------------------------------------
+
 export async function sendPasswordResetEmail({ to, newPassword }) {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
@@ -99,7 +170,6 @@ export async function sendPasswordResetEmail({ to, newPassword }) {
   });
 }
 
-// Post-payment confirmation email with the generated invoice PDF attached.
 export async function sendSubscriptionActivatedEmail({
   to,
   customerName,
