@@ -2,11 +2,13 @@ import express from "express";
 import User from "../models/user.js";
 import { deviceDetect } from "../middleware/deviceDetect.js";
 import { isWithinISTWindow } from "../utils/time.js";
-import { issueOtp, verifyOtp } from "../utils/otp.js";
+import { issueOtp, verifyOtp, generateOtpCode } from "../utils/otp.js";
+import Otp from "../models/otp.js";
 import { generateLetterPassword } from "../utils/passwordGenerator.js";
 import { setFirebaseUserPassword } from "../utils/firebaseAdmin.js";
-import { sendPasswordResetEmail } from "../utils/mailer.js";
+import { sendPasswordResetEmail, sendMail } from "../utils/mailer.js";
 import { sendSms } from "../services/smsService.js";
+import { hashPassword } from "../utils/passwordHash.js";
 import {
   signAuthToken,
   signLoginToken,
@@ -27,6 +29,7 @@ const router = express.Router();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const RESET_OTP_TTL_MS = 10 * 60 * 1000;
 
 // A "mobile device" for the IST window rule includes tablets.
 function isMobileClass(deviceType) {
@@ -360,14 +363,59 @@ router.post("/verify-login-otp", deviceDetect, async (req, res) => {
 });
 
 /**
- * FORGOT PASSWORD (single step)
- * POST /auth/forgot-password   { identifier: "email_or_phone" }
+ * FORGOT PASSWORD (two-step OTP flow)
+ * POST /auth/forgot-password          { identifier: "email_or_phone" }
+ * POST /auth/forgot-password/verify   { identifier, code }
  *
- * - Resets the password to a fresh 10-character letters-only password
- * - Can be requested once per 24 hours per account
- * - Email identifier  -> password is emailed (never returned in the response)
- * - Phone identifier  -> password is returned in the response (test mode)
+ * Step 1 (request): sends a 6-digit verification code (email -> email,
+ * phone -> SMS with an email fallback when no SMS provider is configured).
+ * Can be requested once per 24 hours per account.
+ * Step 2 (verify): verifies the code, resets the password to a fresh
+ * 10-character letters-only password, persists it hashed (scrypt) and
+ * delivers it (email or SMS). The password is never returned in the response.
  */
+
+async function deliverForgotPasswordOtp({ user, isEmail }) {
+  const code = generateOtpCode();
+  const expiresAt = new Date(Date.now() + RESET_OTP_TTL_MS);
+  const identifierKey = user.email.toLowerCase();
+
+  await Otp.create({
+    identifier: identifierKey,
+    purpose: "password_reset",
+    code,
+    expiresAt,
+  });
+
+  if (isEmail) {
+    const mailResult = await sendMail({
+      to: user.email,
+      subject: "Your Twiller password reset code",
+      html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto"><p>You requested a password reset.</p><p>Your verification code is:</p><h2 style="letter-spacing:4px">${code}</h2><p>This code expires in 10 minutes. If you didn't request this, ignore this email.</p></div>`,
+    });
+    if (mailResult?.skipped) {
+      throw new Error("The verification email could not be sent (email service not configured).");
+    }
+    return { channel: "email", deliveredTo: user.email };
+  }
+
+  // Phone recovery: try SMS first, fall back to email (dev/free tier).
+  const smsTo = user.phone || null;
+  const smsResult = smsTo ? await sendSms({ to: smsTo, text: `Your Twiller password reset code is: ${code}` }) : { skipped: true };
+  if (smsResult?.skipped) {
+    const mailResult = await sendMail({
+      to: user.email,
+      subject: "Your Twiller password reset code",
+      html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto"><p>You requested a password reset.</p><p>Your verification code is:</p><h2 style="letter-spacing:4px">${code}</h2><p>This code expires in 10 minutes. If you didn't request this, ignore this email.</p></div>`,
+    });
+    if (mailResult?.skipped) {
+      throw new Error("The verification code could not be sent (no SMS or email provider configured).");
+    }
+    return { channel: "email", deliveredTo: user.email, smsFallback: true };
+  }
+  return { channel: "sms", deliveredTo: smsTo };
+}
+
 router.post("/forgot-password", async (req, res) => {
   try {
     const identifier = String(req.body?.identifier || "").trim();
@@ -412,15 +460,85 @@ router.post("/forgot-password", async (req, res) => {
       }
     }
 
-    // Generate a fresh letters-only password.
-    const newPassword = generateLetterPassword(10);
+    // Step 1: send the verification code. The daily quota is only consumed
+    // once the code has actually been delivered successfully.
+    const delivery = await deliverForgotPasswordOtp({ user, isEmail });
 
-    // Persist in MongoDB + record the request timestamp.
-    user.password = newPassword;
     user.lastPasswordResetRequest = new Date();
     await user.save();
 
-    // Update the real Firebase Auth password (email or phone).
+    return res.status(200).send({
+      success: true,
+      message: "A verification code has been sent. Enter it to reset your password.",
+      channel: delivery.channel,
+      deliveredTo: delivery.deliveredTo,
+      smsFallback: !!delivery.smsFallback,
+      expiresIn: Math.floor(RESET_OTP_TTL_MS / 1000),
+    });
+  } catch (error) {
+    return res.status(400).send({ error: error.message });
+  }
+});
+
+router.post("/forgot-password/verify", async (req, res) => {
+  try {
+    const identifier = String(req.body?.identifier || "").trim();
+    const code = String(req.body?.code || "").trim();
+    if (!identifier) {
+      return res.status(400).send({ error: "Email or phone number is required." });
+    }
+    if (!/^\d{6}$/.test(code)) {
+      return res.status(400).send({ error: "Please enter the 6-digit verification code." });
+    }
+
+    const isEmail = EMAIL_RE.test(identifier);
+    const isPhone = looksLikePhone(identifier);
+    if (!isEmail && !isPhone) {
+      return res.status(400).send({
+        error: "Please enter a valid email address or phone number.",
+      });
+    }
+
+    let user = isEmail
+      ? await findUserByEmail(identifier)
+      : await User.findOne({ phone: identifier });
+    if (!user && isPhone) {
+      const digits = normalizePhone(identifier).replace(/^0+/, "");
+      if (digits.length >= 7) {
+        user = await User.findOne({ phone: { $regex: new RegExp(`${digits}$`) } });
+      }
+    }
+    if (!user) {
+      return res.status(404).send({ error: "No account found with that email/phone" });
+    }
+
+    // Cap incorrect attempts to 5 per 10 minutes per account.
+    const limiter = rateLimit({
+      key: `forgot-pw-verify:${user._id}`,
+      windowMs: 10 * 60 * 1000,
+      max: 5,
+    });
+    if (!limiter.allowed) {
+      return res.status(429).send({
+        error: "Too many incorrect attempts. Please request a new code and try again later.",
+      });
+    }
+
+    const result = await verifyOtp({
+      identifier: user.email.toLowerCase(),
+      purpose: "password_reset",
+      code,
+    });
+    if (!result.ok) {
+      return res.status(400).send({ error: result.reason });
+    }
+
+    // Step 2: reset + persist the new password (hashed, never plaintext).
+    const newPassword = generateLetterPassword(10);
+    user.password = hashPassword(newPassword);
+    user.lastPasswordResetRequest = new Date();
+    await user.save();
+
     let firebaseUpdated = false;
     try {
       firebaseUpdated = await setFirebaseUserPassword(user.email || identifier, newPassword);

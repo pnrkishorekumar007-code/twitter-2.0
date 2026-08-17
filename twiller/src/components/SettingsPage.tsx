@@ -67,8 +67,8 @@ export default function SettingsPage() {
       await refreshUser();
       toast(
         accountType === "private"
-          ? "Account is now private"
-          : "Account is now public",
+          ? t("settings_account_now_private")
+          : t("settings_account_now_public"),
         "success"
       );
     } catch (error) {
@@ -110,11 +110,11 @@ export default function SettingsPage() {
       <div className="px-4 py-4">
         <Tabs value={section} onValueChange={setSection} className="mt-4">
           <TabsList className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 w-full h-auto rounded-none bg-transparent p-0 justify-start">
-            <SectionNav value="account" icon={User} label="Account" />
-            <SectionNav value="appearance" icon={Palette} label="Appearance" />
+            <SectionNav value="account" icon={User} label={t("settings_account")} />
+            <SectionNav value="appearance" icon={Palette} label={t("settings_appearance")} />
             <SectionNav value="language" icon={Globe} label={t("language")} />
             <SectionNav value="notifications" icon={Bell} label={t("notif_pref")} />
-            <SectionNav value="security" icon={ShieldCheck} label="Security" />
+            <SectionNav value="security" icon={ShieldCheck} label={t("settings_security")} />
           </TabsList>
 
           <TabsContent value="account" className="mt-0">
@@ -137,7 +137,7 @@ export default function SettingsPage() {
                   className="rounded-full shrink-0"
                   onClick={() => setShowEditModal(true)}
                 >
-                  Edit profile
+                  {t("settings_edit_profile")}
                 </Button>
               </div>
               {user.bio && <p className="mt-4 text-foreground text-sm">{user.bio}</p>}
@@ -149,9 +149,9 @@ export default function SettingsPage() {
                   <Lock className="h-5 w-5 text-brand" />
                 </span>
                 <div>
-                  <p className="text-foreground font-semibold">Account privacy</p>
+                  <p className="text-foreground font-semibold">{t("settings_account_privacy")}</p>
                   <p className="text-muted-foreground text-sm">
-                    Private accounts must approve who follows them.
+                    {t("settings_private_desc")}
                   </p>
                 </div>
               </div>
@@ -169,9 +169,9 @@ export default function SettingsPage() {
                   )}
                 >
                   <Users className="h-5 w-5 mb-2 text-muted-foreground" />
-                  <p className="font-semibold text-foreground text-sm">Public</p>
+                  <p className="font-semibold text-foreground text-sm">{t("settings_public")}</p>
                   <p className="text-muted-foreground text-xs mt-1">
-                    Anyone can follow you instantly.
+                    {t("settings_public_desc")}
                   </p>
                 </button>
                 <button
@@ -187,9 +187,9 @@ export default function SettingsPage() {
                   )}
                 >
                   <Lock className="h-5 w-5 mb-2 text-muted-foreground" />
-                  <p className="font-semibold text-foreground text-sm">Private</p>
+                  <p className="font-semibold text-foreground text-sm">{t("settings_private")}</p>
                   <p className="text-muted-foreground text-xs mt-1">
-                    Followers need your approval.
+                    {t("settings_private_approval")}
                   </p>
                 </button>
               </div>
@@ -199,9 +199,9 @@ export default function SettingsPage() {
           <TabsContent value="appearance" className="mt-0">
             <div className="rounded-2xl border border-border bg-card/60 backdrop-blur-xl p-5 shadow-lg space-y-4">
               <div>
-                <p className="text-foreground font-semibold">Appearance</p>
+                <p className="text-foreground font-semibold">{t("settings_appearance_title")}</p>
                 <p className="text-muted-foreground text-sm mt-0.5">
-                  Choose how Twiller looks to you.
+                  {t("settings_appearance_desc")}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -217,7 +217,7 @@ export default function SettingsPage() {
                   )}
                 >
                   <div className="h-16 rounded-lg border border-border bg-white mb-3" />
-                  <p className="font-semibold text-foreground text-sm">Light</p>
+                  <p className="font-semibold text-foreground text-sm">{t("settings_light")}</p>
                 </button>
                 <button
                   type="button"
@@ -231,7 +231,7 @@ export default function SettingsPage() {
                   )}
                 >
                   <div className="h-16 rounded-lg border border-border bg-black mb-3" />
-                  <p className="font-semibold text-foreground text-sm">Dark</p>
+                  <p className="font-semibold text-foreground text-sm">{t("settings_dark")}</p>
                 </button>
               </div>
             </div>

@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "../Toast";
 import axiosInstance from "@/lib/axiosInstance";
 import { BadgeCheck, Clock, Crown, Loader2, Sparkles, Menu } from "lucide-react";
@@ -40,29 +41,31 @@ interface PlanPricing {
 
 const PLAN_ORDER: PlanKey[] = ["FREE", "BRONZE", "SILVER", "GOLD"];
 
+// tagline/features hold translation keys resolved via t() at render time;
+// plan titles stay as proper nouns (Free/Bronze/Silver/Gold).
 const PLAN_META: Record<
   PlanKey,
   { title: string; tagline: string; features: string[] }
 > = {
   FREE: {
     title: "Free",
-    tagline: "Try Twiller before you commit",
-    features: ["1 tweet", "Text + image posts", "Community access"],
+    tagline: "pricing_free_tagline",
+    features: ["pricing_free_f1", "pricing_free_f2", "pricing_free_f3"],
   },
   BRONZE: {
     title: "Bronze",
-    tagline: "For the casual tweeter",
-    features: ["3 tweets / month", "Everything in Free", "Email support"],
+    tagline: "pricing_bronze_tagline",
+    features: ["pricing_bronze_f1", "pricing_bronze_f2", "pricing_bronze_f3"],
   },
   SILVER: {
     title: "Silver",
-    tagline: "For growing your voice",
-    features: ["5 tweets / month", "Everything in Bronze", "Priority support"],
+    tagline: "pricing_silver_tagline",
+    features: ["pricing_silver_f1", "pricing_silver_f2", "pricing_silver_f3"],
   },
   GOLD: {
     title: "Gold",
-    tagline: "Unleash your posting power",
-    features: ["Unlimited tweets", "Everything in Silver", "Premium badge"],
+    tagline: "pricing_gold_tagline",
+    features: ["pricing_gold_f1", "pricing_gold_f2", "pricing_gold_f3"],
   },
 };
 
@@ -105,6 +108,7 @@ function loadRazorpayScript() {
 
 export default function PricingPage() {
   const { user, refreshUser, completeLogin } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [plans, setPlans] = useState<Partial<Record<PlanKey, PlanPricing>>>({});
   const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null);
@@ -135,19 +139,19 @@ export default function PricingPage() {
 
   const handleSubscribe = async (planKey: PlanKey) => {
     if (!user) {
-      toast("Please log in first", "error");
+      toast(t("pricing_please_login"), "error");
       return;
     }
     if (planKey === "FREE") return;
     if (!windowInfo.open) {
-      toast("Payments are allowed only between 10:00 AM and 11:00 AM IST.", "error");
+      toast(t("pricing_window_error"), "error");
       return;
     }
 
     setLoadingPlan(planKey);
     try {
       const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded) throw new Error("Razorpay checkout failed to load.");
+      if (!scriptLoaded) throw new Error(t("pricing_razorpay_load_failed"));
 
       const orderRes = await axiosInstance.post("/payment/create-order", {
         plan: planKey,
@@ -160,9 +164,10 @@ export default function PricingPage() {
         currency: order.currency,
         order_id: order.id,
         name: "Twiller",
-        description: `${PLAN_META[planKey].title} plan subscription`,
+        description: `${PLAN_META[planKey].title} ${t("pricing_description")}`,
         prefill: { email: user.email, name: user.displayName },
         handler: async (response: RazorpayResponse) => {
+          setLoadingPlan(null);
           try {
             const verifyRes = await axiosInstance.post("/payment/verify", response);
             // Apply the freshly-activated plan immediately so the UI updates
@@ -171,10 +176,10 @@ export default function PricingPage() {
               completeLogin({ user: verifyRes.data.user });
             }
             await refreshUser();
-            toast("Subscription activated! Invoice emailed to you.", "success");
+            toast(t("pricing_subscription_activated"), "success");
           } catch (err) {
             toast(
-              "Payment verification failed",
+              t("pricing_verify_failed"),
               "error",
               getErrorMessage(err)
             );
@@ -183,16 +188,16 @@ export default function PricingPage() {
         theme: { color: "#1d9bf0" },
       });
       rzp.on("payment.failed", () => {
-        toast("Payment failed. Please try again.", "error");
+        setLoadingPlan(null);
+        toast(t("pricing_payment_failed"), "error");
       });
-      setLoadingPlan(null);
       rzp.open();
     } catch (err) {
       setLoadingPlan(null);
       const msg =
         getErrorMessage(
           err,
-          "Could not start payment. Payments are only allowed 10:00–11:00 AM IST."
+          t("pricing_could_not_start")
         );
       toast(msg, "error");
     }
@@ -212,10 +217,10 @@ export default function PricingPage() {
           <div>
             <h1 className="text-xl font-extrabold text-foreground flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-brand" />
-              Twiller Premium
+              {t("pricing_title")}
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Payments open daily 10:00–11:00 AM IST only.
+              {t("pricing_subtitle")}
             </p>
           </div>
         </div>
@@ -234,11 +239,11 @@ export default function PricingPage() {
           <Clock className="h-5 w-5 shrink-0 text-foreground" />
           <div className="flex-1 text-sm text-foreground">
             {windowInfo.open ? (
-              <span className="font-semibold">Payment window is open — buy now.</span>
+              <span className="font-semibold">{t("pricing_window_open")}</span>
             ) : (
               <span>
-                Payments are allowed only between{" "}
-                <b>10:00 AM and 11:00 AM IST</b>. Next window opens in{" "}
+                {t("pricing_window_closed")}{" "}
+                <b>10:00 AM and 11:00 AM IST</b>. {t("pricing_window_next")}{" "}
                 <b>{formatCountdown(windowInfo.nextOpenAt - now)}</b>.
               </span>
             )}
@@ -249,10 +254,10 @@ export default function PricingPage() {
         {user && (
           <div className="rounded-2xl border border-border bg-card px-4 py-3 flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
-              {isUnlimited ? "Unlimited Tweets" : "Tweets Remaining"}
+              {isUnlimited ? t("pricing_unlimited") : t("pricing_tweets_remaining")}
             </span>
             <span className="font-bold text-foreground">
-              {isUnlimited ? "Unlimited" : tweetsRemaining}
+              {isUnlimited ? t("pricing_unlimited") : tweetsRemaining}
             </span>
           </div>
         )}
@@ -263,8 +268,8 @@ export default function PricingPage() {
             const price = plans[key]?.price ?? 0;
             const limit =
               key === "GOLD"
-                ? "Unlimited"
-                : `${plans[key]?.tweetLimit ?? meta.features[0]} / month`;
+                ? t("pricing_unlimited")
+                : `${plans[key]?.tweetLimit ?? t(meta.features[0])} ${t("pricing_per_month")}`;
             const isCurrent = user?.subscriptionPlan === key;
             const isFree = key === "FREE";
             const isRecommended = key === "GOLD";
@@ -287,12 +292,12 @@ export default function PricingPage() {
               >
                 {isRecommended && !isCurrent && (
                   <span className="absolute -top-3 left-4 inline-flex items-center gap-1 rounded-full bg-brand px-3 py-0.5 text-xs font-bold text-brand-foreground shadow-md shadow-brand/40">
-                    <Sparkles className="h-3.5 w-3.5" /> Recommended
+                    <Sparkles className="h-3.5 w-3.5" /> {t("pricing_recommended")}
                   </span>
                 )}
                 {isCurrent && (
                   <span className="absolute -top-3 left-4 inline-flex items-center gap-1 rounded-full bg-foreground px-3 py-0.5 text-xs font-bold text-background shadow-md">
-                    <BadgeCheck className="h-3.5 w-3.5" /> Current plan
+                    <BadgeCheck className="h-3.5 w-3.5" /> {t("pricing_current_plan")}
                   </span>
                 )}
 
@@ -303,13 +308,13 @@ export default function PricingPage() {
                       <Crown className="h-4 w-4 text-amber-400" />
                     )}
                   </h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">{meta.tagline}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">{t(meta.tagline)}</p>
                 </div>
 
                 <div className="mt-4 text-3xl font-extrabold text-foreground">
                   {price === 0 ? "₹0" : `₹${price}`}
                   <span className="text-sm text-muted-foreground font-normal">
-                    {" "}/mo
+                    {" "}{t("pricing_per_month")}
                   </span>
                 </div>
 
@@ -318,10 +323,10 @@ export default function PricingPage() {
                     <BadgeCheck className="h-4 w-4 text-brand shrink-0 mt-0.5" />
                     <span className="font-medium text-foreground">{limit}</span>
                   </li>
-                  {meta.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2">
+                  {meta.features.map((featureKey) => (
+                    <li key={featureKey} className="flex items-start gap-2">
                       <BadgeCheck className="h-4 w-4 text-brand shrink-0 mt-0.5" />
-                      <span>{feature}</span>
+                      <span>{t(featureKey)}</span>
                     </li>
                   ))}
                 </ul>
@@ -345,14 +350,14 @@ export default function PricingPage() {
                 >
                   {loadingPlan === key ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+                      <Loader2 className="h-4 w-4 animate-spin" /> {t("pricing_loading")}
                     </>
                   ) : isCurrent ? (
-                    "Current plan"
+                    t("pricing_current_plan")
                   ) : isFree ? (
-                    "Default"
+                    t("pricing_default")
                   ) : (
-                    "Buy Now"
+                    t("pricing_buy_now")
                   )}
                 </Button>
               </motion.div>

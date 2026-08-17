@@ -11,14 +11,14 @@ import FollowButton from "../FollowButton";
 import type { FollowUser } from "@/lib/types";
 import { useLanguage } from "@/context/LanguageContext";
 
-const trends = [
-  { category: "Sports · Trending", tag: "#Cricket", posts: "24.5K posts" },
-  { category: "Trending in India", tag: "#Science", posts: "12.1K posts" },
-  { category: "Technology", tag: "AI everywhere", posts: "8,492 posts" },
-];
-
 export default function RightSidebar() {
   const { t } = useLanguage();
+
+  const trends = [
+    { category: t("right_trending_sports"), tag: t("right_trend_cricket"), posts: t("right_trend_cricket_posts") },
+    { category: t("right_trending_india"), tag: t("right_trend_science"), posts: t("right_trend_science_posts") },
+    { category: t("right_tech"), tag: t("right_trend_ai"), posts: t("right_trend_ai_posts") },
+  ];
   const [suggestions, setSuggestions] = useState<FollowUser[]>([]);
 
   useEffect(() => {
@@ -70,11 +70,10 @@ export default function RightSidebar() {
         <CardContent className="p-4">
           <h3 className="text-foreground text-xl font-extrabold mb-2 flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-brand" />
-            Subscribe to Premium
+            {t("right_subscribe")}
           </h3>
           <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
-            Subscribe to unlock new features and if eligible, receive a share
-            of revenue.
+            {t("right_subscribe_desc")}
           </p>
           <Button
             className="bg-brand-gradient animate-gradient text-white font-bold rounded-full shadow-lg shadow-brand/30 hover:brightness-110"
@@ -82,7 +81,7 @@ export default function RightSidebar() {
               window.dispatchEvent(new CustomEvent("twiller:go-premium"))
             }
           >
-            Subscribe
+            {t("right_subscribe_btn")}
           </Button>
         </CardContent>
       </Card>
@@ -91,7 +90,7 @@ export default function RightSidebar() {
       <Card className="rounded-2xl border-border bg-card/60 backdrop-blur-xl overflow-hidden">
         <CardContent className="p-0">
           <h3 className="text-foreground text-xl font-extrabold px-4 py-3">
-            What&apos;s happening
+            {t("right_whats_happening")}
           </h3>
           <div className="divide-y divide-border">
             {trends.map((trend) => (
@@ -110,7 +109,7 @@ export default function RightSidebar() {
             variant="ghost"
             className="text-brand hover:text-brand/80 hover:bg-brand/10 px-4 py-3 h-auto rounded-none w-full justify-start font-semibold"
           >
-            Show more
+            {t("right_show_more")}
           </Button>
         </CardContent>
       </Card>
@@ -119,7 +118,7 @@ export default function RightSidebar() {
       <Card className="rounded-2xl border-border bg-card/60 backdrop-blur-xl overflow-hidden">
         <CardContent className="p-0">
           <h3 className="text-foreground text-xl font-extrabold px-4 py-3">
-            You might like
+            {t("right_you_might_like")}
           </h3>
           {suggestions.length === 0 ? (
             <div className="px-4 py-8 text-center">
@@ -127,7 +126,7 @@ export default function RightSidebar() {
                 <UserPlus className="h-5 w-5 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground text-sm">
-                No suggestions right now.
+                {t("right_no_suggestions")}
               </p>
             </div>
           ) : (
@@ -178,7 +177,7 @@ export default function RightSidebar() {
       {/* Footer */}
       <div className="p-4 text-xs text-muted-foreground space-y-2">
         <div className="flex flex-wrap gap-x-3 gap-y-1">
-          {["Terms of Service", "Privacy Policy", "Cookie Policy", "Accessibility", "Ads info"].map(
+          {[t("right_terms"), t("right_privacy"), t("right_cookies"), t("right_accessibility"), t("right_ads")].map(
             (label) => (
               <a
                 key={label}
@@ -190,7 +189,7 @@ export default function RightSidebar() {
             )
           )}
         </div>
-        <div>© 2024 Twiller Corp.</div>
+        <div>{t("right_copyright")}</div>
       </div>
     </div>
   );

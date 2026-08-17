@@ -69,6 +69,34 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
     phone: user?.phone || "",
   });
   const [error, setError] = useState<Record<string, string>>({});
+
+  // Reset form data when the modal opens with fresh user data (React's
+  // "adjust state during render" pattern). Without this, reopening the modal
+  // after a profile update would show stale values from the initial mount.
+  if (isopen && user) {
+    const fresh = {
+      displayName: user.displayName || "",
+      bio: user.bio || "",
+      location: user.location || "",
+      website: user.website || "",
+      avatar: user.avatar || "",
+      banner: user.banner || "",
+      phone: user.phone || "",
+    };
+    const prev = formData;
+    if (
+      prev.displayName !== fresh.displayName ||
+      prev.bio !== fresh.bio ||
+      prev.location !== fresh.location ||
+      prev.website !== fresh.website ||
+      prev.avatar !== fresh.avatar ||
+      prev.banner !== fresh.banner ||
+      prev.phone !== fresh.phone
+    ) {
+      setFormdata(fresh);
+    }
+  }
+
   if (!isopen || !user) return null;
   const validateForm = () => {
     const newErrors: Record<string, string> = {};

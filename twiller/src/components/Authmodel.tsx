@@ -11,6 +11,7 @@ import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Separator } from './ui/separator';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import TwitterLogo from './Twitterlogo';
 import axiosInstance from '@/lib/axiosInstance';
 import { getErrorMessage } from '@/lib/types';
@@ -27,6 +28,7 @@ interface AuthModalProps {
 
 export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) {
   const { login, signup, logout, completeLogin, isLoading } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
@@ -66,32 +68,32 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
     const newErrors: Record<string, string> = {};
 
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('auth_err_email_required');
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
+      newErrors.email = t('auth_err_email_invalid');
     }
 
     if (!formData.password.trim()) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('auth_err_password_required');
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = t('auth_err_password_short');
     }
 
     if (mode === 'signup') {
       if (!formData.username.trim()) {
-        newErrors.username = 'Username is required';
+        newErrors.username = t('auth_err_username_required');
       } else if (formData.username.length < 3) {
-        newErrors.username = 'Username must be at least 3 characters';
+        newErrors.username = t('auth_err_username_short');
       } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-        newErrors.username = 'Username can only contain letters, numbers, and underscores';
+        newErrors.username = t('auth_err_username_chars');
       }
 
       if (!formData.displayName.trim()) {
-        newErrors.displayName = 'Display name is required';
+        newErrors.displayName = t('auth_err_displayname_required');
       }
 
       if (formData.phone && !/^[+]?[0-9\s\-()]{7,20}$/.test(formData.phone)) {
-        newErrors.phone = 'Enter a valid phone number (with country code)';
+        newErrors.phone = t('auth_err_phone_invalid');
       }
     }
 
@@ -165,11 +167,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
         const msg =
           axiosErr.response.data?.message ||
           axiosErr.response.data?.error ||
-          'Login is not allowed on this device right now.';
+          t('auth_err_login_blocked');
         setErrors({ general: msg });
         return;
       }
-      setErrors({ general: getErrorMessage(error, 'Authentication failed. Please try again.') });
+      setErrors({ general: getErrorMessage(error, t('auth_err_auth_failed')) });
     }
   };
 
@@ -203,7 +205,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                 <TwitterLogo size="xl" className="text-white" />
               </div>
               <CardTitle className="text-2xl font-bold text-white">
-                {mode === 'login' ? 'Sign in to X' : 'Create your account'}
+                {mode === 'login' ? t('auth_sign_in_title') : t('auth_signup_title')}
               </CardTitle>
             </div>
           </CardHeader>
@@ -219,13 +221,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             {mode === 'signup' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="displayName" className="text-white">Display Name</Label>
+                  <Label htmlFor="displayName" className="text-white">{t('auth_display_name')}</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                     <Input
                       id="displayName"
                       type="text"
-                      placeholder="Your display name"
+                      placeholder={t('auth_display_name_placeholder')}
                       value={formData.displayName}
                       onChange={(e) => handleInputChange('displayName', e.target.value)}
                       className="pl-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
@@ -238,13 +240,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="username" className="text-white">Username</Label>
+                  <Label htmlFor="username" className="text-white">{t('auth_username')}</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">@</span>
                     <Input
                       id="username"
                       type="text"
-                      placeholder="username"
+                      placeholder={t('auth_username_placeholder')}
                       value={formData.username}
                       onChange={(e) => handleInputChange('username', e.target.value)}
                       className="pl-8 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
@@ -257,13 +259,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-white">Phone (optional)</Label>
+                  <Label htmlFor="phone" className="text-white">{t('auth_phone_optional')}</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="+91XXXXXXXXXX"
+                      placeholder={t('auth_phone_placeholder')}
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
                       className="pl-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
@@ -278,13 +280,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-white">Email</Label>
+              <Label htmlFor="email" className="text-white">{t('auth_email')}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder={t('auth_email_placeholder')}
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   className="pl-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
@@ -297,13 +299,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-white">Password</Label>
+              <Label htmlFor="password" className="text-white">{t('auth_password')}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
+                  placeholder={t('auth_password_placeholder')}
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   className="pl-10 pr-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
@@ -331,23 +333,23 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                     router.push('/forgot-password');
                   }}
                 >
-                  Forgot password?
+                  {t('auth_forgot_password')}
                 </button>
               )}
             </div>
 
-            <Button
-              type="submit"
+          <Button
+            type="submit"
               className="w-full bg-brand-gradient animate-gradient text-white font-bold py-3 rounded-full text-lg shadow-lg shadow-brand/30 hover:brightness-110 hover:scale-[1.02] transition-all"
               disabled={isLoading}
             >
               {isLoading ? (
                 <div className="flex items-center space-x-2">
                   <LoadingSpinner size="sm" />
-                  <span>{mode === 'login' ? 'Signing in...' : 'Creating account...'}</span>
+                  <span>{mode === 'login' ? t('auth_signing_in') : t('auth_creating_account')}</span>
                 </div>
               ) : (
-                mode === 'login' ? 'Sign in' : 'Create account'
+                mode === 'login' ? t('auth_sign_in') : t('auth_create_account')
               )}
             </Button>
           </form>
@@ -355,27 +357,27 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
           <div className="relative">
             <Separator className="bg-gray-700" />
             <span className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black px-2 text-gray-400 text-sm">
-              OR
+              {t('auth_or')}
             </span>
           </div>
 
           <div className="text-center">
             <p className="text-gray-400">
-              {mode === 'login' ? "Don't have an account?" : "Already have an account?"}
+              {mode === 'login' ? t('auth_no_account') : t('auth_have_account')}
               <Button
                 variant="link"
                 className="text-blue-400 hover:text-blue-300 font-semibold pl-1"
                 onClick={switchMode}
                 disabled={isLoading}
               >
-                {mode === 'login' ? 'Sign up' : 'Sign in'}
+                {mode === 'login' ? t('auth_sign_up') : t('auth_sign_in')}
               </Button>
             </p>
           </div>
 
           {mode === 'signup' && (
             <div className="text-center text-xs text-gray-400">
-              By signing up, you agree to our Terms of Service and Privacy Policy, including Cookie Use.
+              {t('auth_terms')}
             </div>
           )}
         </CardContent>

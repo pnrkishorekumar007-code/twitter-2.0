@@ -106,6 +106,7 @@ export default function FollowButton({
     e.preventDefault();
     if (!user) return;
     await run(() => axiosInstance.post(`/users/follow/${targetId}`));
+    setIsFollowingState(true);
     onToggle?.(true);
   };
 
@@ -115,6 +116,7 @@ export default function FollowButton({
     if (!user) return;
     const data = await run(() => axiosInstance.post(`/users/unfollow/${targetId}`));
     if (data) {
+      setIsFollowingState(false);
       onToggle?.(false);
       toast("Unfollowed", "success");
     }

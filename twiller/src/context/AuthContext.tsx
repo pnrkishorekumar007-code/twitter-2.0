@@ -65,13 +65,19 @@ interface AuthContextType {
   }) => Promise<void>;
   updateBanner: (bannerUrl: string) => Promise<void>;
   refreshUser: () => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
   googlesignin: () => void;
   completeLogin: (data: { user?: User; token?: string }) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Set when a login requires OTP verification (Chrome device rule) but the
+// Firebase session is already active (e.g. Google sign-in). While set, the
+// session-restore path refuses to restore the user, so protected pages stay
+// locked until the OTP is verified.
+const PENDING_OTP_FLAG = "twiller-otp-pending";
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -99,6 +105,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // Check for existing session
     const unsubcribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser?.email) {
+        const otpPending =
+          typeof window !== "undefined" &&
+          localStorage.getItem(PENDING_OTP_FLAG) === "1";
+
+        // A Chrome OTP verification is still required for this account. Do not
+        // restore the session from Firebase — otherwise a Google login could
+        // reach the dashboard before OTP verification. Send the user to the
+        // OTP page instead.
+        if (otpPending) {
+          setUser(null);
+          localStorage.removeItem("twitter-user");
+          if (localStorage.getItem("twiller-login-token")) {
+            router.push(
+              `/verify-login-otp?email=${encodeURIComponent(firebaseUser.email)}`
+            );
+          } else {
+            localStorage.removeItem(PENDING_OTP_FLAG);
+          }
+          setIsLoading(false);
+          return;
+        }
+
         try {
           const res = await axiosInstance.get("/loggedinuser", {
             params: { email: firebaseUser.email },
@@ -118,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoading(false);
     });
     return () => unsubcribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -200,11 +229,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem("twiller-login-email");
     localStorage.removeItem("twiller-login-expires-at");
     localStorage.removeItem("twiller-login-method");
+    localStorage.removeItem(PENDING_OTP_FLAG);
   };
 
   // Called after a completed login (direct or OTP-verified): persists the
   // session JWT and the user profile returned by the backend.
   const completeLogin = ({ user: newUser, token: newToken }: { user?: User; token?: string }) => {
+    localStorage.removeItem(PENDING_OTP_FLAG);
     if (newToken) {
       setToken(newToken);
       localStorage.setItem("twiller-jwt", newToken);
@@ -297,14 +328,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         userData = registerRes.data;
       }
 
-      if (userData) {
-        setUser(userData);
-        localStorage.setItem("twitter-user", JSON.stringify(userData));
-      } else {
+      if (!userData) {
         throw new Error("Login/Register failed: No user data returned");
       }
 
-      // Advanced login security: device gate + OTP decision for Google logins.
+      // Advanced login security: device gate + OTP decision BEFORE any user
+      // state is set. A Chrome user must verify OTP before the dashboard.
       try {
         const res = await axiosInstance.post("/auth/login", {
           email: userData.email,
@@ -320,6 +349,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             String(Date.now() + (res.data.expiresIn ?? 300) * 1000)
           );
           localStorage.setItem("twiller-login-method", "google");
+          localStorage.setItem(PENDING_OTP_FLAG, "1");
           router.push(`/verify-login-otp?email=${encodeURIComponent(userData.email)}`);
           return;
         }
@@ -345,6 +375,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // non-blocking: device check failing for another reason shouldn't
         // block a successful Google sign-in.
       }
+
+      // No OTP required — this login is complete.
+      localStorage.removeItem(PENDING_OTP_FLAG);
+      setUser(userData);
+      localStorage.setItem("twitter-user", JSON.stringify(userData));
     } catch (error) {
       const code = (error as { code?: string })?.code;
       if (

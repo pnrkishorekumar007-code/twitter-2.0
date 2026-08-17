@@ -68,7 +68,7 @@ export default function Sidebar({
   const navigation: NavItem[] = [
     { name: t("home"), icon: Home, current: currentPage === "home", page: "home" },
     { name: t("explore"), icon: Search, current: currentPage === "explore", page: "explore" },
-    { name: "People", icon: Users, current: currentPage === "search", page: "search" },
+    { name: t("sidebar_people"), icon: Users, current: currentPage === "search", page: "search" },
     { name: t("notifications"), icon: Bell, current: currentPage === "notifications", page: "notifications", badge: true },
     { name: t("messages"), icon: Mail, current: currentPage === "messages", page: "messages", count: unreadTotal },
     { name: t("bookmarks"), icon: Bookmark, current: currentPage === "bookmarks", page: "bookmarks" },
@@ -156,7 +156,7 @@ export default function Sidebar({
           <motion.button
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
-            aria-label="Twiller home"
+            aria-label={t("sidebar_home")}
             className="rounded-full p-2 -m-2 transition-colors hover:bg-accent"
             onClick={() => onNavigate?.("home")}
           >
@@ -167,7 +167,7 @@ export default function Sidebar({
           </motion.button>
         </div>
 
-        <nav className="flex-1 px-2 overflow-y-auto py-1" aria-label="Primary">
+        <nav className="flex-1 px-2 overflow-y-auto py-1" aria-label={t("sidebar_primary")}>
           <ul className="space-y-1">
             {navigation.map((item) => (
               <li

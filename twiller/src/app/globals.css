@@ -302,6 +302,14 @@ html[data-lang="hi"] {
   letter-spacing: 0.02em;
 }
 
+/* Latin-script languages — use the Geist stack with locale-appropriate fallbacks. */
+.lang-es,
+.lang-pt,
+.lang-fr {
+  font-family: var(--font-geist-sans), "Segoe UI", system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.01em;
+}
+
 /* Hide scrollbars while keeping the content scrollable (nav rail, tabs). */
 @utility no-scrollbar {
   scrollbar-width: none;

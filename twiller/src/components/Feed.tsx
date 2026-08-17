@@ -55,11 +55,11 @@ const Feed = () => {
       const res = await axiosInstance.get("/post");
       setForYouTweets(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
-      toast("Couldn't load the feed", "error", getErrorMessage(error));
+      toast(t("feed_load_error"), "error", getErrorMessage(error));
     } finally {
       setLoadingForYou(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,7 +70,7 @@ const Feed = () => {
       })
       .catch((error) => {
         if (cancelled) return;
-        toast("Couldn't load the feed", "error", getErrorMessage(error));
+        toast(t("feed_load_error"), "error", getErrorMessage(error));
       })
       .finally(() => {
         if (!cancelled) setLoadingForYou(false);
@@ -78,7 +78,7 @@ const Feed = () => {
     return () => {
       cancelled = true;
     };
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     if (activeTab !== "following") return;
@@ -90,7 +90,7 @@ const Feed = () => {
       })
       .catch((error) => {
         if (cancelled) return;
-        toast("Couldn't load your feed", "error", getErrorMessage(error));
+        toast(t("feed_load_error"), "error", getErrorMessage(error));
       })
       .finally(() => {
         if (!cancelled) setLoadingFollowing(false);
@@ -98,7 +98,7 @@ const Feed = () => {
     return () => {
       cancelled = true;
     };
-  }, [toast, activeTab]);
+  }, [toast, activeTab, t]);
 
   const handleTabChange = (value: string) => {
     if (value === "forYou" || value === "following") {
@@ -157,12 +157,12 @@ const Feed = () => {
         )}
       </div>
       <p className="text-2xl font-bold text-gradient">
-        {isFollowing ? "No tweets from people you follow yet." : "Nothing here yet"}
+        {isFollowing ? t("feed_following_empty_title") : t("feed_empty_title")}
       </p>
       <p className="text-muted-foreground mt-2 text-base">
         {isFollowing
-          ? "When you follow someone, their posts will show up here."
-          : "Be the first to share something great."}
+          ? t("feed_empty_desc")
+          : t("feed_empty_hint")}
       </p>
       {isFollowing && (
         <Button
@@ -171,7 +171,7 @@ const Feed = () => {
             window.dispatchEvent(new CustomEvent("twiller:go-search"))
           }
         >
-          Find people to follow
+          {t("feed_find_people")}
         </Button>
       )}
     </motion.div>
@@ -217,10 +217,10 @@ const Feed = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-transparent border-b border-border rounded-none h-auto p-0">
             <TabsTrigger value="forYou" className={tabClass}>
-              For you
+              {t("feed_for_you")}
             </TabsTrigger>
             <TabsTrigger value="following" className={tabClass}>
-              Following
+              {t("feed_following")}
             </TabsTrigger>
           </TabsList>
         </Tabs>

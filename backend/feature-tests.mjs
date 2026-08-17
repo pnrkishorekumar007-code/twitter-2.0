@@ -12,6 +12,7 @@ import LoginHistory from "./models/LoginHistory.js";
 import LoginOTP from "./models/LoginOTP.js";
 import AudioTweetOTP from "./models/AudioTweetOTP.js";
 import LanguageChangeOTP from "./models/LanguageChangeOTP.js";
+import Otp from "./models/otp.js";
 import { hashOtp as loginHash } from "./services/loginOtpService.js";
 import { hashOtp as audioHash } from "./services/audioOtpService.js";
 import { hashOtp as langHash } from "./services/languageOtpService.js";
@@ -226,7 +227,7 @@ async function run() {
     }
   }
 
-  section("TASK 2 — Forgot password");
+  section("TASK 2 — Forgot password (two-step OTP)");
   {
     const fg = await makeUser("fg");
     track(fg);
@@ -235,6 +236,14 @@ async function run() {
     check(
       "password never leaked in response",
       r1.json?.newPassword === undefined && r1.json?.password === undefined
+    );
+    check(
+      "OTP channel email + 10min expiry reported",
+      r1.json?.channel === "email" && r1.json?.expiresIn === 600
+    );
+    check(
+      "request response is an OTP (no plaintext code)",
+      r1.json?.code === undefined && /verification code/i.test(r1.json?.message || "")
     );
 
     const r2 = await req("POST", "/auth/forgot-password", { body: { identifier: fg.email } });
@@ -248,10 +257,59 @@ async function run() {
     await User.updateOne({ email: fp.email }, { $set: { phone: "919876543210" } });
     const rp = await req("POST", "/auth/forgot-password", { body: { identifier: "919876543210" } });
     check(
-      "phone identifier -> 200 (SMS not configured note)",
-      rp.status === 200 && rp.json?.success === true && rp.json?.note !== undefined
+      "phone identifier -> 200 with SMS->email fallback",
+      rp.status === 200 &&
+        rp.json?.success === true &&
+        rp.json?.smsFallback === true &&
+        rp.json?.channel === "email"
     );
     check("phone reset never leaks password", rp.json?.newPassword === undefined);
+
+    // OTP verification: wrong code, expired code, then the correct code.
+    const fgv = await makeUser("fgv");
+    track(fgv);
+    const goodCode = "123456";
+    const createdAt = new Date();
+    await Otp.create({
+      identifier: fgv.email.toLowerCase(),
+      purpose: "password_reset",
+      code: goodCode,
+      expiresAt: new Date(createdAt.getTime() + 10 * 60 * 1000),
+      createdAt,
+    });
+
+    const rBad = await req("POST", "/auth/forgot-password/verify", {
+      body: { identifier: fgv.email, code: "000000" },
+    });
+    check("wrong code -> 400", rBad.status === 400 && /incorrect/i.test(rBad.json?.error || ""));
+
+    const fgx = await makeUser("fgx");
+    track(fgx);
+    await Otp.create({
+      identifier: fgx.email.toLowerCase(),
+      purpose: "password_reset",
+      code: "654321",
+      expiresAt: new Date(Date.now() - 60 * 1000),
+      createdAt,
+    });
+    const rExp = await req("POST", "/auth/forgot-password/verify", {
+      body: { identifier: fgx.email, code: "654321" },
+    });
+    check("expired OTP -> 400 'OTP expired'", rExp.status === 400 && /expired/i.test(rExp.json?.error || ""));
+
+    const rOk = await req("POST", "/auth/forgot-password/verify", {
+      body: { identifier: fgv.email, code: goodCode },
+    });
+    check(
+      "correct code -> 200 password reset + delivered",
+      rOk.status === 200 && rOk.json?.success === true
+    );
+    const afterUser = await User.findOne({ email: fgv.email });
+    check(
+      "stored password is scrypt-hashed (not plaintext)",
+      afterUser && typeof afterUser.password === "string" && afterUser.password.startsWith("scrypt$")
+    );
+    check("reset response never leaks password", rOk.json?.newPassword === undefined);
 
     let lettersOnly = true;
     let lenOk = true;

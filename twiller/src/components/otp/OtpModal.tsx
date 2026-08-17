@@ -36,10 +36,12 @@ export default function OtpModal({
   const resendTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Start the resend countdown from scratch each time the modal opens
-  // (adjusting state during render, per React docs).
+  // or the cooldown duration changes (adjusting state during render, per React docs).
   const [prevOpen, setPrevOpen] = useState(open);
-  if (prevOpen !== open) {
+  const [prevCooldown, setPrevCooldown] = useState(resendCooldownSec);
+  if (prevOpen !== open || prevCooldown !== resendCooldownSec) {
     setPrevOpen(open);
+    setPrevCooldown(resendCooldownSec);
     if (open) setCountdown(resendCooldownSec);
   }
 

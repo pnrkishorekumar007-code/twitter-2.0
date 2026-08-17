@@ -1,16 +1,30 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-// Locks the document body while an overlay/modal is open (prevents background
-// scrolling on mobile), restoring the previous overflow value on cleanup.
+// Tracks how many active consumers want the body locked. The body stays
+// overflow:hidden until the last consumer releases it, preventing a common
+// bug where closing one modal unlocks scroll while another is still open.
+let lockCount = 0;
+
 export function useLockBodyScroll(active: boolean) {
+  const prevOverflow = useRef<string>("");
+
   useEffect(() => {
     if (!active) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+
+    if (lockCount === 0) {
+      prevOverflow.current = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
+    lockCount++;
+
     return () => {
-      document.body.style.overflow = original;
+      lockCount--;
+      if (lockCount <= 0) {
+        lockCount = 0;
+        document.body.style.overflow = prevOverflow.current;
+      }
     };
   }, [active]);
 }

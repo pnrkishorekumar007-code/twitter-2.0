@@ -35,7 +35,7 @@ export default function ProfileSettingsPanel() {
         <CardContent className="p-4">
           <p className="text-foreground font-semibold mb-3">{t("login_history")}</p>
           {loginHistory.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No login history recorded yet.</p>
+            <p className="text-muted-foreground text-sm">{t("profile_no_login_history")}</p>
           ) : (
             <div className="space-y-3">
               {loginHistory.map((entry: LoginHistoryEntry, idx: number) => (

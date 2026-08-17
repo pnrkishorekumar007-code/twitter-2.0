@@ -6,8 +6,6 @@ import { useNotifications } from "@/context/NotificationsContext";
 import { getSocket } from "@/lib/socketClient";
 import type { Tweet } from "@/lib/types";
 
-const KEYWORDS = ["cricket", "science"];
-
 /**
  * KEYWORD NOTIFICATIONS — polling fallback.
  *
@@ -56,7 +54,7 @@ export function useTweetNotifications(tweets: Tweet[]) {
       if (isFirstPass) return; // don't spam notifications for tweets that already existed
 
       const text = (tweet.content || "").toLowerCase();
-      const matched = KEYWORDS.find((k) => text.includes(k));
+      const matched = settings.keywords?.find((k) => text.includes(k.toLowerCase()));
       if (matched) {
         new Notification("New Keyword Tweet", {
           body: tweet.content || "",
@@ -65,5 +63,5 @@ export function useTweetNotifications(tweets: Tweet[]) {
         });
       }
     });
-  }, [tweets, user, settings.keywordNotifications, socketLive]);
+  }, [tweets, user, settings.keywordNotifications, settings.keywords, socketLive]);
 }

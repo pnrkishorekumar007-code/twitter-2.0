@@ -1,9 +1,10 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
 import axiosInstance from "../lib/axiosInstance";
 import { LangCode, translations, LANGUAGES } from "../lib/translations";
+import { translationsExtra } from "../lib/translationsExtra";
 
 interface LanguageContextType {
   lang: LangCode;
@@ -23,12 +24,18 @@ export const useLanguage = () => {
   return ctx;
 };
 
+const VALID_CODES = new Set<string>(LANGUAGES.map((l) => l.code));
+
+function isValidLangCode(v: string | null): v is LangCode {
+  return v !== null && VALID_CODES.has(v);
+}
+
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [lang, setLang] = useState<LangCode>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("twiller-lang");
-      if (saved) return saved as LangCode;
+      if (isValidLangCode(saved)) return saved;
     }
     return "en";
   });
@@ -38,11 +45,11 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [lastUser, setLastUser] = useState(user);
   if (user !== lastUser) {
     setLastUser(user);
-    if (user?.preferredLanguage) {
-      setLang(user.preferredLanguage as LangCode);
+    if (user?.preferredLanguage && isValidLangCode(user.preferredLanguage)) {
+      setLang(user.preferredLanguage);
     } else {
       const saved = typeof window !== "undefined" ? localStorage.getItem("twiller-lang") : null;
-      if (saved) setLang(saved as LangCode);
+      if (isValidLangCode(saved)) setLang(saved);
     }
   }
 
@@ -66,7 +73,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (
           !cancelled &&
           serverLang &&
-          LANGUAGES.some((l) => l.code === serverLang) &&
+          isValidLangCode(serverLang) &&
           !localOverrideRef.current
         ) {
           setLang(serverLang);
@@ -83,15 +90,33 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, [email, syncedEmail]);
 
-  const t = (key: string) => translations[lang]?.[key] ?? translations.en[key] ?? key;
+  const t = useCallback(
+    (key: string) =>
+      translationsExtra[lang]?.[key] ??
+      translationsExtra.en?.[key] ??
+      translations[lang]?.[key] ??
+      translations.en[key] ??
+      key,
+    [lang],
+  );
 
   // Keep the document in sync with the active language so the browser and the
   // CSS (see globals.css) can adapt: <html lang> for screen readers/translators,
   // data-lang to trigger script-appropriate fonts, sizing and line-height.
+  // The language-specific font class is applied to <body> so it covers the
+  // entire page without an extra wrapper <div> that could break flex/grid layouts.
   useEffect(() => {
-    document.documentElement.lang = lang;
-    document.documentElement.dir = "ltr";
-    document.documentElement.setAttribute("data-lang", lang);
+    const html = document.documentElement;
+    const body = document.body;
+    html.lang = lang;
+    html.dir = "ltr";
+    html.setAttribute("data-lang", lang);
+
+    // Remove all previous lang-* classes from body, then add the current one.
+    body.classList.forEach((cls) => {
+      if (cls.startsWith("lang-")) body.classList.remove(cls);
+    });
+    body.classList.add("lang-font", `lang-${lang}`);
   }, [lang]);
 
   // POST /language/request-otp — French → email OTP, everything else → mobile.
@@ -122,21 +147,26 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // The token is valid for 10 minutes, so a transient failure on the change
     // request is retried once rather than forcing the user to re-request a code.
+    let lastErr: unknown;
     try {
       await axiosInstance.put("/language/change", {
         targetLanguage: target,
         languageToken,
       });
     } catch (firstErr) {
+      lastErr = firstErr;
       try {
         await axiosInstance.put("/language/change", {
           targetLanguage: target,
           languageToken,
         });
-      } catch {
-        throw firstErr;
+      } catch (secondErr) {
+        lastErr = secondErr;
       }
     }
+
+    // If we fell through the catch without succeeding, throw the last error.
+    if (lastErr) throw lastErr;
 
     localOverrideRef.current = true;
     setLang(target);
@@ -154,9 +184,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     <LanguageContext.Provider
       value={{ lang, t, requestLanguageOtp, verifyLanguageOtp, getCurrentLanguage }}
     >
-      <div className={`lang-font lang-${lang}`} dir="ltr">
-        {children}
-      </div>
+      {children}
     </LanguageContext.Provider>
   );
 };

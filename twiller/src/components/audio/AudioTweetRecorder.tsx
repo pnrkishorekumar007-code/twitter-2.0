@@ -12,6 +12,32 @@ import { getErrorMessage } from "@/lib/types";
 
 const MAX_DURATION_SEC = 5 * 60;
 const MAX_SIZE_BYTES = 100 * 1024 * 1024;
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const AUDIO_WINDOW_OPEN_MIN = 14 * 60; // 2:00 PM IST
+const AUDIO_WINDOW_CLOSE_MIN = 19 * 60; // 7:00 PM IST
+
+function getAudioWindowInfo(now = Date.now()) {
+  const istDate = new Date(now + IST_OFFSET_MS);
+  const minutes = istDate.getUTCHours() * 60 + istDate.getUTCMinutes();
+  const open = minutes >= AUDIO_WINDOW_OPEN_MIN && minutes < AUDIO_WINDOW_CLOSE_MIN;
+  return { open, istDate };
+}
+
+function secondsUntilOpen(istDate: Date) {
+  const target = new Date(istDate);
+  target.setUTCHours(14, 0, 0, 0);
+  if (istDate.getUTCHours() >= 14) target.setUTCDate(target.getUTCDate() + 1);
+  return Math.max(0, Math.round((target.getTime() - istDate.getTime()) / 1000));
+}
+
+function formatCountdown(totalSeconds: number) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(
+    s
+  ).padStart(2, "0")}`;
+}
 
 export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void }) {
   const { user } = useAuth();
@@ -25,6 +51,18 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
   const [audioToken, setAudioToken] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const windowInfo = useMemo(() => getAudioWindowInfo(now), [now]);
+  const countdownSeconds = useMemo(
+    () => (windowInfo.open ? 0 : secondsUntilOpen(windowInfo.istDate)),
+    [windowInfo]
+  );
 
   const audioUrl = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob]);
 
@@ -51,6 +89,10 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
   const startRecording = async () => {
     setError("");
     setPosted(false);
+    if (!windowInfo.open) {
+      setError("Audio tweets are allowed only between 2:00 PM and 7:00 PM IST.");
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
@@ -98,8 +140,12 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
     setError("");
     setPosted(false);
     setBlob(file);
-    const audio = new Audio(URL.createObjectURL(file));
-    audio.onloadedmetadata = () => setDuration(Math.round(audio.duration));
+    const tempUrl = URL.createObjectURL(file);
+    const audio = new Audio(tempUrl);
+    audio.onloadedmetadata = () => {
+      setDuration(Math.round(audio.duration));
+      URL.revokeObjectURL(tempUrl);
+    };
   };
 
   const sendOtp = async (openModal = true) => {
@@ -144,6 +190,10 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
   const startUploadFlow = async () => {
     if (!blob || !user) return;
     setError("");
+    if (!windowInfo.open) {
+      setError("Audio tweets are allowed only between 2:00 PM and 7:00 PM IST.");
+      return;
+    }
     if (blob.size > MAX_SIZE_BYTES) {
       setError("Audio size must not exceed 100 MB.");
       return;
@@ -187,9 +237,21 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
         🎙 Audio tweets: max 5 min / 100 MB (MP3, WAV, M4A, OGG), postable 2:00–7:00 PM IST,
         requires email OTP.
       </p>
+      {!windowInfo.open && (
+        <p className="text-amber-500 text-xs mb-2">
+          Audio tweets are currently closed. Opens in {formatCountdown(countdownSeconds)} (2:00
+          PM IST).
+        </p>
+      )}
       <div className="flex items-center gap-2">
         {!recording ? (
-          <Button type="button" variant="outline" onClick={startRecording} className="rounded-full">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={startRecording}
+            disabled={!windowInfo.open}
+            className="rounded-full"
+          >
             <Mic className="h-4 w-4 mr-1" /> Record
           </Button>
         ) : (
@@ -202,6 +264,7 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
           variant="outline"
           className="rounded-full"
           onClick={() => fileInputRef.current?.click()}
+          disabled={!windowInfo.open}
         >
           <Upload className="h-4 w-4 mr-1" /> Upload file
         </Button>
@@ -256,7 +319,7 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
       {blob && (
         <Button
           type="button"
-          disabled={uploading}
+          disabled={uploading || !windowInfo.open}
           onClick={startUploadFlow}
           className="mt-3 bg-brand hover:bg-brand/90 rounded-full font-bold"
         >

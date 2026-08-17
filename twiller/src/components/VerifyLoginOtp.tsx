@@ -88,6 +88,7 @@ export default function VerifyLoginOtp() {
     localStorage.removeItem("twiller-login-expires-at");
     localStorage.removeItem("twiller-login-method");
     localStorage.removeItem("twiller-login-dev-code");
+    localStorage.removeItem("twiller-otp-pending");
   };
 
   const handleVerify = async () => {

@@ -63,12 +63,13 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
   // failure so the UI never waits on the network.
   const toggleBookmark = useCallback(
     async (tweetId: string) => {
-      const wasBookmarked = bookmarkIds.includes(tweetId);
-      setBookmarkIds((prev) =>
-        wasBookmarked
+      let wasBookmarked = false;
+      setBookmarkIds((prev) => {
+        wasBookmarked = prev.includes(tweetId);
+        return wasBookmarked
           ? prev.filter((id) => id !== tweetId)
-          : [...prev, tweetId]
-      );
+          : [...prev, tweetId];
+      });
       try {
         if (wasBookmarked) {
           await axiosInstance.delete(`/bookmarks/${tweetId}`);
@@ -84,7 +85,7 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
         console.error("Failed to update bookmark:", err);
       }
     },
-    [bookmarkIds]
+    []
   );
 
   const value = useMemo(
