@@ -5,7 +5,7 @@ const OtpSchema = new mongoose.Schema({
   identifier: { type: String, required: true }, // email or phone
   purpose: {
     type: String,
-    enum: ["login", "audio_upload", "language_switch", "password_reset"],
+    enum: ["login", "audio_upload", "language_switch", "password_reset", "registration"],
     required: true,
   },
   code: { type: String, required: true },

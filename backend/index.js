@@ -59,7 +59,7 @@ app.use("/auth", authRoutes);
 app.use("/payment", paymentRoutes);
 // OTP protection middleware for all routes except the open auth/registration flows
 app.use((req, res, next) => {
-  const open = ["/auth", "/register", "/login", "/login/start", "/login/verify", "/send-login-otp", "/verify-login-otp"]; // paths that do not require OTP
+  const open = ["/auth", "/register", "/login", "/login/start", "/login/verify", "/send-login-otp", "/verify-login-otp", "/auth/register-otp", "/auth/register-verify", "/auth/send-register-otp"]; // paths that do not require OTP
   if (open.some(p => req.path.startsWith(p))) return next();
   return ensureOtpVerified(req, res, next);
 });
@@ -160,12 +160,14 @@ async function pinTextAuthor(req, res, next) {
   }
 }
 
+const REGISTER_EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 app.post("/register", async (req, res) => {
   try {
-    // Emails are stored lowercased so login (which normalizes to lowercase)
-    // always finds the account. The duplicate check is case-insensitive so a
-    // mixed-case variant can never create a second account.
     const email = normalizeEmail(req.body.email);
+    if (!email || !REGISTER_EMAIL_RE.test(email)) {
+      return res.status(400).send({ error: "Invalid email address." });
+    }
     const existinguser = await findUserByEmail(email);
     if (existinguser) {
       return res.status(200).send(existinguser);

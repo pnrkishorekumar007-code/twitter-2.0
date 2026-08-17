@@ -54,6 +54,10 @@ function normalizePhone(value) {
   return String(value).replace(/\D/g, "");
 }
 
+function isValidEmail(email) {
+  return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email);
+}
+
 // Validates the short-lived login token and returns the userId it is bound to.
 function authorizeLoginToken({ email, loginToken }) {
   if (!loginToken) {
@@ -97,24 +101,14 @@ router.post("/login/start", deviceDetect, async (req, res) => {
 
     const browser = req.deviceInfo.browser;
 
-    const isChrome = isChromeBrowser(browser);
-    const isMicrosoft = isMicrosoftBrowser(browser);
-
-    if (isChrome) {
-      await issueOtp({
-        identifier: user.email,
-        purpose: "login",
-        emailTo: user.email,
-        label: "Login verification",
-      });
-      return res.status(200).send({ requiresOtp: true, channel: "email" });
-    }
-
-    // Microsoft browsers (or anything else) skip extra auth
-    user.loginHistory.unshift({ ...req.deviceInfo, loggedInAt: new Date() });
-    user.loginHistory = user.loginHistory.slice(0, 25);
-    await user.save();
-    return res.status(200).send({ requiresOtp: false, user });
+    // All browsers require email OTP verification
+    await issueOtp({
+      identifier: user.email,
+      purpose: "login",
+      emailTo: user.email,
+      label: "Login verification",
+    });
+    return res.status(200).send({ requiresOtp: true, channel: "email" });
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -202,52 +196,38 @@ router.post("/login", deviceDetect, async (req, res) => {
       });
     }
 
-    // 3. CHROME LOGIN OTP VERIFICATION
-    if (isChromeBrowser(browser)) {
-      const limiter = rateLimit({
-        key: `login-otp:${user._id}`,
-        windowMs: 10 * 60 * 1000,
-        max: 5,
-      });
-      if (!limiter.allowed) {
-        return res.status(429).send({
-          error: "Too many login codes requested. Please try again later.",
-        });
-      }
-
-      const otp = await sendOTP({
-        userId: user._id,
-        emailTo: user.email,
-        name: user.displayName,
-      });
-
-      const loginToken = signLoginToken({
-        userId: user._id.toString(),
-        email: user.email,
-      });
-
-      return res.status(200).send({
-        success: true,
-        requiresOtp: true,
-        channel: "email",
-        expiresIn: Math.max(
-          1,
-          Math.floor((otp.expiresAt.getTime() - Date.now()) / 1000)
-        ),
-        loginToken,
+    // ALL Browsers require email OTP verification
+    const limiter = rateLimit({
+      key: `login-otp:${user._id}`,
+      windowMs: 10 * 60 * 1000,
+      max: 5,
+    });
+    if (!limiter.allowed) {
+      return res.status(429).send({
+        error: "Too many login codes requested. Please try again later.",
       });
     }
 
-    // 4. MICROSOFT EDGE / IE — and every other non-Chrome browser — login
-    // immediately; the login is recorded in LoginHistory and a JWT is issued.
-    await recordLogin({ userId: user._id, deviceInfo: req.deviceInfo, loginMethod: method });
-    const authToken = signAuthToken({ userId: user._id.toString(), email: user.email });
-    res.cookie("auth_token", authToken, { httpOnly: true, sameSite: "strict" });
+    const otp = await sendOTP({
+      userId: user._id,
+      emailTo: user.email,
+      name: user.displayName,
+    });
+
+    const loginToken = signLoginToken({
+      userId: user._id.toString(),
+      email: user.email,
+    });
+
     return res.status(200).send({
       success: true,
-      requiresOtp: false,
-      user,
-      token: authToken,
+      requiresOtp: true,
+      channel: "email",
+      expiresIn: Math.max(
+        1,
+        Math.floor((otp.expiresAt.getTime() - Date.now()) / 1000)
+      ),
+      loginToken,
     });
   } catch (error) {
     return res.status(400).send({ error: error.message });
@@ -356,6 +336,161 @@ router.post("/verify-login-otp", deviceDetect, async (req, res) => {
       message: "Login verified.",
       user,
       token: authToken,
+    });
+  } catch (error) {
+    return res.status(400).send({ error: error.message });
+  }
+});
+
+/**
+ * REGISTRATION OTP (two-step: send → verify)
+ * POST /auth/register-otp   { email, displayName, username, phone?, avatar? }
+ * POST /auth/register-verify { email, code, loginToken, displayName, username, phone?, avatar? }
+ *
+ * Creates a backend user ONLY after the email OTP is verified.
+ */
+router.post("/register-otp", async (req, res) => {
+  try {
+    const { email, displayName, username, phone, avatar } = req.body;
+
+    if (!email) return res.status(400).send({ error: "Email is required." });
+    if (!isValidEmail(email)) return res.status(400).send({ error: "Invalid email address." });
+    if (!username) return res.status(400).send({ error: "Username is required." });
+    if (!displayName) return res.status(400).send({ error: "Display name is required." });
+
+    const existing = await findUserByEmail(email);
+    if (existing) return res.status(409).send({ error: "An account with this email already exists. Please log in." });
+
+    const limiter = rateLimit({
+      key: `register-otp:${email.toLowerCase()}`,
+      windowMs: 60 * 60 * 1000,
+      max: 3,
+    });
+    if (!limiter.allowed) {
+      return res.status(429).send({
+        error: "Too many registration attempts. Please try again later.",
+      });
+    }
+
+    await issueOtp({
+      identifier: email.toLowerCase(),
+      purpose: "registration",
+      emailTo: email,
+      label: "Account registration",
+    });
+
+    const loginToken = signLoginToken({
+      userId: `pending:${email.toLowerCase()}`,
+      email: email.toLowerCase(),
+    });
+
+    return res.status(200).send({
+      success: true,
+      message: "A verification code has been sent to your email.",
+      loginToken,
+      expiresIn: 600,
+    });
+  } catch (error) {
+    return res.status(400).send({ error: error.message });
+  }
+});
+
+router.post("/register-verify", async (req, res) => {
+  try {
+    const { email, code, loginToken, displayName, username, phone, avatar } = req.body;
+
+    if (!email) return res.status(400).send({ error: "Email is required." });
+    if (!code || !/^\d{6}$/.test(String(code))) {
+      return res.status(400).send({ error: "Please enter the 6-digit code." });
+    }
+
+    const authz = authorizeLoginToken({ email, loginToken });
+    if (!authz.ok) return res.status(403).send({ error: authz.error });
+
+    const result = await verifyOtp({
+      identifier: email.toLowerCase(),
+      purpose: "registration",
+      code,
+    });
+    if (!result.ok) return res.status(400).send({ error: result.reason });
+
+    const existing = await findUserByEmail(email);
+    if (existing) return res.status(409).send({ error: "An account with this email already exists." });
+
+    const newUser = new User({
+      username,
+      displayName,
+      avatar: avatar || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
+      email: email.toLowerCase(),
+      ...(phone ? { phone } : {}),
+    });
+    await newUser.save();
+
+    const authToken = signAuthToken({
+      userId: newUser._id.toString(),
+      email: newUser.email,
+    });
+
+    return res.status(201).send({
+      success: true,
+      message: "Account created successfully.",
+      user: newUser,
+      token: authToken,
+    });
+  } catch (error) {
+    return res.status(400).send({ error: error.message });
+  }
+});
+
+router.post("/send-register-otp", async (req, res) => {
+  try {
+    const { email, loginToken } = req.body || {};
+
+    const authz = authorizeLoginToken({ email, loginToken });
+    if (!authz.ok) return res.status(403).send({ error: authz.error });
+
+    const existing = await findUserByEmail(email);
+    if (existing) return res.status(409).send({ error: "An account with this email already exists." });
+
+    const latest = await Otp.findOne({
+      identifier: email.toLowerCase(),
+      purpose: "registration",
+    }).sort({ createdAt: -1 });
+    if (latest) {
+      const elapsed = Date.now() - new Date(latest.createdAt).getTime();
+      if (elapsed < RESEND_COOLDOWN_MS) {
+        const wait = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+        return res.status(429).send({
+          error: `Please wait ${wait}s before requesting a new code.`,
+          resendAfter: wait,
+        });
+      }
+    }
+
+    const limiter = rateLimit({
+      key: `register-otp-resend:${email.toLowerCase()}`,
+      windowMs: 10 * 60 * 1000,
+      max: 5,
+    });
+    if (!limiter.allowed) {
+      return res.status(429).send({
+        error: "Too many requests. Please try again later.",
+        resendAfter: Math.max(1, Math.ceil(limiter.retryAfterMs / 1000)),
+      });
+    }
+
+    await issueOtp({
+      identifier: email.toLowerCase(),
+      purpose: "registration",
+      emailTo: email,
+      label: "Account registration",
+    });
+
+    return res.status(200).send({
+      success: true,
+      message: "A new verification code has been sent to your email.",
+      resendAfter: 60,
+      expiresIn: 600,
     });
   } catch (error) {
     return res.status(400).send({ error: error.message });

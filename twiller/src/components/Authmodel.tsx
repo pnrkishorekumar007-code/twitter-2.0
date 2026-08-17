@@ -69,7 +69,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
     if (!formData.email.trim()) {
       newErrors.email = t('auth_err_email_required');
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
       newErrors.email = t('auth_err_email_invalid');
     }
 

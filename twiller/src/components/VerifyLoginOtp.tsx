@@ -89,6 +89,8 @@ export default function VerifyLoginOtp() {
     localStorage.removeItem("twiller-login-method");
     localStorage.removeItem("twiller-login-dev-code");
     localStorage.removeItem("twiller-otp-pending");
+    localStorage.removeItem("twiller-login-is-registration");
+    localStorage.removeItem("twiller-registration-data");
   };
 
   const handleVerify = async () => {
@@ -96,13 +98,30 @@ export default function VerifyLoginOtp() {
     setVerifying(true);
     setError("");
     try {
-      const res = await axiosInstance.post("/auth/verify-login-otp", {
-        email: effectiveEmail,
-        code,
-        loginToken: session.token,
-        method: session.method,
-      });
-      completeLogin(res.data);
+      const isRegistration = localStorage.getItem("twiller-login-is-registration") === "1";
+
+      if (isRegistration) {
+        const regData = JSON.parse(localStorage.getItem("twiller-registration-data") || "{}");
+        const res = await axiosInstance.post("/auth/register-verify", {
+          email: effectiveEmail,
+          code,
+          loginToken: session.token,
+          displayName: regData.displayName || effectiveEmail.split("@")[0],
+          username: regData.username || effectiveEmail.split("@")[0],
+          phone: regData.phone,
+          avatar: regData.avatar,
+        });
+        completeLogin(res.data);
+      } else {
+        const res = await axiosInstance.post("/auth/verify-login-otp", {
+          email: effectiveEmail,
+          code,
+          loginToken: session.token,
+          method: session.method,
+        });
+        completeLogin(res.data);
+      }
+
       clearPending();
       toast("Login successful", "success");
       router.replace("/");
@@ -118,7 +137,10 @@ export default function VerifyLoginOtp() {
     setSending(true);
     setError("");
     try {
-      const res = await axiosInstance.post("/auth/send-login-otp", {
+      const isRegistration = localStorage.getItem("twiller-login-is-registration") === "1";
+      const endpoint = isRegistration ? "/auth/send-register-otp" : "/auth/send-login-otp";
+
+      const res = await axiosInstance.post(endpoint, {
         email: effectiveEmail,
         loginToken: session.token,
       });

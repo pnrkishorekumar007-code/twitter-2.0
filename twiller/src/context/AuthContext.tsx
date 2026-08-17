@@ -178,25 +178,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!auth) {
         throw new Error("Firebase not configured. Add NEXT_PUBLIC_FIREBASE_* env vars.");
       }
-      // Mock authentication - in real app, this would call an API
-      const usercred = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const user = usercred.user;
-      const newuser = {
-        username,
-        displayName,
-        avatar: user.photoURL || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
-        email: user.email,
-        ...(phone ? { phone } : {}),
-      };
-      const res = await axiosInstance.post("/register", newuser);
-      if (res.data) {
-        setUser(res.data);
-        localStorage.setItem("twitter-user", JSON.stringify(res.data));
+
+      // Step 1: Create Firebase account (so credentials exist for login/OTP).
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } catch (firebaseErr: unknown) {
+        const fe = firebaseErr as { code?: string };
+        if (fe.code === "auth/email-already-in-use") {
+          // Firebase account exists — check if backend user also exists.
+          try {
+            await axiosInstance.get("/loggedinuser", { params: { email } });
+            throw new Error("An account with this email already exists. Please log in.");
+          } catch (checkErr) {
+            if (checkErr instanceof Error && checkErr.message === "An account with this email already exists. Please log in.") {
+              throw checkErr;
+            }
+            // Backend user doesn't exist — proceed with registration OTP.
+          }
+        } else {
+          throw firebaseErr;
+        }
       }
+
+      // Step 2: Send registration OTP (backend user NOT created yet).
+      const avatar = "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400";
+      const res = await axiosInstance.post("/auth/register-otp", {
+        email, displayName, username, phone, avatar,
+      });
+
+      // Step 3: Store pending session and redirect to OTP page.
+      localStorage.setItem("twiller-login-token", res.data.loginToken || "");
+      localStorage.setItem("twiller-login-email", email);
+      localStorage.setItem(
+        "twiller-login-expires-at",
+        String(Date.now() + (res.data.expiresIn ?? 300) * 1000)
+      );
+      localStorage.setItem("twiller-login-method", "email");
+      localStorage.setItem("twiller-login-is-registration", "1");
+      localStorage.setItem("twiller-registration-data", JSON.stringify({
+        email, displayName, username, phone, avatar,
+      }));
+      localStorage.setItem(PENDING_OTP_FLAG, "1");
+      router.push(`/verify-login-otp?email=${encodeURIComponent(email)}`);
     } finally {
       setIsLoading(false);
     }
@@ -310,6 +333,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       let userData;
+      let isNewUser = false;
 
       try {
         const res = await axiosInstance.get("/loggedinuser", {
@@ -317,23 +341,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         });
         userData = res.data;
       } catch {
-        const newuser = {
-          username: firebaseuser.email.split("@")[0],
-          displayName: firebaseuser.displayName || "User",
-          avatar: firebaseuser.photoURL || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
+        isNewUser = true;
+      }
+
+      if (isNewUser) {
+        // New user: send registration OTP (backend user created only after verify).
+        const avatar = firebaseuser.photoURL || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400";
+        const regRes = await axiosInstance.post("/auth/register-otp", {
           email: firebaseuser.email,
-        };
+          displayName: firebaseuser.displayName || "User",
+          username: firebaseuser.email.split("@")[0],
+          avatar,
+        });
 
-        const registerRes = await axiosInstance.post("/register", newuser);
-        userData = registerRes.data;
+        localStorage.setItem("twiller-login-token", regRes.data.loginToken || "");
+        localStorage.setItem("twiller-login-email", firebaseuser.email);
+        localStorage.setItem(
+          "twiller-login-expires-at",
+          String(Date.now() + (regRes.data.expiresIn ?? 300) * 1000)
+        );
+        localStorage.setItem("twiller-login-method", "google");
+        localStorage.setItem("twiller-login-is-registration", "1");
+        localStorage.setItem("twiller-registration-data", JSON.stringify({
+          email: firebaseuser.email,
+          displayName: firebaseuser.displayName || "User",
+          username: firebaseuser.email.split("@")[0],
+          avatar,
+        }));
+        localStorage.setItem(PENDING_OTP_FLAG, "1");
+        router.push(`/verify-login-otp?email=${encodeURIComponent(firebaseuser.email)}`);
+        return;
       }
 
-      if (!userData) {
-        throw new Error("Login/Register failed: No user data returned");
-      }
-
-      // Advanced login security: device gate + OTP decision BEFORE any user
-      // state is set. A Chrome user must verify OTP before the dashboard.
+      // Existing user: device gate + OTP (always requires OTP now).
       try {
         const res = await axiosInstance.post("/auth/login", {
           email: userData.email,
@@ -363,7 +403,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           response?: { status?: number; data?: { message?: string; error?: string } };
         };
         if (axiosErr?.response?.status === 403) {
-          // Mobile login outside the allowed window — roll the session back.
           await logout();
           alert(
             axiosErr.response.data?.message ||
@@ -372,8 +411,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           );
           return;
         }
-        // non-blocking: device check failing for another reason shouldn't
-        // block a successful Google sign-in.
       }
 
       // No OTP required — this login is complete.
@@ -386,7 +423,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         code === "auth/popup-closed-by-user" ||
         code === "auth/cancelled-popup-request"
       ) {
-        // User closed the popup / cancelled — not a failure.
         console.log("Google sign-in popup closed by the user.");
         return;
       }
