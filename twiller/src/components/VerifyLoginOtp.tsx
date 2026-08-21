@@ -80,7 +80,7 @@ export default function VerifyLoginOtp() {
       : DEFAULT_TTL_SECONDS;
   const expired = expiresAt > 0 && secondsLeft <= 0;
   const canVerify = code.length === 6 && !!session?.token && !verifying;
-  const canResend = cooldown <= 0 && !!session?.token && !sending && !expired;
+  const canResend = cooldown <= 0 && !!session?.token && !sending;
 
   const clearPending = () => {
     localStorage.removeItem("twiller-login-token");
