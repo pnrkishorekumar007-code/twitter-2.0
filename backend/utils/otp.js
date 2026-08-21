@@ -10,7 +10,7 @@ export function generateOtpCode() {
 // note in the message which channel it "represents" — see routes.)
 export async function issueOtp({ identifier, purpose, emailTo, label }) {
   const code = generateOtpCode();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
   await Otp.create({ identifier, purpose, code, expiresAt });
 
   // The code is delivered to the user's email only — it is never shown on
@@ -18,7 +18,7 @@ export async function issueOtp({ identifier, purpose, emailTo, label }) {
   const mailResult = await sendMail({
     to: emailTo,
     subject: `Your Twiller verification code${label ? " – " + label : ""}`,
-    html: `<p>Your OTP code is:</p><h2 style="letter-spacing:4px">${code}</h2><p>This code expires in 10 minutes. If you didn't request this, ignore this email.</p>`,
+    html: `<p>Your OTP code is:</p><h2 style="letter-spacing:4px">${code}</h2><p>This code expires in 5 minutes. If you didn't request this, ignore this email.</p>`,
   });
   if (mailResult?.skipped) {
     throw new Error("The verification email could not be sent (email service not configured).");

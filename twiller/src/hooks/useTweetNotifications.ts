@@ -56,8 +56,9 @@ export function useTweetNotifications(tweets: Tweet[]) {
       const text = (tweet.content || "").toLowerCase();
       const matched = settings.keywords?.find((k) => text.includes(k.toLowerCase()));
       if (matched) {
-        new Notification("New Keyword Tweet", {
-          body: tweet.content || "",
+        const authorName = tweet.author?.displayName || "Someone";
+        new Notification(`New tweet from ${authorName}`, {
+          body: `${authorName}: ${tweet.content || ""}`,
           icon: tweet.author?.avatar || "/favicon.ico",
           tag: `twiller-kw-${id}`,
         });

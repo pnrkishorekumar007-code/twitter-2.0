@@ -63,8 +63,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (window.Notification.permission !== "granted") return;
 
-    const title = "New Keyword Tweet";
-    const body = payload.content || "A tweet you might like was just posted.";
+    const authorName = payload.author?.displayName || "Someone";
+    const title = `New tweet from ${authorName}`;
+    const body = `${authorName}: ${payload.content || "A tweet you might like was just posted."}`;
 
     const options: NotificationOptions = { tag: `twiller-kw-${payload.tweetId}` };
     // Project logo/avatar as the notification icon.

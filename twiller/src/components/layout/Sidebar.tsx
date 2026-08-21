@@ -11,9 +11,11 @@ import {
   Settings,
   LogOut,
   Sparkles,
-  PenSquare,
+  Feather,
   MoreHorizontal,
   Users,
+  Sun,
+  Moon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -22,7 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { Button } from "../ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import {
   Tooltip,
@@ -33,9 +34,8 @@ import {
 import { TwillerBrand } from "../Twitterlogo";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useMessages } from "@/context/MessagesContext";
-import ThemeToggle from "../ThemeToggle";
-import { motion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -46,15 +46,22 @@ interface SidebarProps {
   className?: string;
 }
 
+type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
+
 interface NavItem {
   name: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: IconType;
   current: boolean;
   page: string;
   badge?: boolean;
   count?: number;
 }
 
+/**
+ * LeftSidebar — fixed navigation rail matching the official X client.
+ * Collapses to an icon-only rail below `lg`; every row is a 44px pill with
+ * a 180ms hover fade.
+ */
 export default function Sidebar({
   currentPage = "home",
   onNavigate,
@@ -63,18 +70,16 @@ export default function Sidebar({
 }: SidebarProps) {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const { unreadTotal } = useMessages();
 
   const navigation: NavItem[] = [
     { name: t("home"), icon: Home, current: currentPage === "home", page: "home" },
     { name: t("explore"), icon: Search, current: currentPage === "explore", page: "explore" },
-    { name: t("sidebar_people"), icon: Users, current: currentPage === "search", page: "search" },
     { name: t("notifications"), icon: Bell, current: currentPage === "notifications", page: "notifications", badge: true },
     { name: t("messages"), icon: Mail, current: currentPage === "messages", page: "messages", count: unreadTotal },
     { name: t("bookmarks"), icon: Bookmark, current: currentPage === "bookmarks", page: "bookmarks" },
     { name: t("profile"), icon: User, current: currentPage === "profile", page: "profile" },
-    { name: t("premium"), icon: Sparkles, current: currentPage === "pricing", page: "pricing" },
-    { name: t("settings"), icon: Settings, current: currentPage === "settings", page: "settings" },
   ];
 
   const focusComposer = () => {
@@ -84,133 +89,188 @@ export default function Sidebar({
 
   const renderNavButton = (item: NavItem) => {
     const button = (
-      <Button
-        variant="ghost"
+      <button
+        type="button"
         aria-current={item.current ? "page" : undefined}
+        onClick={() => onNavigate?.(item.page)}
         className={cn(
-          "group relative w-full justify-start text-xl py-3 px-3 lg:px-4 rounded-full transition-all duration-200",
+          "group flex h-11 w-full items-center rounded-full p-3 transition-colors duration-[180ms] outline-none focus-visible:ring-2 focus-visible:ring-brand",
           forceExpanded ? "justify-start" : "justify-center lg:justify-start",
           item.current
-            ? "bg-brand/10 text-foreground shadow-[0_0_12px_rgba(29,155,240,0.15)]"
-            : "text-foreground hover:bg-accent/70"
+            ? "bg-hover-overlay text-foreground"
+            : "text-foreground hover:bg-hover-overlay"
         )}
-        onClick={() => onNavigate?.(item.page)}
       >
-        <span className="relative flex items-center justify-center lg:justify-start">
+        <span className="relative flex items-center justify-start">
           <item.icon
-            className={cn(
-              "h-6 w-6 shrink-0 transition-transform duration-200 group-hover:scale-110",
-              item.current ? "text-foreground" : "text-foreground"
-            )}
+            className="h-[26px] w-[26px] shrink-0"
+            strokeWidth={1.8}
+            aria-hidden="true"
           />
           {item.badge && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand" />
+            <span
+              className="absolute -top-1 -right-1 grid h-[17px] min-w-[17px] place-items-center rounded-full border-2 border-background bg-brand px-[3px] text-[10px] font-bold leading-none text-white"
+              aria-hidden="true"
+            >
+              •
             </span>
           )}
           {item.count != null && item.count > 0 && (
-            <span className="absolute -top-1.5 -right-2 grid min-w-[18px] h-[18px] place-items-center rounded-full bg-brand px-1 text-[11px] font-bold text-white">
+            <span className="absolute -top-1.5 -right-2 grid h-[18px] min-w-[18px] place-items-center rounded-full border-2 border-background bg-brand px-1 text-[11px] font-bold text-white">
               {item.count > 99 ? "99+" : item.count}
             </span>
           )}
         </span>
         <span
           className={cn(
-            "ml-4 truncate",
+            "ml-5 truncate text-xl leading-6",
             forceExpanded ? "inline" : "hidden lg:inline",
-            item.current && "font-bold"
+            item.current ? "font-bold" : "font-normal"
           )}
         >
           {item.name}
         </span>
-      </Button>
+      </button>
     );
 
-    if (item.page === "messages" || item.page === "bookmarks" || forceExpanded) {
-      return button;
-    }
+    if (forceExpanded) return button;
 
     return (
       <Tooltip>
         <TooltipTrigger asChild>{button}</TooltipTrigger>
-        <TooltipContent side="right" className="lg:hidden">{item.name}</TooltipContent>
+        <TooltipContent side="right" className="lg:hidden">
+          {item.name}
+        </TooltipContent>
       </Tooltip>
     );
   };
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div
-        className={cn(
-          "flex flex-col w-full border-r border-border/60 bg-background/95 backdrop-blur-xl",
-          className
-        )}
-      >
+      <div className={cn("flex h-full w-full flex-col bg-background", className)}>
+        {/* Brand */}
         <div
           className={cn(
-            "px-3 lg:px-4 py-3",
-            forceExpanded ? "flex justify-start" : "flex justify-center lg:justify-start"
+            "flex px-2 py-1",
+            forceExpanded ? "justify-start" : "justify-center lg:justify-start"
           )}
         >
-          <motion.button
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.92 }}
+          <button
+            type="button"
             aria-label={t("sidebar_home")}
-            className="rounded-full p-2 -m-2 transition-colors hover:bg-accent"
+            className="grid h-11 w-11 place-items-center rounded-full transition-colors duration-[180ms] hover:bg-hover-overlay outline-none focus-visible:ring-2 focus-visible:ring-brand lg:w-auto lg:justify-start lg:px-3"
             onClick={() => onNavigate?.("home")}
           >
             <TwillerBrand
               wordmarkClassName={forceExpanded ? "inline" : "hidden lg:inline"}
-              className="justify-center"
+              className="justify-center lg:justify-start"
             />
-          </motion.button>
+          </button>
         </div>
 
-        <nav className="flex-1 px-2 overflow-y-auto py-1" aria-label={t("sidebar_primary")}>
-          <ul className="space-y-1">
+        {/* Primary navigation */}
+        <nav
+          className="flex-1 overflow-y-auto px-2 py-1 no-scrollbar"
+          aria-label={t("sidebar_primary")}
+        >
+          <ul className="space-y-0.5">
             {navigation.map((item) => (
-              <li
-                key={item.page}
-                className={cn(
-                  forceExpanded ? "flex justify-start" : "flex justify-center lg:justify-start"
-                )}
-              >
-                {renderNavButton(item)}
-              </li>
+              <li key={item.page}>{renderNavButton(item)}</li>
             ))}
+
+            {/* More — reveals People / Premium / Settings.
+                NOTE: no Tooltip here — nesting Tooltip inside
+                DropdownMenuTrigger(asChild) makes Radix attach its open
+                handlers to the Tooltip root instead of the button, which
+                silently breaks the menu. */}
+            <li>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-haspopup="menu"
+                    className={cn(
+                      "group flex h-11 w-full items-center rounded-full p-3 transition-colors duration-[180ms] outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                      forceExpanded ? "justify-start" : "justify-center lg:justify-start",
+                      ["search", "pricing", "settings"].includes(currentPage)
+                        ? "bg-hover-overlay text-foreground"
+                        : "text-foreground hover:bg-hover-overlay"
+                    )}
+                  >
+                    <span className="relative flex items-center">
+                      <MoreHorizontal className="h-[26px] w-[26px] shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                    </span>
+                    <span
+                      className={cn(
+                        "ml-5 truncate text-xl leading-6",
+                        forceExpanded ? "inline" : "hidden lg:inline"
+                      )}
+                    >
+                      {t("more")}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="start" className="w-[300px] rounded-2xl border-border bg-popover p-2">
+                  <DropdownMenuItem
+                    className="rounded-full px-4 py-3 text-[15px]"
+                    onClick={() => onNavigate?.("search")}
+                  >
+                    <Users className="mr-3 h-5 w-5" aria-hidden="true" />
+                    {t("sidebar_people")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="rounded-full px-4 py-3 text-[15px]"
+                    onClick={() => onNavigate?.("pricing")}
+                  >
+                    <Sparkles className="mr-3 h-5 w-5" aria-hidden="true" />
+                    {t("premium")}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-border" />
+                  <DropdownMenuItem
+                    className="rounded-full px-4 py-3 text-[15px]"
+                    onClick={() => onNavigate?.("settings")}
+                  >
+                    <Settings className="mr-3 h-5 w-5" aria-hidden="true" />
+                    {t("settings")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </li>
           </ul>
 
-          <div
-            className={cn(
-              "mt-4 px-1 lg:px-2",
-              forceExpanded ? "flex justify-start" : "flex justify-center lg:justify-start"
-            )}
-          >
-            <Button
+          {/* Post button */}
+          <div className={cn("mt-3 px-0.5", forceExpanded ? "" : "flex justify-center lg:block")}>
+            <button
+              type="button"
               onClick={focusComposer}
-              className="w-full bg-brand-gradient animate-gradient text-white font-bold py-3 rounded-full text-lg shadow-lg shadow-brand/30 hover:brightness-110 transition-all"
+              className={cn(
+                "grid h-[52px] place-items-center rounded-full bg-brand font-bold text-white transition-colors duration-[180ms] hover:bg-x-blue-hover outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98]",
+                forceExpanded
+                  ? "w-full px-4"
+                  : "w-[52px] lg:w-full lg:px-4"
+              )}
             >
-              <span className={cn(forceExpanded ? "hidden" : "grid lg:hidden place-items-center")}>
-                <PenSquare className="h-6 w-6" />
+              <span className={forceExpanded ? "hidden" : "grid lg:hidden place-items-center"}>
+                <Feather className="h-6 w-6" aria-hidden="true" />
               </span>
-              <span className={forceExpanded ? "inline" : "hidden lg:inline"}>
-                <span className="inline-flex items-center gap-2">
-                  <PenSquare className="h-5 w-5" />
-                  {t("post")}
-                </span>
+              <span className={forceExpanded ? "text-[17px]" : "hidden lg:inline text-[17px]"}>
+                {t("post")}
               </span>
-            </Button>
+            </button>
           </div>
         </nav>
 
-        <div className="p-2 lg:p-3 border-t border-border/60 space-y-1">
+        {/* Account chip */}
+        <div className="p-2">
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-center lg:justify-start p-2 lg:p-3 rounded-full hover:bg-accent"
+                <button
+                  type="button"
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-full p-2 text-left transition-colors duration-[180ms] hover:bg-hover-overlay outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                    forceExpanded ? "" : "justify-center lg:justify-start"
+                  )}
                 >
                   <Avatar className="h-10 w-10 shrink-0">
                     <AvatarImage src={user.avatar} alt={user.displayName} />
@@ -218,56 +278,57 @@ export default function Sidebar({
                   </Avatar>
                   <span
                     className={cn(
-                      "flex-1 text-left min-w-0",
+                      "min-w-0 flex-1",
                       forceExpanded ? "block" : "hidden lg:block"
                     )}
                   >
-                    <span className="block text-foreground font-semibold truncate">
+                    <span className="block truncate text-[15px] font-bold text-foreground">
                       {user.displayName}
                     </span>
-                    <span className="block text-muted-foreground text-sm truncate">
+                    <span className="block truncate text-sm text-muted-foreground">
                       @{user.username}
                     </span>
                   </span>
                   <MoreHorizontal
                     className={cn(
-                      "h-5 w-5 text-muted-foreground shrink-0",
+                      "h-5 w-5 shrink-0 text-foreground",
                       forceExpanded ? "block" : "hidden lg:block"
                     )}
+                    aria-hidden="true"
                   />
-                </Button>
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 rounded-2xl p-1.5">
+              <DropdownMenuContent side="top" align="start" className="w-[300px] rounded-2xl border-border bg-popover p-2">
                 <DropdownMenuItem
-                  className="rounded-xl py-2.5"
+                  className="rounded-full px-4 py-3 text-[15px]"
                   onClick={() => onNavigate?.("settings")}
                 >
-                  <Settings className="mr-2 h-4 w-4" />
+                  <Settings className="mr-3 h-5 w-5" aria-hidden="true" />
                   {t("settings")}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-border" />
                 <DropdownMenuItem
-                  className="rounded-xl py-2.5"
-                  onClick={() => onNavigate?.("pricing")}
+                  className="rounded-full px-4 py-3 text-[15px]"
+                  onClick={toggleTheme}
                 >
-                  <Sparkles className="mr-2 h-4 w-4 text-brand" />
-                  {t("premium")}
+                  {theme === "dark" ? (
+                    <Sun className="mr-3 h-5 w-5" aria-hidden="true" />
+                  ) : (
+                    <Moon className="mr-3 h-5 w-5" aria-hidden="true" />
+                  )}
+                  {theme === "dark" ? t("settings_light") : t("settings_dark")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border" />
                 <DropdownMenuItem
                   variant="destructive"
-                  className="rounded-xl py-2.5"
+                  className="rounded-full px-4 py-3 text-[15px] font-bold"
                   onClick={logout}
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut className="mr-3 h-5 w-5" aria-hidden="true" />
                   {t("logout")} @{user.username}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <div className={cn("flex justify-end px-2 pt-1", forceExpanded ? "flex" : "hidden lg:flex")}>
-            <ThemeToggle />
-          </div>
         </div>
       </div>
     </TooltipProvider>

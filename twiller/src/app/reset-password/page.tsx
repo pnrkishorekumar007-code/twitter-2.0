@@ -1,17 +1,18 @@
 ﻿import type { Metadata } from "next";
 import Link from "next/link";
-import ForgotPassword from "@/components/ForgotPassword";
+import ResetPassword from "@/components/ResetPassword";
 import { TwillerBrand } from "@/components/Twitterlogo";
 import { ToastProvider } from "@/components/Toast";
 import { Card, CardContent } from "@/components/ui/card";
-import { Lock } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Forgot Password - Twiller",
-  description: "Reset your Twiller account password using your email or phone number.",
+  title: "Reset Password - Twiller",
+  description:
+    "Enter your verification code to reset your Twiller account password.",
 };
 
-export default function ForgotPasswordPage() {
+export default function ResetPasswordPage() {
   return (
     <ToastProvider>
       <div className="min-h-dvh bg-black text-white flex flex-col">
@@ -24,12 +25,12 @@ export default function ForgotPasswordPage() {
             <CardContent className="p-6 sm:p-8 space-y-6">
               <div className="flex items-center gap-3">
                 <span className="grid place-items-center h-10 w-10 rounded-full bg-brand text-white">
-                  <Lock className="h-5 w-5" aria-hidden="true" />
+                  <ShieldCheck className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <h1 className="text-2xl font-bold text-white">Forgot Password</h1>
+                <h1 className="text-2xl font-bold text-white">Reset Password</h1>
               </div>
 
-              <ForgotPassword />
+              <ResetPassword />
             </CardContent>
           </Card>
 

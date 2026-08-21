@@ -27,6 +27,7 @@ import { findUserByEmail, normalizeEmail } from "./utils/emailLookup.js";
 
 import { requireTweetLimit, rollbackTweetUsed } from "./middleware/tweetLimit.js";
 import { requireAnyAuth } from "./middleware/auth.js";
+import { rateLimit } from "./utils/rateLimiter.js";
 
 dotenv.config();
 const app = express();
@@ -218,6 +219,19 @@ app.patch("/userupdate/:email", async (req, res) => {
 // and the author is pinned from the authenticated session.
 app.post("/post", pinTextAuthor, requireTweetLimit, async (req, res) => {
   try {
+    // Rate limit tweet creation: max 20 per 10 minutes per account.
+    const limiter = rateLimit({
+      key: `tweet:${req.body.author}`,
+      windowMs: 10 * 60 * 1000,
+      max: 20,
+    });
+    if (!limiter.allowed) {
+      await rollbackTweetUsed(req.body.author);
+      return res.status(429).send({
+        error: "You are posting too fast. Please slow down.",
+      });
+    }
+
     // Audio tweets must go through /audio/upload (OTP + 2-7PM window); posting
     // one via the text endpoint would bypass those protections.
     if (req.body?.type === "audio") {

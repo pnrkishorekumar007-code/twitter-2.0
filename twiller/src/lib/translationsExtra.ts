@@ -1,4 +1,4 @@
-import type { LangCode } from "./translations";
+﻿import type { LangCode } from "./translations";
 
 // Additional UI strings for screens that were translated after the core map
 // (Authmodal + Pricing). Merged into useLanguage().t() in LanguageContext.
@@ -36,6 +36,7 @@ export const translationsExtra: Record<LangCode, Record<string, string>> = {
     auth_err_displayname_required: "Display name is required",
     auth_err_phone_invalid: "Enter a valid phone number (with country code)",
     auth_err_login_blocked: "Login is not allowed on this device right now.",
+    auth_err_mobile_window: "Mobile login is available only between 10:00 AM and 1:00 PM IST.",
     auth_err_auth_failed: "Authentication failed. Please try again.",
 
     pricing_title: "Twiller Premium",
@@ -110,6 +111,7 @@ export const translationsExtra: Record<LangCode, Record<string, string>> = {
     auth_err_displayname_required: "El nombre público es obligatorio",
     auth_err_phone_invalid: "Ingresa un número de teléfono válido (con código de país)",
     auth_err_login_blocked: "No se permite iniciar sesión en este dispositivo en este momento.",
+    auth_err_mobile_window: "El inicio de sesión móvil solo está disponible entre 10:00 AM y 1:00 PM IST.",
     auth_err_auth_failed: "Error de autenticación. Inténtalo de nuevo.",
 
     pricing_title: "Twiller Premium",
@@ -184,6 +186,7 @@ export const translationsExtra: Record<LangCode, Record<string, string>> = {
     auth_err_displayname_required: "प्रदर्शन नाम आवश्यक है",
     auth_err_phone_invalid: "मान्य फ़ोन नंबर दर्ज करें (देश कोड के साथ)",
     auth_err_login_blocked: "इस समय इस डिवाइस पर लॉगिन की अनुमति नहीं है।",
+    auth_err_mobile_window: "मोबाइल लॉगिन केवल सुबह 10:00 से दोपहर 1:00 बजे (IST) तक उपलब्ध है।",
     auth_err_auth_failed: "प्रमाणीकरण विफल रहा। कृपया पुनः प्रयास करें।",
 
     pricing_title: "Twiller प्रीमियम",
@@ -258,6 +261,7 @@ export const translationsExtra: Record<LangCode, Record<string, string>> = {
     auth_err_displayname_required: "O nome de exibição é obrigatório",
     auth_err_phone_invalid: "Digite um número de telefone válido (com código do país)",
     auth_err_login_blocked: "O login não é permitido neste dispositivo neste momento.",
+    auth_err_mobile_window: "O login pelo celular está disponível apenas entre 10:00 e 13:00 (IST).",
     auth_err_auth_failed: "Falha na autenticação. Tente novamente.",
 
     pricing_title: "Twiller Premium",
@@ -332,6 +336,7 @@ export const translationsExtra: Record<LangCode, Record<string, string>> = {
     auth_err_displayname_required: "显示名称为必填项",
     auth_err_phone_invalid: "请输入有效的电话号码（含国家代码）",
     auth_err_login_blocked: "目前不允许在此设备上登录。",
+    auth_err_mobile_window: "移动端登录仅在上午 10:00 至下午 1:00（印度标准时间）之间可用。",
     auth_err_auth_failed: "身份验证失败，请重试。",
 
     pricing_title: "Twiller 高级版",
@@ -406,6 +411,7 @@ export const translationsExtra: Record<LangCode, Record<string, string>> = {
     auth_err_displayname_required: "Le nom affiché est requis",
     auth_err_phone_invalid: "Saisissez un numéro de téléphone valide (avec l'indicatif du pays)",
     auth_err_login_blocked: "La connexion n'est pas autorisée sur cet appareil pour le moment.",
+    auth_err_mobile_window: "La connexion mobile est disponible uniquement entre 10h00 et 13h00 IST.",
     auth_err_auth_failed: "Échec de l'authentification. Veuillez réessayer.",
 
     pricing_title: "Twiller Premium",
@@ -480,6 +486,7 @@ export const translationsExtra: Record<LangCode, Record<string, string>> = {
     auth_err_displayname_required: "காட்டும் பெயர் தேவை",
     auth_err_phone_invalid: "சரியான தொலைபேசி எண்ணை உள்ளிடவும் (நாட்டு குறியீட்டுடன்)",
     auth_err_login_blocked: "இந்த நேரத்தில் இந்த சாதனத்தில் உள்நுழைய அனுமதி இல்லை.",
+    auth_err_mobile_window: "மொபைல் உள்நுழைவு காலை 10:00 முதல் மதியம் 1:00 (IST) வரை மட்டுமே கிடைக்கும்.",
     auth_err_auth_failed: "அங்கீகாரம் தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.",
 
     pricing_title: "Twiller பிரீமியம்",

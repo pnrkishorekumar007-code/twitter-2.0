@@ -67,7 +67,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
               transition={{ type: "spring", stiffness: 380, damping: 30 }}
               role="status"
               className={cn(
-                "relative overflow-hidden pointer-events-auto flex items-start gap-3 rounded-xl border bg-popover text-popover-foreground shadow-xl px-4 py-3",
+                "relative overflow-hidden pointer-events-auto flex items-start gap-3 rounded-xl border bg-popover text-popover-foreground px-4 py-3",
                 t.kind === "success" && "border-emerald-500/40",
                 t.kind === "error" && "border-red-500/40",
                 t.kind === "info" && "border-brand/40"

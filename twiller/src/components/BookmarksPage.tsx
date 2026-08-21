@@ -48,7 +48,7 @@ export default function BookmarksPage() {
 
   return (
     <div className="min-h-dvh">
-      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-border shadow-[0_1px_3px_rgba(0,0,0,0.12)] px-4 py-3">
+      <div className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
@@ -81,11 +81,11 @@ export default function BookmarksPage() {
         </div>
       ) : bookmarkedTweets.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
-          <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-brand/10 mb-5 animate-glow-pulse">
-            <Bookmark className="h-9 w-9 text-brand" />
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-brand/10 mb-5">
+            <Bookmark className="h-8 w-8 text-brand" aria-hidden="true" />
           </div>
-          <h2 className="text-2xl font-bold text-gradient">Save posts for later</h2>
-          <p className="text-muted-foreground mt-2 text-base max-w-sm">
+          <h2 className="text-3xl font-extrabold text-foreground">Save posts for later</h2>
+          <p className="text-muted-foreground mt-2 text-[15px] max-w-sm">
             Bookmark posts to easily find them again in the future. Tap the
             bookmark icon on any tweet to add it here.
           </p>

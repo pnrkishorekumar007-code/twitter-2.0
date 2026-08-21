@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+﻿import { Suspense } from "react";
 import type { Metadata } from "next";
 import VerifyLoginOtp from "@/components/VerifyLoginOtp";
 import { AuthProvider } from "@/context/AuthContext";
@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      <div className="animate-pulse text-gray-400 text-sm">Loading...</div>
+    <div className="min-h-dvh bg-black text-white flex items-center justify-center">
+      <div className="animate-pulse text-muted-foreground text-sm">Loading...</div>
     </div>
   );
 }

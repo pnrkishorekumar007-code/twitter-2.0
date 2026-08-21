@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  Chrome,
   Globe,
   Laptop,
   Monitor,
@@ -18,18 +19,51 @@ import { Button } from "./ui/button";
 
 const PAGE_SIZE = 10;
 
+/** Brand-colored letter badge for browsers without a dedicated icon. */
+function browserLetterBadge(letter: string, className: string) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`grid h-5 w-5 place-items-center rounded-full text-[11px] font-extrabold text-white ${className}`}
+    >
+      {letter}
+    </span>
+  );
+}
+
+/** Browser icon: real brand mark where possible, fallback to globe. */
+function browserIcon(browser: string | undefined) {
+  const name = (browser || "").toLowerCase();
+  if (/edge|edg|edgios/.test(name)) {
+    return browserLetterBadge("E", "bg-[#0f7cbd]");
+  }
+  if (/firefox|fxios/.test(name)) {
+    return browserLetterBadge("F", "bg-[#ff7139]");
+  }
+  if (/safari/.test(name)) {
+    return browserLetterBadge("S", "bg-[#006cff]");
+  }
+  if (/opera|opr/.test(name)) {
+    return browserLetterBadge("O", "bg-[#ff1b2d]");
+  }
+  if (/chrome|chromium|crios/.test(name)) {
+    return <Chrome className="h-5 w-5 text-brand" aria-hidden="true" />;
+  }
+  return <Globe className="h-5 w-5 text-muted-foreground" aria-hidden="true" />;
+}
+
 function deviceIcon(deviceType: string | undefined) {
   switch (deviceType) {
     case "mobile":
-      return <Smartphone className="h-5 w-5 text-brand" />;
+      return <Smartphone className="h-4 w-4 text-muted-foreground" aria-hidden="true" />;
     case "tablet":
-      return <Tablet className="h-5 w-5 text-brand" />;
+      return <Tablet className="h-4 w-4 text-muted-foreground" aria-hidden="true" />;
     case "laptop":
-      return <Laptop className="h-5 w-5 text-brand" />;
+      return <Laptop className="h-4 w-4 text-muted-foreground" aria-hidden="true" />;
     case "desktop":
-      return <Monitor className="h-5 w-5 text-brand" />;
+      return <Monitor className="h-4 w-4 text-muted-foreground" aria-hidden="true" />;
     default:
-      return <Globe className="h-5 w-5 text-muted-foreground" />;
+      return null;
   }
 }
 
@@ -73,7 +107,13 @@ export default function LoginHistorySection() {
       .then((res) => {
         if (cancelled) return;
         const data = res.data as LoginHistoryResponse;
-        setItems(Array.isArray(data.items) ? data.items : []);
+        // Defensive newest-first ordering regardless of backend sort.
+        const sorted = (Array.isArray(data.items) ? data.items : []).slice().sort((a, b) => {
+          const at = new Date(a.loginTime ?? a.loggedInAt ?? 0).getTime() || 0;
+          const bt = new Date(b.loginTime ?? b.loggedInAt ?? 0).getTime() || 0;
+          return bt - at;
+        });
+        setItems(sorted);
         setTotalPages(data.totalPages ?? 1);
         setTotal(data.total ?? 0);
       })
@@ -127,11 +167,12 @@ export default function LoginHistorySection() {
               className="flex items-center gap-4 rounded-xl border border-border bg-card p-4"
             >
               <span className="grid place-items-center h-10 w-10 shrink-0 rounded-full bg-brand/10">
-                {deviceIcon(entry.deviceType)}
+                {browserIcon(entry.browser)}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {deviceLabel(entry)}
+                <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-foreground">
+                  {entry.os && <span className="shrink-0">{deviceIcon(entry.deviceType)}</span>}
+                  <span className="truncate">{deviceLabel(entry)}</span>
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {entry.browserVersion ? `${entry.browser} ${entry.browserVersion}` : entry.browser}

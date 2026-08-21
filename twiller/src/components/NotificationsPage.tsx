@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { BellRing, BellOff, Settings2, UserPlus, Menu } from "lucide-react";
@@ -58,8 +58,8 @@ export default function NotificationsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-border shadow-[0_1px_3px_rgba(0,0,0,0.12)] px-4 py-3">
+    <div className="min-h-dvh">
+      <div className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}

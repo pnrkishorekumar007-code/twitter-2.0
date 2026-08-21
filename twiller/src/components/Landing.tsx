@@ -1,12 +1,10 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "./ui/button";
 import AuthModal from "./Authmodel";
-import TwitterLogo, { TwillerBrand } from "./Twitterlogo";
+import TwitterLogo from "./Twitterlogo";
 import { useAuth } from "@/context/AuthContext";
-import { Sparkles } from "lucide-react";
 
 export default function LandingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -27,55 +25,37 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex overflow-hidden">
-      {/* Left side - animated logo */}
-      <div className="hidden lg:flex lg:flex-1 items-center justify-center relative overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-30 bg-brand-gradient animate-gradient"
-          style={{ filter: "blur(120px)" }}
-        />
-        <div className="absolute top-1/4 left-1/4 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 h-80 w-80 rounded-full bg-fuchsia-500/15 blur-3xl animate-float-slow" />
-        <div className="absolute inset-0 opacity-[0.05] [background-image:radial-gradient(rgba(255,255,255,0.7)_1px,transparent_1px)] [background-size:28px_28px]" />
-        <div className="relative animate-float">
+    <div className="min-h-dvh bg-black text-white flex items-center justify-center">
+      <div className="flex w-full max-w-[960px] flex-col items-center gap-8 px-6 py-12 lg:h-dvh lg:max-w-none lg:flex-row lg:justify-between lg:gap-0 lg:py-0">
+        {/* Left — brand mark */}
+        <div className="hidden flex-1 items-center justify-center lg:flex">
           <TwitterLogo
-            variant="gradient"
+            variant="mono"
             size="xl"
-            className="h-64 w-64 lg:h-80 lg:w-80 drop-shadow-[0_0_80px_rgba(129,140,248,0.55)]"
+            className="h-[380px] w-[380px] text-white"
           />
         </div>
-      </div>
 
-      {/* Right side - Content */}
-      <div className="flex-1 flex flex-col justify-center px-8 lg:px-16 max-w-lg lg:max-w-2xl">
-        <div className="lg:hidden mb-8">
-          <TwillerBrand />
-        </div>
-
-        <div className="space-y-12">
-          <div>
-            <h1 className="text-5xl lg:text-7xl font-extrabold mb-4 leading-[1.05] tracking-tight animate-fade-up">
-              Happening{" "}
-              <span className="bg-brand-gradient bg-clip-text text-transparent">
-                now
-              </span>
-            </h1>
-            <h2 className="text-2xl lg:text-3xl font-bold mb-3 animate-fade-up [animation-delay:100ms]">
-              Join Twiller today.
-            </h2>
-            <p className="text-gray-400 flex items-center gap-1.5 animate-fade-up [animation-delay:150ms]">
-              <Sparkles className="h-4 w-4 text-brand" /> Your timeline, your
-              voice.
-            </p>
+        {/* Right — content */}
+        <div className="flex w-full max-w-[600px] flex-col justify-center lg:w-[550px] lg:pr-8">
+          <div className="mb-10 lg:hidden">
+            <TwitterLogo variant="mono" size="lg" className="text-white" />
           </div>
 
-          <div className="space-y-4 max-w-xs animate-fade-up [animation-delay:200ms]">
-            <Button
-              variant="outline"
-              className="w-full py-3 rounded-full border-white/15 bg-white/5 text-white font-semibold text-base h-12 hover:bg-white/10 hover:border-white/25 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/5 transition-all"
+          <h1 className="text-5xl font-extrabold leading-[1.1] tracking-tight lg:text-7xl">
+            Happening now
+          </h1>
+          <h2 className="mt-10 text-2xl font-extrabold lg:text-4xl">
+            Join Twiller today.
+          </h2>
+
+          <div className="mt-8 max-w-[300px] space-y-3">
+            <button
+              type="button"
               onClick={() => googlesignin()}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-transparent text-[15px] font-bold text-white transition-colors duration-200 hover:bg-hover-overlay focus-visible:ring-2 focus-visible:ring-brand active:scale-[0.98] outline-none"
             >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   fill="currentColor"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -94,73 +74,53 @@ export default function LandingPage() {
                 />
               </svg>
               Sign up with Google
-            </Button>
+            </button>
 
-            <Button
-              variant="outline"
-              className="w-full py-3 rounded-full border-white/15 bg-white/5 text-white font-semibold text-base h-12 hover:bg-white/10 hover:border-white/25 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/5 transition-all"
-              onClick={() => openAuthModal("signup")}
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-              </svg>
-              Sign up with Apple
-            </Button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-white/10" />
+            <div className="relative py-1">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <span className="w-full border-t border-border" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-black px-2 text-gray-500">or</span>
+              <div className="relative flex justify-center">
+                <span className="bg-black px-2 text-sm text-muted-foreground">or</span>
               </div>
             </div>
-            <Button
-              className="w-full bg-brand-gradient animate-gradient text-white font-bold py-3 rounded-full text-base h-12 shadow-lg shadow-brand/40 hover:brightness-110 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand/40 transition-all"
+
+            <button
+              type="button"
               onClick={() => openAuthModal("signup")}
+              className="h-11 w-full rounded-full bg-brand text-[15px] font-bold text-white transition-colors duration-200 hover:bg-x-blue-hover focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-[0.98] outline-none"
             >
               Create account
-            </Button>
-            <p className="text-xs text-gray-500 leading-relaxed">
+            </button>
+
+            <p className="text-xs leading-4 text-muted-foreground">
               By signing up, you agree to the{" "}
-              <a href="#" className="text-brand hover:underline">
+              <a href="#" onClick={(e) => e.preventDefault()} className="text-brand hover:underline">
                 Terms of Service
               </a>{" "}
               and{" "}
-              <a href="#" className="text-brand hover:underline">
+              <a href="#" onClick={(e) => e.preventDefault()} className="text-brand hover:underline">
                 Privacy Policy
               </a>
               , including{" "}
-              <a href="#" className="text-brand hover:underline">
+              <a href="#" onClick={(e) => e.preventDefault()} className="text-brand hover:underline">
                 Cookie Use
               </a>
               .
             </p>
           </div>
-          <div className="space-y-5 animate-fade-up [animation-delay:250ms]">
-            <p className="text-lg font-bold">Already have an account?</p>
-            <Button
-              variant="outline"
-              className="w-full max-w-xs py-3 rounded-full border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/25 text-brand font-semibold text-base h-12 hover:-translate-y-0.5 transition-all"
+
+          <div className="mt-16 max-w-[300px]">
+            <p className="text-[17px] font-bold">Already have an account?</p>
+            <button
+              type="button"
               onClick={() => openAuthModal("login")}
+              className="mt-4 h-11 w-full rounded-full border border-border bg-transparent text-[15px] font-bold text-brand transition-colors duration-200 hover:bg-hover-overlay focus-visible:ring-2 focus-visible:ring-brand active:scale-[0.98] outline-none"
             >
               Log in
-            </Button>
+            </button>
           </div>
         </div>
-
-        <footer className="hidden lg:flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-500 mt-14 pt-6 border-t border-white/10 max-w-xs">
-          <span>© 2026 Twiller</span>
-          <a href="#" className="hover:text-gray-300 hover:underline">About</a>
-          <a href="#" className="hover:text-gray-300 hover:underline">Help</a>
-          <a href="#" className="hover:text-gray-300 hover:underline">Privacy</a>
-          <a href="#" className="hover:text-gray-300 hover:underline">Terms</a>
-          <a href="#" className="hover:text-gray-300 hover:underline">Cookies</a>
-        </footer>
       </div>
 
       <AuthModal

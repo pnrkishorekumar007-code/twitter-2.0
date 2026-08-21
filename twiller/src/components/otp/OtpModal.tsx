@@ -123,7 +123,7 @@ export default function OtpModal({
       aria-label={title}
     >
       <div
-        className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm my-auto max-h-[90dvh] overflow-y-auto shadow-2xl"
+        className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm my-auto max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-foreground text-xl font-bold mb-1">{title}</h3>

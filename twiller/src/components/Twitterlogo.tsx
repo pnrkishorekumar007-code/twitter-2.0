@@ -5,7 +5,7 @@ import React from "react";
 interface TwitterLogoProps {
   className?: string;
   size?: "sm" | "md" | "lg" | "xl";
-  variant?: "mono" | "gradient";
+  variant?: "mono" | "brand";
 }
 
 const X_PATH =
@@ -22,34 +22,18 @@ export default function TwitterLogo({
     lg: "h-12 w-12",
     xl: "h-16 w-16",
   };
-  const uid = React.useId().replace(/:/g, "");
-
-  if (variant === "gradient") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        className={`${sizeClasses[size]} ${className}`}
-        aria-label="Twiller"
-      >
-        <defs>
-          <linearGradient id={`twg-${uid}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#60a5fa" />
-            <stop offset="50%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#c084fc" />
-          </linearGradient>
-        </defs>
-        <path fill={`url(#twg-${uid})`} d={X_PATH} />
-      </svg>
-    );
-  }
 
   return (
     <svg
       viewBox="0 0 24 24"
       className={`fill-current ${sizeClasses[size]} ${className}`}
       aria-label="Twiller"
+      role="img"
     >
-      <path d={X_PATH} />
+      <path
+        fill={variant === "brand" ? "#1d9bf0" : "currentColor"}
+        d={X_PATH}
+      />
     </svg>
   );
 }
@@ -63,9 +47,9 @@ export function TwillerBrand({
 }) {
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
-      <TwitterLogo size="md" variant="gradient" className="shrink-0" />
+      <TwitterLogo size="md" variant="mono" className="shrink-0 text-foreground" />
       <span
-        className={`text-2xl font-extrabold tracking-tight bg-brand-gradient bg-clip-text text-transparent animate-gradient ${wordmarkClassName}`}
+        className={`text-2xl font-extrabold tracking-tight text-foreground ${wordmarkClassName}`}
       >
         Twiller
       </span>

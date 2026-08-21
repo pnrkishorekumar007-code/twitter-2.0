@@ -1,14 +1,10 @@
 "use client";
 
-import { Search, BadgeCheck, Sparkles, UserPlus } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import { Input } from "../ui/input";
-import { Card, CardContent } from "../ui/card";
-import { Button } from "../ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import axiosInstance from "@/lib/axiosInstance";
-import FollowButton from "../FollowButton";
-import type { FollowUser } from "@/lib/types";
+import React from "react";
+import { Sparkles } from "lucide-react";
+import SearchBar from "../widgets/SearchBar";
+import TrendingCard from "../widgets/TrendingCard";
+import FollowCard from "../widgets/FollowCard";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function RightSidebar() {
@@ -19,170 +15,51 @@ export default function RightSidebar() {
     { category: t("right_trending_india"), tag: t("right_trend_science"), posts: t("right_trend_science_posts") },
     { category: t("right_tech"), tag: t("right_trend_ai"), posts: t("right_trend_ai_posts") },
   ];
-  const [suggestions, setSuggestions] = useState<FollowUser[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    axiosInstance
-      .get("/users/suggested", { params: { limit: 5 } })
-      .then((res) => {
-        if (!cancelled) setSuggestions(Array.isArray(res.data) ? res.data : []);
-      })
-      .catch(() => {
-        if (!cancelled) setSuggestions([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const openSearch = () => {
-    window.dispatchEvent(new CustomEvent("twiller:go-search"));
-  };
-
-  const openTrend = (tag: string) => {
-    sessionStorage.setItem("twiller-search-q", tag.replace(/^#/, ""));
-    window.dispatchEvent(new CustomEvent("twiller:go-search"));
-  };
 
   return (
-    <div className="w-full space-y-4">
-      {/* Search */}
-      <form
-        className="relative"
-        role="search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          openSearch();
-        }}
-      >
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder={t("explore")}
-          aria-label={t("explore")}
-          className="pl-12 bg-accent/60 border-border text-foreground placeholder:text-muted-foreground rounded-full py-3 focus-visible:border-brand focus-visible:ring-brand/20 focus-visible:ring-[3px]"
-        />
-      </form>
+    <div className="w-full space-y-4 pb-8">
+      {/* Sticky search */}
+      <div className="sticky top-0 z-10 bg-background py-1">
+        <SearchBar />
+      </div>
 
-      {/* Premium */}
-      <Card className="rounded-2xl border-border bg-card/60 backdrop-blur-xl overflow-hidden">
-        <div className="h-1 bg-brand-gradient animate-gradient" />
-        <CardContent className="p-4">
-          <h3 className="text-foreground text-xl font-extrabold mb-2 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-brand" />
-            {t("right_subscribe")}
-          </h3>
-          <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
-            {t("right_subscribe_desc")}
-          </p>
-          <Button
-            className="bg-brand-gradient animate-gradient text-white font-bold rounded-full shadow-lg shadow-brand/30 hover:brightness-110"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent("twiller:go-premium"))
-            }
-          >
-            {t("right_subscribe_btn")}
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Subscribe */}
+      <section
+        aria-label={t("right_subscribe")}
+        className="rounded-2xl border border-border bg-card p-4"
+      >
+        <h2 className="mb-1 flex items-center gap-2 text-xl font-extrabold text-foreground">
+          <Sparkles className="h-5 w-5 text-brand" aria-hidden="true" />
+          {t("right_subscribe")}
+        </h2>
+        <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+          {t("right_subscribe_desc")}
+        </p>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("twiller:go-premium"))}
+          className="h-9 rounded-full bg-brand px-4 text-[15px] font-bold text-white transition-colors duration-200 hover:bg-x-blue-hover active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          {t("right_subscribe_btn")}
+        </button>
+      </section>
 
       {/* Trends */}
-      <Card className="rounded-2xl border-border bg-card/60 backdrop-blur-xl overflow-hidden">
-        <CardContent className="p-0">
-          <h3 className="text-foreground text-xl font-extrabold px-4 py-3">
-            {t("right_whats_happening")}
-          </h3>
-          <div className="divide-y divide-border">
-            {trends.map((trend) => (
-              <button
-                key={trend.tag}
-                onClick={() => openTrend(trend.tag)}
-                className="w-full text-left px-4 py-3 hover:bg-accent/60 transition-all duration-200"
-              >
-                <p className="text-xs text-muted-foreground">{trend.category}</p>
-                <p className="text-foreground font-bold text-[15px] truncate">{trend.tag}</p>
-                <p className="text-xs text-muted-foreground">{trend.posts}</p>
-              </button>
-            ))}
-          </div>
-          <Button
-            variant="ghost"
-            className="text-brand hover:text-brand/80 hover:bg-brand/10 px-4 py-3 h-auto rounded-none w-full justify-start font-semibold"
-          >
-            {t("right_show_more")}
-          </Button>
-        </CardContent>
-      </Card>
+      <TrendingCard trends={trends} />
 
       {/* Who to follow */}
-      <Card className="rounded-2xl border-border bg-card/60 backdrop-blur-xl overflow-hidden">
-        <CardContent className="p-0">
-          <h3 className="text-foreground text-xl font-extrabold px-4 py-3">
-            {t("right_you_might_like")}
-          </h3>
-          {suggestions.length === 0 ? (
-            <div className="px-4 py-8 text-center">
-              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-muted mb-2">
-                <UserPlus className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <p className="text-muted-foreground text-sm">
-                {t("right_no_suggestions")}
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {suggestions.map((user) => (
-                <div
-                  key={user._id}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-accent/60 transition-all duration-200"
-                >
-                  <div className="flex items-center space-x-3 min-w-0">
-                    <Avatar className="h-10 w-10 shrink-0">
-                      <AvatarImage src={user.avatar} alt={user.displayName} />
-                      <AvatarFallback>
-                        {user.displayName?.[0] || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <div className="flex items-center space-x-1">
-                        <span className="text-foreground font-semibold truncate hover:underline cursor-pointer">
-                          {user.displayName || "Unknown User"}
-                        </span>
-                        {user.verified && (
-                          <BadgeCheck className="h-4 w-4 text-brand shrink-0" />
-                        )}
-                      </div>
-                      <span className="text-muted-foreground text-sm">
-                        @{user.username || "unknown"}
-                      </span>
-                    </div>
-                  </div>
-                  <FollowButton
-                    targetId={user._id}
-                    onToggle={(nowFollowing) => {
-                      if (nowFollowing) {
-                        setSuggestions((prev) =>
-                          prev.filter((s) => s._id !== user._id)
-                        );
-                      }
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <FollowCard />
 
-      {/* Footer */}
-      <div className="p-4 text-xs text-muted-foreground space-y-2">
+      {/* Footer links */}
+      <nav aria-label="Footer" className="space-y-2 p-4 text-[13px] leading-4 text-muted-foreground">
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {[t("right_terms"), t("right_privacy"), t("right_cookies"), t("right_accessibility"), t("right_ads")].map(
             (label) => (
               <a
                 key={label}
                 href="#"
-                className="hover:underline hover:text-foreground transition-colors"
+                onClick={(e) => e.preventDefault()}
+                className="transition-colors duration-200 hover:text-foreground hover:underline"
               >
                 {label}
               </a>
@@ -190,7 +67,7 @@ export default function RightSidebar() {
           )}
         </div>
         <div>{t("right_copyright")}</div>
-      </div>
+      </nav>
     </div>
   );
 }

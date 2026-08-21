@@ -3,19 +3,14 @@
 import { useAuth } from "@/context/AuthContext";
 import React, { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Textarea } from "./ui/textarea";
-import { Button } from "./ui/button";
 import {
   Image as ImageIcon,
   Smile,
-  Calendar,
-  MapPin,
-  BarChart3,
-  Globe,
   Mic,
   X,
+  CalendarClock,
+  MapPin,
 } from "lucide-react";
-import { Separator } from "./ui/separator";
 import axios from "axios";
 import axiosInstance from "@/lib/axiosInstance";
 import AudioTweetRecorder from "./audio/AudioTweetRecorder";
@@ -24,7 +19,7 @@ import { AnimatePresence, motion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, type Tweet } from "@/lib/types";
 
-interface TweetComposerProps {
+interface ComposerProps {
   onTweetPosted?: (tweet: Tweet) => void;
   onAudioPosted?: () => void;
 }
@@ -35,7 +30,7 @@ const EMOJIS = [
   "🐦", "☕", "🏆", "🌍", "🧠", "📣",
 ];
 
-const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => {
+const Composer = ({ onTweetPosted, onAudioPosted }: ComposerProps) => {
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
   const [content, setContent] = useState("");
@@ -57,6 +52,14 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
     window.addEventListener("twiller:focus-composer", handler);
     return () => window.removeEventListener("twiller:focus-composer", handler);
   }, []);
+
+  // Auto-expand textarea fallback for browsers without field-sizing.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [content]);
 
   if (!user) return null;
 
@@ -116,11 +119,6 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
         res.data?.data?.display_url ||
         res.data?.data?.image?.url ||
         res.data?.data?.url;
-      console.debug("[tweet-image] upload response:", {
-        imageField: res.data?.data?.url,
-        displayUrl: res.data?.data?.display_url,
-        usedUrl: url,
-      });
       if (!url) throw new Error("Image upload failed. Please try again.");
       setimageurl(url);
       setImageFailed(false);
@@ -156,6 +154,9 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
   const characterCount = content.length;
   const isOverLimit = characterCount > maxLength;
   const isNearLimit = characterCount > maxLength * 0.8;
+  const remaining = maxLength - characterCount;
+  const showRing = characterCount > 0;
+  const showCount = remaining <= 20;
 
   const isUnlimited = user?.subscriptionPlan === "GOLD";
   const tweetsRemaining = user
@@ -163,36 +164,35 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
     : null;
   const limitReached = !isUnlimited && tweetsRemaining !== null && tweetsRemaining <= 0;
 
-  const iconClass =
-    "grid h-9 w-9 place-items-center rounded-full text-brand hover:bg-brand/10 transition-colors";
-  const mutedIconClass =
-    "grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-accent transition-colors";
+  const RING_RADIUS = 10;
+  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
   return (
     <div className="border-b border-border">
-      <form onSubmit={handleSubmit} className="flex gap-3 p-4">
-        <Avatar className="h-11 w-11 shrink-0">
+      <form onSubmit={handleSubmit} className="flex gap-3 px-4 py-3">
+        <Avatar className="h-10 w-10 shrink-0">
           <AvatarImage src={user.avatar} alt={user.displayName} />
           <AvatarFallback>{user.displayName[0]}</AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 min-w-0">
-          <Textarea
+        <div className="min-w-0 flex-1">
+          <textarea
             ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What's happening?"
             rows={1}
-            maxLength={maxLength}
-            className="bg-transparent border-none focus-visible:ring-0 resize-none text-xl leading-snug placeholder:text-muted-foreground px-0 py-2 min-h-[48px]"
+            maxLength={maxLength * 2}
+            aria-label="What's happening?"
+            className="min-h-[26px] w-full resize-none overflow-hidden border-0 bg-transparent py-2 text-xl leading-6 text-foreground outline-none placeholder:text-muted-foreground"
           />
 
           {imageurl && (
             <div className="relative mt-2">
               {imageFailed ? (
-                <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-border bg-muted/60 text-muted-foreground">
+                <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-border bg-card text-muted-foreground">
                   <div className="flex flex-col items-center gap-2">
-                    <ImageIcon className="h-6 w-6" />
+                    <ImageIcon className="h-6 w-6" aria-hidden="true" />
                     <span className="text-xs">Image unavailable</span>
                   </div>
                 </div>
@@ -203,16 +203,16 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
                   loading="lazy"
                   decoding="async"
                   onError={() => setImageFailed(true)}
-                  className="rounded-2xl border border-border max-h-60 w-full h-auto object-cover"
+                  className="max-h-60 w-full rounded-2xl border border-border object-cover"
                 />
               )}
               <button
                 type="button"
                 onClick={() => setimageurl("")}
-                className="absolute top-2 left-2 bg-black/70 text-white rounded-full p-1.5 hover:bg-black/90 transition-colors"
+                className="absolute left-2 top-2 rounded-full bg-black/70 p-1.5 text-white transition-colors duration-200 hover:bg-black/90"
                 aria-label="Remove image"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           )}
@@ -229,10 +229,9 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
             </div>
           )}
 
-          <Separator className="my-3 bg-border" />
-
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-0.5 flex-wrap">
+          {/* Toolbar — hairline separator above, X pattern */}
+          <div className="mt-1 flex items-center justify-between gap-2 border-t border-border pt-2">
+            <div className="-ml-2 flex items-center">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -242,50 +241,68 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
               />
               <button
                 type="button"
-                className={iconClass}
+                className="grid h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10"
                 onClick={() => fileInputRef.current?.click()}
                 aria-label="Add image"
               >
-                <ImageIcon className="h-5 w-5" />
+                <ImageIcon className="h-[18px] w-[18px]" aria-hidden="true" />
               </button>
               <button
                 type="button"
-                className={cn(iconClass, showAudio && "bg-brand/10")}
+                className={cn(
+                  "grid h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10",
+                  showAudio && "bg-brand/10"
+                )}
                 onClick={() => setShowAudio((s) => !s)}
                 aria-label="Record audio"
+                aria-expanded={showAudio}
               >
-                <Mic className="h-5 w-5" />
+                <Mic className="h-[18px] w-[18px]" aria-hidden="true" />
               </button>
               <button
                 type="button"
-                className={cn(mutedIconClass, showEmoji && "bg-accent")}
+                className={cn(
+                  "grid h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10",
+                  showEmoji && "bg-brand/10"
+                )}
                 onClick={() => setShowEmoji((s) => !s)}
                 aria-label="Emoji"
                 aria-expanded={showEmoji}
               >
-                <Smile className="h-5 w-5" />
+                <Smile className="h-[18px] w-[18px]" aria-hidden="true" />
               </button>
-              <button type="button" className={cn(mutedIconClass, "hidden sm:grid")} aria-label="Schedule">
-                <Calendar className="h-5 w-5" />
+              <button
+                type="button"
+                className="grid h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10"
+                aria-label="Add GIF"
+              >
+                <span className="grid h-[18px] w-[21px] place-items-center rounded-[4px] border-2 border-current text-[9px] font-extrabold leading-none">
+                  GIF
+                </span>
               </button>
-              <button type="button" className={cn(mutedIconClass, "hidden sm:grid")} aria-label="Analytics">
-                <BarChart3 className="h-5 w-5" />
+              <button
+                type="button"
+                className="hidden h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10 sm:grid"
+                aria-label="Schedule post"
+              >
+                <CalendarClock className="h-[18px] w-[18px]" aria-hidden="true" />
               </button>
-              <button type="button" className={cn(mutedIconClass, "hidden sm:grid")} aria-label="Location">
-                <MapPin className="h-5 w-5" />
-              </button>
-              <button type="button" className={cn(mutedIconClass, "hidden sm:grid")} aria-label="Audience">
-                <Globe className="h-5 w-5" />
+              <button
+                type="button"
+                className="hidden h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10 sm:grid"
+                aria-label="Add location"
+              >
+                <MapPin className="h-[18px] w-[18px]" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex shrink-0 items-center gap-3">
               {!isUnlimited && tweetsRemaining !== null && (
                 <span
                   className={cn(
-                    "hidden sm:inline-block text-xs font-medium rounded-full px-2.5 py-1",
+                    "hidden rounded-full px-2.5 py-1 text-xs font-medium sm:inline-block",
                     tweetsRemaining <= 1
-                      ? "bg-amber-500/10 text-amber-500"
+                      ? "bg-[#f91880]/10 text-[#f91880]"
                       : "bg-muted text-muted-foreground"
                   )}
                   title="Monthly posting limit"
@@ -296,38 +313,61 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
                 </span>
               )}
               {isUnlimited && (
-                <span className="hidden sm:inline text-xs font-medium text-muted-foreground">
+                <span className="hidden text-xs font-medium text-muted-foreground sm:inline">
                   Unlimited Tweets
                 </span>
               )}
-              {(isOverLimit || isNearLimit) && (
-                <div className="relative h-8 w-8" title={`${characterCount}/${maxLength}`}>
-                  <svg viewBox="0 0 24 24" className="h-8 w-8 -rotate-90">
-                    <circle cx="12" cy="12" r="9" fill="none" strokeWidth="2" className="stroke-border" />
+
+              {/* Circular progress — appears once the user starts typing */}
+              {(showRing || isLoading) && (
+                <div
+                  className="flex items-center gap-1.5"
+                  title={isOverLimit ? `${characterCount}/${maxLength}` : undefined}
+                >
+                  <svg viewBox="0 0 24 24" className="h-[22px] w-[22px] -rotate-90" aria-hidden="true">
+                    <circle cx="12" cy="12" r={RING_RADIUS} fill="none" strokeWidth="2" className="stroke-border" />
                     <circle
                       cx="12"
                       cy="12"
-                      r="9"
+                      r={RING_RADIUS}
                       fill="none"
                       strokeWidth="2"
                       strokeLinecap="round"
-                      strokeDasharray={2 * Math.PI * 9}
-                      strokeDashoffset={2 * Math.PI * 9 * (1 - Math.min(characterCount / maxLength, 1))}
+                      strokeDasharray={RING_CIRCUMFERENCE}
+                      strokeDashoffset={
+                        RING_CIRCUMFERENCE *
+                        (1 - Math.min(characterCount / maxLength, 1))
+                      }
                       className={cn(
                         "transition-[stroke-dashoffset,stroke] duration-200",
-                        isOverLimit ? "stroke-red-500" : "stroke-brand"
+                        isOverLimit
+                          ? "stroke-[#f4212e]"
+                          : isNearLimit
+                            ? "stroke-[#ffd400]"
+                            : "stroke-brand"
                       )}
                     />
                   </svg>
+                  {showCount && (
+                    <span
+                      className={cn(
+                        "text-[13px]",
+                        isOverLimit ? "text-[#f4212e]" : "text-muted-foreground"
+                      )}
+                    >
+                      {isOverLimit ? remaining : `${remaining}`}
+                    </span>
+                  )}
                 </div>
               )}
-              <Button
+
+              <button
                 type="submit"
                 disabled={!content.trim() || isLoading || isOverLimit || limitReached}
-                className="rounded-full bg-brand-gradient animate-gradient text-white font-bold px-5 lg:px-6 shadow-lg shadow-brand/30 hover:brightness-110 transition-all"
+                className="h-9 rounded-full bg-brand px-4 text-[15px] font-bold text-white transition-colors duration-200 hover:bg-x-blue-hover disabled:opacity-50 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 {isLoading ? "Posting..." : "Post"}
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -340,13 +380,13 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
                 transition={{ duration: 0.15 }}
                 className="overflow-hidden"
               >
-                <div className="mt-3 grid grid-cols-6 sm:grid-cols-8 gap-1 rounded-2xl border border-border bg-popover p-3">
+                <div className="mt-3 grid grid-cols-6 gap-1 rounded-2xl border border-border bg-card p-3 sm:grid-cols-8">
                   {EMOJIS.map((e) => (
                     <button
                       key={e}
                       type="button"
                       onClick={() => insertEmoji(e)}
-                      className="grid aspect-square place-items-center rounded-full text-xl hover:bg-accent transition-colors"
+                      className="grid aspect-square place-items-center rounded-full text-xl transition-colors duration-150 hover:bg-hover-overlay"
                       aria-label={`Add emoji ${e}`}
                     >
                       {e}
@@ -362,4 +402,4 @@ const TweetComposer = ({ onTweetPosted, onAudioPosted }: TweetComposerProps) => 
   );
 };
 
-export default TweetComposer;
+export default Composer;

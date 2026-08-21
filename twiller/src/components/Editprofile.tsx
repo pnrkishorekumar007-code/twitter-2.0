@@ -70,11 +70,14 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
   });
   const [error, setError] = useState<Record<string, string>>({});
 
-  // Reset form data when the modal opens with fresh user data (React's
-  // "adjust state during render" pattern). Without this, reopening the modal
-  // after a profile update would show stale values from the initial mount.
-  if (isopen && user) {
-    const fresh = {
+  // Seed the form ONCE when the modal opens (open-transition guard). The
+  // previous version re-synced from `user` on every render, which silently
+  // reverted in-progress edits — including just-uploaded avatar/banner URLs —
+  // before Save could send them.
+  const [wasOpen, setWasOpen] = useState(false);
+  if (isopen && user && !wasOpen) {
+    setWasOpen(true);
+    setFormdata({
       displayName: user.displayName || "",
       bio: user.bio || "",
       location: user.location || "",
@@ -82,19 +85,11 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
       avatar: user.avatar || "",
       banner: user.banner || "",
       phone: user.phone || "",
-    };
-    const prev = formData;
-    if (
-      prev.displayName !== fresh.displayName ||
-      prev.bio !== fresh.bio ||
-      prev.location !== fresh.location ||
-      prev.website !== fresh.website ||
-      prev.avatar !== fresh.avatar ||
-      prev.banner !== fresh.banner ||
-      prev.phone !== fresh.phone
-    ) {
-      setFormdata(fresh);
-    }
+    });
+    setError({});
+  }
+  if (!isopen && wasOpen) {
+    setWasOpen(false);
   }
 
   if (!isopen || !user) return null;
@@ -247,7 +242,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                 <Button
                   type="submit"
                   form="edit-profile-form"
-                  className="bg-brand-gradient animate-gradient text-white font-bold px-6 shadow-lg shadow-brand/30 hover:brightness-110 hover:scale-[1.02] transition-all rounded-full"
+                  className="bg-brand text-white font-bold px-6 rounded-full hover:bg-x-blue-hover"
                   disabled={isLoading || imageBusy !== null}
                 >
                   {isLoading ? (
@@ -286,7 +281,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                   }}
                 >
                   <div
-                    className={`h-48 relative overflow-hidden bg-brand-gradient animate-gradient ${
+                    className={`h-48 relative overflow-hidden bg-muted ${
                       dragOver ? "ring-4 ring-brand/70" : ""
                     }`}
                   >

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
@@ -204,8 +204,8 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3">
+    <div className="min-h-dvh">
+      <div className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
@@ -284,19 +284,19 @@ export default function PricingPage() {
                 className={cn(
                   "relative flex flex-col rounded-2xl border bg-card p-5 transition-shadow duration-300",
                   isCurrent
-                    ? "border-brand ring-2 ring-brand/40 shadow-lg shadow-brand/10"
+                    ? "border-brand ring-2 ring-brand/40"
                     : isRecommended
-                    ? "border-brand/60 shadow-xl shadow-brand/10"
-                    : "border-border hover:shadow-lg"
+                    ? "border-brand/60"
+                    : "border-border"
                 )}
               >
                 {isRecommended && !isCurrent && (
-                  <span className="absolute -top-3 left-4 inline-flex items-center gap-1 rounded-full bg-brand px-3 py-0.5 text-xs font-bold text-brand-foreground shadow-md shadow-brand/40">
+                  <span className="absolute -top-3 left-4 inline-flex items-center gap-1 rounded-full bg-brand px-3 py-0.5 text-xs font-bold text-brand-foreground">
                     <Sparkles className="h-3.5 w-3.5" /> {t("pricing_recommended")}
                   </span>
                 )}
                 {isCurrent && (
-                  <span className="absolute -top-3 left-4 inline-flex items-center gap-1 rounded-full bg-foreground px-3 py-0.5 text-xs font-bold text-background shadow-md">
+                  <span className="absolute -top-3 left-4 inline-flex items-center gap-1 rounded-full bg-foreground px-3 py-0.5 text-xs font-bold text-background">
                     <BadgeCheck className="h-3.5 w-3.5" /> {t("pricing_current_plan")}
                   </span>
                 )}

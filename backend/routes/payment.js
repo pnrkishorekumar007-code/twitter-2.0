@@ -9,6 +9,7 @@ import { paymentWindowStatus } from "../utils/paymentWindow.js";
 import { PLANS, storedTweetLimit } from "../utils/plans.js";
 import { generateInvoicePdf } from "../utils/invoice.js";
 import { sendSubscriptionActivatedEmail } from "../utils/mailer.js";
+import { rateLimit } from "../utils/rateLimiter.js";
 
 const router = express.Router();
 
@@ -47,6 +48,18 @@ router.post(
   requirePaymentWindow,
   async (req, res) => {
     try {
+      // Rate limit order creation: max 10 per hour per account.
+      const limiter = rateLimit({
+        key: `payment-order:${req.user.uid || req.user.email}`,
+        windowMs: 60 * 60 * 1000,
+        max: 10,
+      });
+      if (!limiter.allowed) {
+        return res.status(429).send({
+          error: "Too many payment attempts. Please try again later.",
+        });
+      }
+
       const { plan } = req.body || {};
       const planKey = String(plan || "").toUpperCase();
       const planInfo = PLANS[planKey];
@@ -96,6 +109,18 @@ router.post(
   requirePaymentWindow,
   async (req, res) => {
     try {
+      // Rate limit verification attempts: max 20 per hour per account.
+      const limiter = rateLimit({
+        key: `payment-verify:${req.user.uid || req.user.email}`,
+        windowMs: 60 * 60 * 1000,
+        max: 20,
+      });
+      if (!limiter.allowed) {
+        return res.status(429).send({
+          error: "Too many payment attempts. Please try again later.",
+        });
+      }
+
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
         req.body || {};
 

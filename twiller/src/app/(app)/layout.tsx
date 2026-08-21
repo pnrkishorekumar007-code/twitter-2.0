@@ -1,9 +1,9 @@
-import Mainlayout from "@/components/layout/Mainlayout";
+import AppLayout from "@/components/layout/AppLayout";
 
-export default function AppLayout({
+export default function AppGroupLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <Mainlayout>{children}</Mainlayout>;
+  return <AppLayout>{children}</AppLayout>;
 }

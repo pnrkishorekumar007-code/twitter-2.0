@@ -137,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             localStorage.setItem("twitter-user", JSON.stringify(res.data));
           }
         } catch (err) {
-          console.log("Failed to fetch user:", err);
+          console.error("Failed to fetch user:", err);
         }
       } else {
         setUser(null);
@@ -236,7 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         localStorage.setItem("twitter-user", JSON.stringify(res.data));
       }
     } catch (err) {
-      console.log("Failed to refresh user:", err);
+      console.error("Failed to refresh user:", err);
     }
   };
 
@@ -423,7 +423,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         code === "auth/popup-closed-by-user" ||
         code === "auth/cancelled-popup-request"
       ) {
-        console.log("Google sign-in popup closed by the user.");
         return;
       }
       if (code === "auth/popup-blocked") {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { Search, TrendingUp, Flame, Newspaper, Video, Menu } from "lucide-react";
@@ -17,8 +17,8 @@ export default function ExplorePage() {
   const [query, setQuery] = useState("");
 
   return (
-    <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-border shadow-[0_1px_3px_rgba(0,0,0,0.12)] px-4 py-3">
+    <div className="min-h-dvh">
+      <div className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
@@ -35,7 +35,7 @@ export default function ExplorePage() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search"
               aria-label="Search"
-              className="w-full rounded-full bg-card/60 backdrop-blur-xl border border-border pl-12 pr-4 py-3 text-foreground placeholder:text-muted-foreground outline-none focus:border-brand focus:ring-4 focus:ring-brand/20 transition-all"
+              className="h-10 w-full rounded-full bg-[#eff3f4] dark:bg-x-surface-hover border border-transparent pl-12 pr-4 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors duration-200 focus:border-brand focus:bg-background"
             />
           </div>
         </div>
@@ -51,7 +51,7 @@ export default function ExplorePage() {
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
-          className="rounded-2xl border border-border bg-card/60 backdrop-blur-xl shadow-lg overflow-hidden"
+          className="rounded-2xl border border-border bg-card overflow-hidden"
         >
           {TRENDS.filter((tr) => tr.tag.toLowerCase().includes(query.toLowerCase())).map(
             (trend, i) => (

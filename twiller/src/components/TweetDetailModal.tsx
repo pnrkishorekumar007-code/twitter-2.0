@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Heart,
   MessageCircle,
@@ -39,6 +39,7 @@ export default function TweetDetailModal({
   const [tweet, setTweet] = useState<Tweet | null>(null);
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [reply, setReply] = useState("");
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const [posting, setPosting] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
@@ -182,7 +183,7 @@ export default function TweetDetailModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.96, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full sm:max-w-xl max-h-full h-full sm:h-auto sm:max-h-[85vh] bg-card/95 backdrop-blur-2xl border border-border shadow-[0_0_40px_rgba(0,0,0,0.5)] rounded-none sm:rounded-2xl flex flex-col overflow-hidden"
+            className="w-full sm:max-w-xl max-h-full h-full sm:h-auto sm:max-h-[85vh] bg-card border border-border rounded-none sm:rounded-2xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -302,7 +303,8 @@ export default function TweetDetailModal({
                     <div className="flex items-center justify-between max-w-md mt-4 py-1">
                       <button
                         className={actionClass(false, "blue")}
-                        onClick={() => {}}
+                        onClick={() => replyInputRef.current?.focus()}
+                        aria-label="Focus reply box"
                       >
                         <MessageCircle className="h-5 w-5" />
                         <span className="text-sm">
@@ -351,6 +353,7 @@ export default function TweetDetailModal({
                     </Avatar>
                     <div className="flex-1">
                       <Textarea
+                        ref={replyInputRef}
                         value={reply}
                         onChange={(e) => setReply(e.target.value)}
                         placeholder="Post your reply"

@@ -52,7 +52,7 @@ export default function ModalShell({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.96, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className={`w-full ${maxWidth} my-auto max-h-[90dvh] bg-card/95 backdrop-blur-2xl border border-border shadow-[0_0_40px_rgba(0,0,0,0.5)] rounded-2xl flex flex-col overflow-hidden`}
+            className={`w-full ${maxWidth} my-auto max-h-[90dvh] bg-card border border-border rounded-2xl flex flex-col overflow-hidden`}
             onClick={(e) => e.stopPropagation()}
           >
             {children}

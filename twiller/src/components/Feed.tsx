@@ -1,43 +1,21 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
+import TopTabs from "./feed/TopTabs";
 import TweetCard from "./TweetCard";
-import TweetComposer from "./TweetComposer";
+import Composer from "./Composer";
+import SkeletonLoader from "./widgets/SkeletonLoader";
 import axiosInstance from "@/lib/axiosInstance";
 import { useTweetNotifications } from "@/hooks/useTweetNotifications";
-import { Skeleton } from "./ui/skeleton";
 import { useToast } from "./Toast";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { motion, fadeUp, staggerContainer } from "@/lib/motion";
+import { motion } from "@/lib/motion";
 import { getErrorMessage, type Tweet } from "@/lib/types";
-import { MessageSquareDashed, Menu, UserPlus } from "lucide-react";
-import { Button } from "./ui/button";
+import { Menu } from "lucide-react";
 
 type FeedTab = "forYou" | "following";
-
-function TweetSkeleton() {
-  return (
-    <div className="flex gap-3 p-4 border-b border-border/50 animate-pulse" aria-hidden>
-      <Skeleton className="h-12 w-12 rounded-full shrink-0 bg-white/5 dark:bg-white/10" />
-      <div className="flex-1 space-y-3 pt-1">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-4 w-32 bg-white/5 dark:bg-white/10 rounded-full" />
-          <Skeleton className="h-3 w-20 bg-white/5 dark:bg-white/10 rounded-full" />
-        </div>
-        <Skeleton className="h-4 w-full bg-white/5 dark:bg-white/10 rounded-full" />
-        <Skeleton className="h-4 w-3/4 bg-white/5 dark:bg-white/10 rounded-full" />
-        <div className="flex gap-6 pt-2">
-          <Skeleton className="h-4 w-10 bg-white/5 dark:bg-white/10 rounded-full" />
-          <Skeleton className="h-4 w-10 bg-white/5 dark:bg-white/10 rounded-full" />
-          <Skeleton className="h-4 w-10 bg-white/5 dark:bg-white/10 rounded-full" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const Feed = () => {
   const [activeTab, setActiveTab] = useState<FeedTab>("forYou");
@@ -102,7 +80,10 @@ const Feed = () => {
 
   const handleTabChange = (value: string) => {
     if (value === "forYou" || value === "following") {
-      if (value === "following") setLoadingFollowing(true);
+      // Only show skeletons on the first load — cached content switches instantly.
+      if (value === "following" && followingTweets.length === 0) {
+        setLoadingFollowing(true);
+      }
       setActiveTab(value);
     }
   };
@@ -125,9 +106,6 @@ const Feed = () => {
     }
   };
 
-  const tabClass =
-    "relative flex-1 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:rounded-none text-muted-foreground hover:bg-accent/60 hover:text-foreground py-4 font-semibold text-[15px] rounded-none after:absolute after:inset-x-0 after:bottom-0 after:mx-auto after:h-1 after:w-14 after:rounded-full after:bg-brand after:content-[''] after:scale-x-0 after:transition-transform after:duration-300 data-[state=active]:after:scale-x-100";
-
   const renderTweets = (list: Tweet[]) =>
     list
       .filter(
@@ -137,42 +115,36 @@ const Feed = () => {
           typeof tweet.author !== "string"
       )
       .map((tweet) => (
-        <motion.div key={tweet._id} variants={fadeUp}>
+        <motion.div key={tweet._id} variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.15 } } }}>
           <TweetCard tweet={tweet} />
         </motion.div>
       ));
 
   const renderEmptyState = (isFollowing: boolean) => (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="py-20 px-6 text-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+      className="max-w-[380px] py-16 px-8 mx-auto text-center"
     >
-      <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-brand/10 mb-5 animate-glow-pulse">
-        {isFollowing ? (
-          <UserPlus className="h-9 w-9 text-brand" />
-        ) : (
-          <MessageSquareDashed className="h-9 w-9 text-brand" />
-        )}
-      </div>
-      <p className="text-2xl font-bold text-gradient">
+      <p className="text-3xl font-extrabold text-foreground leading-9">
         {isFollowing ? t("feed_following_empty_title") : t("feed_empty_title")}
       </p>
-      <p className="text-muted-foreground mt-2 text-base">
+      <p className="text-muted-foreground mt-2 text-[15px] leading-5">
         {isFollowing
           ? t("feed_empty_desc")
           : t("feed_empty_hint")}
       </p>
       {isFollowing && (
-        <Button
-          className="mt-5 rounded-full px-6"
+        <button
+          type="button"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("twiller:go-search"))
           }
+          className="mt-6 h-9 rounded-full bg-brand px-4 text-[15px] font-bold text-white transition-colors duration-200 hover:bg-x-blue-hover active:scale-[0.98]"
         >
           {t("feed_find_people")}
-        </Button>
+        </button>
       )}
     </motion.div>
   );
@@ -186,24 +158,23 @@ const Feed = () => {
 
   return (
     <div className="min-h-dvh">
-      <div className="sticky top-0 z-20 bg-background/70 backdrop-blur-2xl border-b border-border/60 shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
-        <div className="px-2 sm:px-4 pt-3 pb-1 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden rounded-full text-foreground -ml-1"
-              aria-label={t("more")}
-              onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
-            >
-              <Menu className="h-6 w-6" />
-            </Button>
-            <h1 className="text-xl font-bold text-foreground tracking-tight">{t("home")}</h1>
-          </div>
+      {/* Sticky header + tabs */}
+      <div className="sticky top-0 z-20 border-b border-border bg-background">
+        <div className="flex h-[53px] items-center gap-4 px-4">
+          <button
+            type="button"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors duration-200 hover:bg-hover-overlay md:hidden outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            aria-label={t("more")}
+            onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
+          >
+            <Menu className="h-5 w-5 text-foreground" aria-hidden="true" />
+          </button>
+          <h1 className="truncate text-xl font-bold text-foreground">{t("home")}</h1>
           {user && (
             <button
+              type="button"
               onClick={() => window.dispatchEvent(new CustomEvent("twiller:go-profile"))}
-              className="md:hidden rounded-full transition-transform active:scale-95"
+              className="ml-auto shrink-0 rounded-full transition-transform duration-200 active:scale-95 md:hidden outline-none focus-visible:ring-2 focus-visible:ring-brand"
               aria-label={t("profile")}
             >
               <Avatar className="h-8 w-8">
@@ -214,32 +185,30 @@ const Feed = () => {
           )}
         </div>
 
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-transparent border-b border-border rounded-none h-auto p-0">
-            <TabsTrigger value="forYou" className={tabClass}>
-              {t("feed_for_you")}
-            </TabsTrigger>
-            <TabsTrigger value="following" className={tabClass}>
-              {t("feed_following")}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <TopTabs
+          tabs={[
+            { value: "forYou", label: t("feed_for_you") },
+            { value: "following", label: t("feed_following") },
+          ]}
+          value={activeTab}
+          onChange={handleTabChange}
+        />
       </div>
 
-      <TweetComposer onTweetPosted={handlenewtweet} onAudioPosted={fetchForYou} />
+      <Composer onTweetPosted={handlenewtweet} onAudioPosted={fetchForYou} />
 
-      <div>
+      <div role="feed" aria-busy={isLoading}>
         {isLoading ? (
           <>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <TweetSkeleton key={i} />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonLoader key={i} />
             ))}
           </>
         ) : currentList.length === 0 ? (
           renderEmptyState(activeTab === "following")
         ) : (
           <motion.div
-            variants={staggerContainer}
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
             initial="hidden"
             animate="visible"
           >

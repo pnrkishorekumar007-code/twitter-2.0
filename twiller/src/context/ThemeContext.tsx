@@ -1,12 +1,13 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useSyncExternalStore } from "react";
 import { useServerInsertedHTML } from "next/navigation";
 
-type Theme = "light" | "dark";
+export type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
+  setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 }
 
@@ -18,50 +19,60 @@ export const useTheme = () => {
   return ctx;
 };
 
+const STORAGE_KEY = "twiller-theme";
+const CHANGE_EVENT = "twiller-theme-change";
+
+// The single source of truth is the `dark` class on <html>: the init script
+// below applies the stored theme before first paint, so there is never a
+// flash of the wrong theme. React just observes that class.
+const subscribe = (onStoreChange: () => void) => {
+  window.addEventListener(CHANGE_EVENT, onStoreChange);
+  return () => window.removeEventListener(CHANGE_EVENT, onStoreChange);
+};
+
+const getSnapshot = (): Theme =>
+  document.documentElement.classList.contains("dark") ? "dark" : "light";
+
+// Matches the SSR'd <html class="dark"> default.
+const getServerSnapshot = (): Theme => "dark";
+
+// Runs before first paint: applies the stored theme (dark is the default).
 const THEME_INIT_SCRIPT = `
   try {
-    var t = localStorage.getItem('twiller-theme');
-    var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (dark) document.documentElement.classList.add('dark');
+    var t = localStorage.getItem('${STORAGE_KEY}');
+    if (t === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
   } catch (e) {}
 `;
-
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
-  try {
-    const saved = localStorage.getItem("twiller-theme");
-    if (saved === "light" || saved === "dark") return saved;
-    return window.matchMedia("(prefers-color-scheme: light)").matches
-      ? "light"
-      : "dark";
-  } catch {
-    return "dark";
-  }
-}
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useServerInsertedHTML(() => (
     <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
   ));
 
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("dark", theme === "dark");
+  const setTheme = React.useCallback((next: Theme) => {
+    document.documentElement.classList.toggle("dark", next === "dark");
     try {
-      localStorage.setItem("twiller-theme", theme);
+      localStorage.setItem(STORAGE_KEY, next);
     } catch {
-      // ignore
+      // storage unavailable (private mode etc.) — theme still applies live
     }
-  }, [theme]);
+    window.dispatchEvent(new Event(CHANGE_EVENT));
+  }, []);
 
-  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+  const toggleTheme = React.useCallback(() => {
+    setTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
+  }, [setTheme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

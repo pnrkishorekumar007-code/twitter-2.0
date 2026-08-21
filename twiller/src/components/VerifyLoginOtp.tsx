@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
@@ -172,20 +172,20 @@ export default function VerifyLoginOtp() {
   };
 
   const renderNoSession = () => (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
-      <Card className="w-full max-w-md bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+    <div className="min-h-dvh bg-black text-white flex items-center justify-center px-4">
+      <Card className="w-full max-w-md">
         <CardContent className="p-6 sm:p-8 text-center space-y-4">
-          <span className="grid place-items-center h-12 w-12 rounded-full bg-brand-gradient animate-gradient text-white shadow-lg shadow-brand/40 mx-auto">
-            <ShieldCheck className="h-6 w-6" />
+          <span className="grid place-items-center h-12 w-12 rounded-full bg-brand text-white mx-auto">
+            <ShieldCheck className="h-6 w-6" aria-hidden="true" />
           </span>
           <h1 className="text-2xl font-bold">No pending login</h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             {urlEmail
               ? "Your login session has expired. Please sign in again to receive a new code."
               : "There is no login in progress to verify."}
           </p>
           <Button
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-full"
+            className="w-full bg-brand hover:bg-x-blue-hover text-white font-bold py-3 rounded-full"
             onClick={() => router.push("/")}
           >
             Back to Twiller
@@ -198,37 +198,29 @@ export default function VerifyLoginOtp() {
   if (!session) return renderNoSession();
 
   return (
-    <div className="min-h-screen bg-black/30 backdrop-blur-xl text-white flex flex-col relative overflow-hidden">
-      {/* Ambient brand background (matches forgot-password page) */}
-      <div
-        className="absolute inset-0 opacity-30 bg-brand-gradient animate-gradient"
-        style={{ filter: "blur(120px)" }}
-      />
-      <div className="absolute top-1/4 right-1/4 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl" />
-      <div className="absolute bottom-1/4 left-1/4 h-80 w-80 rounded-full bg-fuchsia-500/15 blur-3xl animate-float-slow" />
-
-      <div className="relative flex flex-col items-center justify-center flex-1 px-4 py-10">
+    <div className="min-h-dvh bg-black text-white flex flex-col">
+      <div className="flex flex-col items-center justify-center flex-1 px-4 py-10">
         <Link href="/" aria-label="Twiller home" className="mb-8">
           <TwillerBrand />
         </Link>
 
-        <Card className="w-full max-w-md bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+        <Card className="w-full max-w-md">
           <CardContent className="p-6 sm:p-8 space-y-5">
             <div className="flex items-center gap-3">
-              <span className="grid place-items-center h-10 w-10 rounded-full bg-brand-gradient animate-gradient text-white shadow-lg shadow-brand/40">
-                <KeyRound className="h-5 w-5" />
+              <span className="grid place-items-center h-10 w-10 rounded-full bg-brand text-white">
+                <KeyRound className="h-5 w-5" aria-hidden="true" />
               </span>
               <div>
                 <h1 className="text-2xl font-bold text-white">Verify it&apos;s you</h1>
-                <p className="text-gray-400 text-sm">
+                <p className="text-muted-foreground text-sm">
                   Enter the 6-digit code emailed to{" "}
-                  <span className="text-gray-200 font-medium">{effectiveEmail || "your account"}</span>
+                  <span className="text-foreground font-medium">{effectiveEmail || "your account"}</span>
                 </p>
               </div>
             </div>
 
             {error && (
-              <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 text-red-400 text-sm">
+              <div className="bg-destructive/10 border border-destructive/40 rounded-lg p-3 text-red-400 text-sm">
                 {error}
               </div>
             )}
@@ -245,10 +237,10 @@ export default function VerifyLoginOtp() {
                 autoFocus
                 maxLength={6}
                 disabled={verifying || sending}
-                className="h-14 text-center text-2xl tracking-[0.5em] bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-500 focus:border-brand focus:ring-brand/30"
+                className="h-14 text-center text-2xl tracking-[0.5em] border-border text-white placeholder:text-muted-foreground focus:border-brand"
               />
               {session?.method === "google" && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   This code verifies your Google login.
                 </p>
               )}
@@ -256,7 +248,7 @@ export default function VerifyLoginOtp() {
 
             <div className="flex items-center justify-between text-sm">
               <span
-                className={expired ? "text-red-400 font-semibold" : "text-gray-400"}
+                className={expired ? "text-red-400 font-semibold" : "text-muted-foreground"}
               >
                 {expired
                   ? "Code expired"
@@ -265,7 +257,7 @@ export default function VerifyLoginOtp() {
             </div>
 
             <Button
-              className="w-full bg-brand-gradient animate-gradient text-white font-bold py-3 rounded-full text-base shadow-lg shadow-brand/30 hover:brightness-110 hover:scale-[1.02] transition-all"
+              className="w-full bg-brand text-white font-bold py-3 rounded-full text-base hover:bg-x-blue-hover"
               disabled={!canVerify}
               onClick={handleVerify}
             >
@@ -304,9 +296,9 @@ export default function VerifyLoginOtp() {
           </CardContent>
         </Card>
 
-        <p className="text-xs text-gray-500 mt-6">
+        <p className="text-xs text-muted-foreground mt-6">
           © 2026 Twiller ·{" "}
-          <Link href="/" className="hover:text-gray-300 hover:underline">
+          <Link href="/" className="hover:text-foreground hover:underline">
             Back to Twiller
           </Link>
         </p>

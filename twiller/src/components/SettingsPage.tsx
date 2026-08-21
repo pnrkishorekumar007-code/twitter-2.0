@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import {
@@ -23,10 +23,10 @@ import LoginHistorySection from "./LoginHistorySection";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
+import { cn } from "@/lib/utils";
 import { useToast } from "./Toast";
 import axiosInstance from "@/lib/axiosInstance";
 import { getErrorMessage } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 function SectionNav({
   value,
@@ -51,7 +51,7 @@ function SectionNav({
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
   const { t } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [showEditModal, setShowEditModal] = useState(false);
   const [section, setSection] = useState("account");
@@ -79,8 +79,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen">
-      <div className="sticky top-0 z-10 bg-background/70 backdrop-blur-2xl border-b border-border shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
+    <div className="min-h-dvh">
+      <div className="sticky top-0 z-20 bg-background border-b border-border">
         <div className="px-4 py-3 flex items-center gap-4">
           <Button
             variant="ghost"
@@ -118,7 +118,7 @@ export default function SettingsPage() {
           </TabsList>
 
           <TabsContent value="account" className="mt-0">
-            <div className="rounded-2xl border border-border bg-card/60 backdrop-blur-xl p-5 shadow-lg">
+            <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16 shrink-0">
                   <AvatarImage src={user.avatar} alt={user.displayName} />
@@ -143,7 +143,7 @@ export default function SettingsPage() {
               {user.bio && <p className="mt-4 text-foreground text-sm">{user.bio}</p>}
             </div>
 
-            <div className="mt-5 rounded-2xl border border-border bg-card/60 backdrop-blur-xl p-5 shadow-lg">
+            <div className="mt-5 rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center gap-3">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand/15">
                   <Lock className="h-5 w-5 text-brand" />
@@ -197,7 +197,7 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="appearance" className="mt-0">
-            <div className="rounded-2xl border border-border bg-card/60 backdrop-blur-xl p-5 shadow-lg space-y-4">
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
               <div>
                 <p className="text-foreground font-semibold">{t("settings_appearance_title")}</p>
                 <p className="text-muted-foreground text-sm mt-0.5">
@@ -205,34 +205,30 @@ export default function SettingsPage() {
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => theme !== "light" && toggleTheme()}
-                  aria-pressed={theme === "light"}
-                  className={cn(
-                    "rounded-2xl border-2 p-4 text-left transition-all",
-                    theme === "light"
-                      ? "border-brand bg-brand/5"
-                      : "border-border hover:border-brand/40"
-                  )}
-                >
-                  <div className="h-16 rounded-lg border border-border bg-white mb-3" />
-                  <p className="font-semibold text-foreground text-sm">{t("settings_light")}</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => theme !== "dark" && toggleTheme()}
-                  aria-pressed={theme === "dark"}
-                  className={cn(
-                    "rounded-2xl border-2 p-4 text-left transition-all",
-                    theme === "dark"
-                      ? "border-brand bg-brand/5"
-                      : "border-border hover:border-brand/40"
-                  )}
-                >
-                  <div className="h-16 rounded-lg border border-border bg-black mb-3" />
-                  <p className="font-semibold text-foreground text-sm">{t("settings_dark")}</p>
-                </button>
+                {(["light", "dark"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={theme === mode}
+                    onClick={() => setTheme(mode)}
+                    className={cn(
+                      "rounded-2xl border-2 p-4 text-left transition-colors",
+                      theme === mode
+                        ? "border-brand bg-brand/5"
+                        : "border-border hover:bg-hover-overlay"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "h-16 rounded-lg border border-border mb-3",
+                        mode === "dark" ? "bg-black" : "bg-white"
+                      )}
+                    />
+                    <p className="font-semibold text-foreground text-sm">
+                      {mode === "dark" ? t("settings_dark") : t("settings_light")}
+                    </p>
+                  </button>
+                ))}
               </div>
             </div>
           </TabsContent>

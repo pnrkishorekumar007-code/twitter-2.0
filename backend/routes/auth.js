@@ -12,6 +12,7 @@ import { hashPassword } from "../utils/passwordHash.js";
 import {
   signAuthToken,
   signLoginToken,
+  signPasswordResetSessionToken,
   verifyAuthToken,
 } from "../utils/jwt.js";
 import { rateLimit } from "../utils/rateLimiter.js";
@@ -29,7 +30,7 @@ const router = express.Router();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const RESET_OTP_TTL_MS = 10 * 60 * 1000;
+const RESET_OTP_TTL_MS = 5 * 60 * 1000;
 
 // A "mobile device" for the IST window rule includes tablets.
 function isMobileClass(deviceType) {
@@ -196,7 +197,22 @@ router.post("/login", deviceDetect, async (req, res) => {
       });
     }
 
-    // ALL Browsers require email OTP verification
+    // 6. MICROSOFT BROWSERS (Edge / IE): direct login — no OTP step.
+    //    Chrome and every other browser continue to the email-OTP flow below.
+    if (!isMobileClass(deviceType) && isMicrosoftBrowser(browser)) {
+      await recordLogin({ userId: user._id, deviceInfo: req.deviceInfo, loginMethod: method });
+      const authToken = signAuthToken({ userId: user._id.toString(), email: user.email });
+      res.cookie("auth_token", authToken, { httpOnly: true, sameSite: "strict" });
+      return res.status(200).send({
+        success: true,
+        requiresOtp: false,
+        message: "Login successful.",
+        user,
+        token: authToken,
+      });
+    }
+
+    // 7. ALL OTHER BROWSERS require email OTP verification
     const limiter = rateLimit({
       key: `login-otp:${user._id}`,
       windowMs: 10 * 60 * 1000,
@@ -615,6 +631,98 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
+// Generates a fresh letters-only password, persists its hash, syncs Firebase
+// and delivers it over the same channel the recovery code used. Shared by
+// POST /forgot-password/verify and POST /forgot-password/regenerate.
+async function resetAndDeliverPassword(user, { isEmail, identifier }) {
+  const newPassword = generateLetterPassword(10);
+  user.password = hashPassword(newPassword);
+  await user.save();
+
+  let firebaseUpdated = false;
+  try {
+    firebaseUpdated = await setFirebaseUserPassword(user.email || identifier, newPassword);
+  } catch (err) {
+    console.error("Firebase password update failed:", err.message);
+  }
+
+  // Phone recovery: send the new password by SMS (never returned on screen
+  // when a provider is configured).
+  if (!isEmail) {
+    try {
+      const smsResult = await sendSms({
+        to: user.phone || identifier,
+        text: `Your new Twiller password is: ${newPassword}`,
+      });
+      if (smsResult?.skipped) {
+        return {
+          status: 200,
+          payload: {
+            success: true,
+            message: "Password reset successful.",
+            firebaseUpdated,
+            note: "The new password could not be sent by SMS (no SMS provider configured).",
+          },
+        };
+      }
+      return {
+        status: 200,
+        payload: {
+          success: true,
+          message: "Password reset successful. Your new password has been sent to your phone.",
+          firebaseUpdated,
+        },
+      };
+    } catch (smsErr) {
+      console.error("Password reset SMS failed:", smsErr.message);
+      return {
+        status: 200,
+        payload: {
+          success: true,
+          message: "Password reset successful.",
+          firebaseUpdated,
+          note: "The SMS could not be sent. Please contact support to recover your password.",
+        },
+      };
+    }
+  }
+
+  // Email recovery: send the password by email.
+  try {
+    const mailResult = await sendPasswordResetEmail({ to: user.email, newPassword });
+    if (mailResult?.skipped) {
+      return {
+        status: 200,
+        payload: {
+          success: true,
+          message: "Password reset successful.",
+          firebaseUpdated,
+          note: "The email could not be sent (email service not configured).",
+        },
+      };
+    }
+    return {
+      status: 200,
+      payload: {
+        success: true,
+        message: "Password reset successful. Check your email for your new password.",
+        firebaseUpdated,
+      },
+    };
+  } catch (mailErr) {
+    console.error("Password reset email failed:", mailErr.message);
+    return {
+      status: 200,
+      payload: {
+        success: true,
+        message: "Password reset successful.",
+        firebaseUpdated,
+        note: "The email could not be sent. Please contact support to recover your password.",
+      },
+    };
+  }
+}
+
 router.post("/forgot-password/verify", async (req, res) => {
   try {
     const identifier = String(req.body?.identifier || "").trim();
@@ -669,75 +777,86 @@ router.post("/forgot-password/verify", async (req, res) => {
     }
 
     // Step 2: reset + persist the new password (hashed, never plaintext).
-    const newPassword = generateLetterPassword(10);
-    user.password = hashPassword(newPassword);
-    user.lastPasswordResetRequest = new Date();
-    await user.save();
+    const resetOutcome = await resetAndDeliverPassword(user, { isEmail, identifier });
 
-    let firebaseUpdated = false;
-    try {
-      firebaseUpdated = await setFirebaseUserPassword(user.email || identifier, newPassword);
-    } catch (err) {
-      console.error("Firebase password update failed:", err.message);
-    }
+    // Issue a short-lived session token so the user may regenerate the
+    // generated password (same verified session) without burning another
+    // daily recovery request.
+    const resetToken = signPasswordResetSessionToken({
+      userId: user._id.toString(),
+      email: user.email,
+    });
 
-    // Phone recovery: send the new password by SMS (never returned on screen
-    // when a provider is configured).
-    if (isPhone) {
-      try {
-        const smsResult = await sendSms({
-          to: user.phone || identifier,
-          text: `Your new Twiller password is: ${newPassword}`,
-        });
-        if (smsResult?.skipped) {
-          return res.status(200).send({
-            success: true,
-            message: "Password reset successful.",
-            firebaseUpdated,
-            note: "The new password could not be sent by SMS (no SMS provider configured).",
-          });
-        }
-        return res.status(200).send({
-          success: true,
-          message: "Password reset successful. Your new password has been sent to your phone.",
-          firebaseUpdated,
-        });
-      } catch (smsErr) {
-        console.error("Password reset SMS failed:", smsErr.message);
-        return res.status(200).send({
-          success: true,
-          message: "Password reset successful.",
-          firebaseUpdated,
-          note: "The SMS could not be sent. Please contact support to recover your password.",
-        });
-      }
-    }
+    return res.status(resetOutcome.status).send({ ...resetOutcome.payload, resetToken });
+  } catch (error) {
+    return res.status(400).send({ error: error.message });
+  }
+});
 
-    // Email recovery: send the password by email.
-    try {
-      const mailResult = await sendPasswordResetEmail({ to: user.email, newPassword });
-      if (mailResult?.skipped) {
-        return res.status(200).send({
-          success: true,
-          message: "Password reset successful.",
-          firebaseUpdated,
-          note: "The email could not be sent (email service not configured).",
-        });
-      }
-      return res.status(200).send({
-        success: true,
-        message: "Password reset successful. Check your email for your new password.",
-        firebaseUpdated,
-      });
-    } catch (mailErr) {
-      console.error("Password reset email failed:", mailErr.message);
-      return res.status(200).send({
-        success: true,
-        message: "Password reset successful.",
-        firebaseUpdated,
-        note: "The email could not be sent. Please contact support to recover your password.",
+/**
+ * POST /auth/forgot-password/regenerate
+ * Regenerates the letters-only password within the same verified reset
+ * session. Requires the short-lived `resetToken` returned by
+ * /forgot-password/verify — it does NOT consume another daily request.
+ */
+router.post("/forgot-password/regenerate", async (req, res) => {
+  try {
+    const identifier = String(req.body?.identifier || "").trim();
+    const resetToken = String(req.body?.resetToken || "").trim();
+    if (!identifier || !resetToken) {
+      return res.status(400).send({
+        error: "Identifier and reset token are required.",
       });
     }
+
+    // The token must be a valid password-reset-session token for this account.
+    let decoded;
+    try {
+      decoded = verifyAuthToken(resetToken);
+    } catch {
+      return res.status(403).send({
+        error: "Your reset session has expired. Please start again tomorrow.",
+      });
+    }
+    if (!decoded?.sub || decoded.type !== "password-reset-session") {
+      return res.status(403).send({ error: "Invalid reset token." });
+    }
+
+    const isEmail = EMAIL_RE.test(identifier);
+    const isPhone = looksLikePhone(identifier);
+    if (!isEmail && !isPhone) {
+      return res.status(400).send({
+        error: "Please enter a valid email address or phone number.",
+      });
+    }
+
+    let user = await User.findById(decoded.sub);
+    if (
+      user &&
+      ((isEmail &&
+        String(user.email || "").toLowerCase() !== identifier.toLowerCase()) ||
+        (!isEmail && String(user.phone || "") !== identifier))
+    ) {
+      user = null; // token belongs to a different account
+    }
+    if (!user) {
+      return res.status(403).send({ error: "Invalid reset token." });
+    }
+
+    // Cap regenerations so a leaked token can't spam new passwords.
+    const limiter = rateLimit({
+      key: `forgot-pw-regen:${user._id}`,
+      windowMs: 15 * 60 * 1000,
+      max: 3,
+    });
+    if (!limiter.allowed) {
+      return res.status(429).send({
+        error: "Too many regeneration attempts. Please try again later.",
+      });
+    }
+
+    const result = await resetAndDeliverPassword(user, { isEmail, identifier });
+    return res.status(result.status).send(result.payload);
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }

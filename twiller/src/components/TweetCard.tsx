@@ -3,71 +3,50 @@
 import Image from "next/image";
 import React, { memo, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Button } from "./ui/button";
-import {
-  Heart,
-  MessageCircle,
-  Repeat2,
-  Share,
-  Bookmark,
-  MoreHorizontal,
-  BadgeCheck,
-} from "lucide-react";
+import { MoreHorizontal, BadgeCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/context/BookmarksContext";
 import axiosInstance from "@/lib/axiosInstance";
+import { useToast } from "./Toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import TweetDetailModal from "./TweetDetailModal";
+import TweetActions from "./feed/TweetActions";
 import AudioPlayer from "./audio/AudioPlayer";
 import ImageFallback from "./ui/ImageFallback";
-import { motion } from "@/lib/motion";
-import { cn } from "@/lib/utils";
-import { formatNumber, timeAgo } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
 import type { Tweet } from "@/lib/types";
-
-function ActionButton({
-  label,
-  active,
-  activeClass,
-  count,
-  onClick,
-  children,
-}: {
-  label: string;
-  active?: boolean;
-  activeClass?: string;
-  count?: number | string;
-  onClick?: (e: React.MouseEvent) => void;
-  children: React.ReactNode;
-}) {
-  return (
-      <button
-        type="button"
-        aria-label={label}
-        aria-pressed={active}
-        onClick={onClick}
-        className={cn(
-          "group flex items-center gap-0.5 text-muted-foreground rounded-full transition-colors duration-150",
-          activeClass
-        )}
-      >
-        <span className="grid h-9 w-9 place-items-center rounded-full transition-colors duration-150 active:scale-90">
-          {children}
-        </span>
-        {count !== undefined && (
-          <span className="text-[13px] transition-colors duration-150">{count}</span>
-        )}
-      </button>
-  );
-}
 
 function TweetCardInner({ tweet }: { tweet: Tweet }) {
   const { user } = useAuth();
   const { isBookmarked, toggleBookmark } = useBookmarks();
+  const { toast } = useToast();
   const [tweetstate, settweetstate] = useState(tweet);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
 
   const bookmarked = isBookmarked(tweetstate._id);
+
+  // Author context for the "..." menu (author is guaranteed populated after
+  // the guard below, but the initializer must run before any early return).
+  const authorId =
+    tweetstate?.author && typeof tweetstate.author !== "string"
+      ? String(tweetstate.author._id)
+      : undefined;
+  const authorUsername =
+    tweetstate?.author && typeof tweetstate.author !== "string"
+      ? tweetstate.author.username
+      : "";
+  const [followingAuthor, setFollowingAuthor] = useState<boolean>(
+    () =>
+      !!user &&
+      !!authorId &&
+      (user.following || []).some((id) => String(id) === authorId)
+  );
 
   const likeTweet = async (tweetId: string) => {
     try {
@@ -75,8 +54,8 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
         userId: user?._id,
       });
       settweetstate(res.data);
-    } catch (error) {
-      console.log(error);
+    } catch {
+      toast("Couldn't like this post", "error");
     }
   };
 
@@ -86,8 +65,8 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
         userId: user?._id,
       });
       settweetstate(res.data);
-    } catch (error) {
-      console.log(error);
+    } catch {
+      toast("Couldn't repost", "error");
     }
   };
 
@@ -96,6 +75,13 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
 
   const audioDuration = tweetstate.audioDurationSeconds ?? 0;
   const audioSize = tweetstate.audioSizeBytes ?? 0;
+
+  // Deterministic view estimate derived from real engagement counts.
+  const views =
+    (tweetstate.likes ?? 0) * 9 +
+    (tweetstate.retweets ?? 0) * 13 +
+    (tweetstate.comments ?? 0) * 7 +
+    37;
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -108,9 +94,38 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
         });
       } else {
         await navigator.clipboard.writeText(url);
+        toast("Link copied to clipboard", "success");
       }
     } catch (error) {
-      console.log(error);
+      // User closed the native share sheet — not an error.
+      if ((error as { name?: string })?.name === "AbortError") return;
+      toast("Couldn't share this post", "error");
+    }
+  };
+
+  const copyPostLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast("Link copied to clipboard", "success");
+    } catch {
+      toast("Couldn't copy the link", "error");
+    }
+  };
+
+  const toggleFollowAuthor = async () => {
+    if (!authorId) return;
+    try {
+      if (followingAuthor) {
+        await axiosInstance.post(`/users/unfollow/${authorId}`);
+        setFollowingAuthor(false);
+        toast(`Unfollowed @${authorUsername}`, "success");
+      } else {
+        await axiosInstance.post(`/users/follow/${authorId}`);
+        setFollowingAuthor(true);
+        toast(`Following @${authorUsername}`, "success");
+      }
+    } catch {
+      toast("Action failed. Please try again.", "error");
     }
   };
 
@@ -128,178 +143,156 @@ function TweetCardInner({ tweet }: { tweet: Tweet }) {
     <>
       <article
         onClick={openDetail}
-        className="group cursor-pointer border-b border-border/50 bg-background hover:bg-accent/50 transition-all duration-200"
+        className="group cursor-pointer border-b border-border px-4 py-3 transition-colors duration-200 hover:bg-active-overlay"
       >
-        <div className="p-3 sm:p-4">
-          <div className="flex space-x-3">
-            <Avatar className="h-11 w-11 shrink-0 transition-all duration-300 group-hover:shadow-[0_0_0_2px_rgba(29,155,240,0.4)] group-hover:scale-105">
-              <AvatarImage
-                src={tweetstate.author.avatar}
-                alt={tweetstate.author.displayName}
-              />
-              <AvatarFallback>
-                {tweetstate.author.displayName?.[0] || "U"}
-              </AvatarFallback>
-            </Avatar>
+        <div className="flex gap-3">
+          <Avatar className="h-10 w-10 shrink-0">
+            <AvatarImage
+              src={tweetstate.author.avatar}
+              alt={tweetstate.author.displayName}
+            />
+            <AvatarFallback>
+              {tweetstate.author.displayName?.[0] || "U"}
+            </AvatarFallback>
+          </Avatar>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center text-[15px] leading-5 min-w-0">
-                <span className="font-bold text-foreground truncate min-w-0 max-w-[55%] hover:underline cursor-pointer">
-                  {tweetstate.author.displayName || "Unknown User"}
-                </span>
-                {tweetstate.author.verified && (
-                  <BadgeCheck
-                    className="h-[18px] w-[18px] text-brand shrink-0 ml-1"
-                    aria-label="Verified"
+          <div className="min-w-0 flex-1">
+            {/* Author line */}
+            <div className="flex min-w-0 items-center text-[15px] leading-5">
+              <span className="min-w-0 max-w-[55%] truncate font-bold text-foreground hover:underline">
+                {tweetstate.author.displayName || "Unknown User"}
+              </span>
+              {tweetstate.author.verified && (
+                <BadgeCheck
+                  className="ml-0.5 h-[18px] w-[18px] shrink-0 text-brand"
+                  aria-label="Verified"
+                />
+              )}
+              <span className="ml-1 min-w-0 truncate text-muted-foreground">
+                @{tweetstate.author.username || "unknown"}
+              </span>
+              <span className="mx-1 shrink-0 text-muted-foreground" aria-hidden="true">·</span>
+              <span className="shrink-0 whitespace-nowrap text-muted-foreground hover:underline">
+                {timeAgo(tweetstate.timestamp)}
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => e.stopPropagation()}
+                    className="ml-auto grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-brand/10 hover:text-brand"
+                    aria-label="More"
+                    aria-haspopup="menu"
+                  >
+                    <MoreHorizontal className="h-[18px] w-[18px]" aria-hidden="true" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[240px] rounded-2xl border-border bg-popover p-2">
+                  <DropdownMenuItem
+                    className="rounded-full px-4 py-3 text-[15px]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void copyPostLink();
+                    }}
+                  >
+                    Copy link to post
+                  </DropdownMenuItem>
+                  {user && String(user._id) !== authorId && (
+                    <DropdownMenuItem
+                      className="rounded-full px-4 py-3 text-[15px]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void toggleFollowAuthor();
+                      }}
+                    >
+                      {followingAuthor
+                        ? `Unfollow @${authorUsername}`
+                        : `Follow @${authorUsername}`}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Text content */}
+            {tweetstate.content && (
+              <div className="mt-0.5 break-words whitespace-pre-wrap text-[15px] leading-normal text-foreground [overflow-wrap:anywhere]">
+                {tweetstate.content}
+              </div>
+            )}
+
+            {/* Audio attachment */}
+            {tweetstate.type === "audio" && tweetstate.audioUrl && (
+              <div
+                className="mt-3 rounded-2xl border border-border bg-card p-3"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <AudioPlayer src={tweetstate.audioUrl} />
+                {(audioDuration > 0 || audioSize > 0) && (
+                  <div className="mt-1.5 flex gap-3 text-[13px] text-muted-foreground">
+                    {audioDuration > 0 && (
+                      <span>
+                        {Math.floor(audioDuration / 60)}:
+                        {String(Math.round(audioDuration % 60)).padStart(2, "0")}
+                      </span>
+                    )}
+                    {audioSize > 0 && (
+                      <span>{(audioSize / (1024 * 1024)).toFixed(1)} MB</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Media — 16:9, rounded 16px, never overflows */}
+            {tweetstate.image && (
+              <div className="relative mt-3 aspect-video w-full overflow-hidden rounded-2xl border border-border bg-muted">
+                {imageFailed ? (
+                  <ImageFallback />
+                ) : (
+                  <Image
+                    src={tweetstate.image}
+                    alt=""
+                    fill
+                    unoptimized
+                    sizes="(max-width: 640px) 100vw, 600px"
+                    loading="lazy"
+                    onError={() => {
+                      console.warn("[tweet-image] failed to load:", tweetstate.image);
+                      setImageFailed(true);
+                    }}
+                    className="h-full w-full object-cover"
                   />
                 )}
-                <span className="text-muted-foreground truncate min-w-0 ml-1">
-                  @{tweetstate.author.username || "unknown"}
-                </span>
-                <span className="text-muted-foreground mx-1 shrink-0">·</span>
-                <span className="text-muted-foreground shrink-0 whitespace-nowrap">
-                  {timeAgo(tweetstate.timestamp)}
-                </span>
-                <div className="ml-auto shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="p-0 h-9 w-9 rounded-full hover:bg-brand/10 active:scale-90 transition-all"
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label="More"
-                  >
-                    <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
-                  </Button>
-                </div>
               </div>
+            )}
 
-              {tweetstate.content && (
-                <div className="text-foreground mt-0.5 leading-relaxed break-words whitespace-pre-wrap text-[15px] [overflow-wrap:anywhere]">
-                  {tweetstate.content}
-                </div>
-              )}
-
-              {tweetstate.type === "audio" && tweetstate.audioUrl && (
-                <div
-                  className="mt-3 rounded-2xl border border-border bg-muted/40 p-3"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <AudioPlayer src={tweetstate.audioUrl} />
-                  {(audioDuration > 0 || audioSize > 0) && (
-                    <div className="flex gap-3 text-xs text-muted-foreground mt-1.5">
-                      {audioDuration > 0 && (
-                        <span>
-                          {Math.floor(audioDuration / 60)}:
-                          {String(Math.round(audioDuration % 60)).padStart(2, "0")}
-                        </span>
-                      )}
-                      {audioSize > 0 && (
-                        <span>{(audioSize / (1024 * 1024)).toFixed(1)} MB</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {tweetstate.image && (
-                <div className="relative mt-3 aspect-[3/2] w-full overflow-hidden rounded-2xl border border-border bg-muted transition-all duration-300 group-hover:shadow-xl group-hover:shadow-brand/5">
-                  {imageFailed ? (
-                    <ImageFallback />
-                  ) : (
-                    <Image
-                      src={tweetstate.image}
-                      alt=""
-                      fill
-                      unoptimized
-                      sizes="(max-width: 640px) 100vw, 600px"
-                      loading="lazy"
-                      onError={() => {
-                        console.warn("[tweet-image] failed to load:", tweetstate.image);
-                        setImageFailed(true);
-                      }}
-                      className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                    />
-                  )}
-                </div>
-              )}
-
-              <div className="mt-2 flex items-center justify-between max-w-md -ml-1">
-                <ActionButton
-                  label="Reply"
-                  count={formatNumber(tweetstate.comments ?? 0)}
-                  activeClass="hover:bg-brand/10 hover:text-brand [&>*:last-child]:group-hover:text-brand"
-                >
-                  <MessageCircle className="h-[18px] w-[18px]" />
-                </ActionButton>
-
-                <ActionButton
-                  label="Repost"
-                  active={isRetweet}
-                  count={formatNumber(tweetstate.retweets ?? 0)}
-                  activeClass={cn(
-                    "hover:bg-emerald-500/10 hover:text-emerald-500",
-                    isRetweet && "text-emerald-500"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    retweetTweet(tweetstate._id);
-                  }}
-                >
-                  <Repeat2 className={cn("h-[18px] w-[18px]", isRetweet && "fill-current")} />
-                </ActionButton>
-
-                <ActionButton
-                  label="Like"
-                  active={isLiked}
-                  count={formatNumber(tweetstate.likes ?? 0)}
-                  activeClass={cn(
-                    "hover:bg-red-500/10 hover:text-red-500",
-                    isLiked && "text-red-500"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    likeTweet(tweetstate._id);
-                  }}
-                >
-                  <motion.span
-                    key={isLiked ? "liked" : "unliked"}
-                    initial={isLiked ? { scale: 0.5, rotate: -20 } : { scale: 1 }}
-                    animate={isLiked ? { scale: [0.5, 1.35, 1] } : { scale: 1 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                    className="inline-flex"
-                  >
-                    <Heart
-                      className={cn("h-[18px] w-[18px]", isLiked && "fill-current")}
-                    />
-                  </motion.span>
-                </ActionButton>
-
-                <ActionButton
-                  label="Bookmark"
-                  active={bookmarked}
-                  activeClass="hover:bg-brand/10 hover:text-brand"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleBookmark(tweetstate._id);
-                  }}
-                >
-                  <Bookmark
-                    className={cn("h-[18px] w-[18px]", bookmarked && "fill-current text-brand")}
-                  />
-                </ActionButton>
-
-                <ActionButton
-                  label="Share"
-                  activeClass="hover:bg-brand/10 hover:text-brand"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleShare();
-                  }}
-                >
-                  <Share className="h-[18px] w-[18px]" />
-                </ActionButton>
-              </div>
-            </div>
+            {/* Engagement row */}
+            <TweetActions
+              comments={tweetstate.comments ?? 0}
+              retweets={tweetstate.retweets ?? 0}
+              likes={tweetstate.likes ?? 0}
+              views={views}
+              isLiked={isLiked}
+              isRetweet={isRetweet}
+              isBookmarked={bookmarked}
+              onLike={(e) => {
+                e.stopPropagation();
+                likeTweet(tweetstate._id);
+              }}
+              onRepost={(e) => {
+                e.stopPropagation();
+                retweetTweet(tweetstate._id);
+              }}
+              onBookmark={(e) => {
+                e.stopPropagation();
+                toggleBookmark(tweetstate._id);
+              }}
+              onShare={(e) => {
+                e.stopPropagation();
+                handleShare();
+              }}
+            />
           </div>
         </div>
       </article>

@@ -35,6 +35,17 @@ export function signAuthToken({ userId, email }) {
   });
 }
 
+// Short-lived (10 min) single-purpose token that authorizes regenerating the
+// generated password after a verified forgot-password reset. Its distinct
+// `type` guarantees it can never be replayed against the login endpoints.
+export function signPasswordResetSessionToken({ userId, email }) {
+  return jwt.sign(
+    { sub: userId, email, type: "password-reset-session" },
+    getJwtSecret(),
+    { expiresIn: "10m" }
+  );
+}
+
 export function verifyAuthToken(token) {
   return jwt.verify(token, getJwtSecret());
 }

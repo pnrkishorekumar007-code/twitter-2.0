@@ -92,7 +92,7 @@ export default function MessagesPage() {
   return (
     <div className="flex h-dvh flex-col">
       {/* Page header */}
-      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-background/70 backdrop-blur-2xl shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-background">
         <div className="flex items-center gap-2">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
@@ -182,18 +182,18 @@ export default function MessagesPage() {
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-              <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-brand/10 mb-5 animate-glow-pulse">
-                <MessageSquare className="h-9 w-9 text-brand" />
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-brand/10 mb-5">
+                <MessageSquare className="h-8 w-8 text-brand" aria-hidden="true" />
               </div>
-              <h2 className="text-2xl font-bold text-gradient">Your messages</h2>
-              <p className="text-muted-foreground mt-2 text-base max-w-sm">
+              <h2 className="text-3xl font-extrabold text-foreground">Your messages</h2>
+              <p className="text-muted-foreground mt-2 text-[15px] max-w-sm">
                 Select a conversation or start a new one with someone you follow.
               </p>
               <Button
-                className="mt-5 rounded-full px-6"
+                className="mt-6 rounded-full px-6"
                 onClick={() => setShowNewChat(true)}
               >
-                <PenSquare className="h-4 w-4" />
+                <PenSquare className="h-4 w-4" aria-hidden="true" />
                 Start a conversation
               </Button>
             </div>
@@ -381,7 +381,7 @@ function ChatWindow({
           rows={1}
           placeholder="Start a new message"
           aria-label="Message"
-          className="flex-1 resize-none rounded-3xl bg-card/60 border border-border px-4 py-2.5 text-foreground placeholder:text-muted-foreground outline-none focus:border-brand focus:ring-4 focus:ring-brand/20 transition-all max-h-40"
+          className="flex-1 resize-none rounded-2xl bg-card border border-border px-4 py-2.5 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors duration-200 focus:border-brand max-h-40"
         />
         <Button
           type="submit"
@@ -485,7 +485,7 @@ function NewChatModal({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search people you follow"
             aria-label="Search people"
-            className="w-full rounded-full bg-card/60 border border-border pl-10 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground outline-none focus:border-brand focus:ring-4 focus:ring-brand/20 transition-all"
+            className="h-10 w-full rounded-full bg-[#eff3f4] dark:bg-x-surface-hover border border-transparent pl-10 pr-4 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors duration-200 focus:border-brand focus:bg-background"
           />
         </div>
       </div>

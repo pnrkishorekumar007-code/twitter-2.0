@@ -56,7 +56,7 @@ export default function MobileDrawer({
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", stiffness: 380, damping: 34 }}
-            className="absolute inset-y-0 left-0 w-[80vw] max-w-[320px] bg-background shadow-2xl"
+            className="absolute inset-y-0 left-0 w-[80vw] max-w-[320px] border-r border-border bg-background"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 pt-4 pb-2">

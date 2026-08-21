@@ -16,6 +16,7 @@ import TwitterLogo from './Twitterlogo';
 import axiosInstance from '@/lib/axiosInstance';
 import { getErrorMessage } from '@/lib/types';
 import { getClientInfo } from '@/lib/clientInfo';
+import { isWithinISTWindow, looksLikeMobileDevice } from '@/lib/timeWindow';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
 
@@ -107,6 +108,14 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
     try {
       if (mode === 'login') {
+        // Mobile devices may only sign in 10:00 AM–1:00 PM IST. The backend
+        // enforces the same rule; this pre-check gives an instant, translated
+        // message without touching Firebase first.
+        if (looksLikeMobileDevice() && !isWithinISTWindow(10, 13)) {
+          setErrors({ general: t('auth_err_mobile_window') });
+          return;
+        }
+
         // Credential validation first (Firebase) — this matches the task's
         // "after successful credential validation" step.
         await login(formData.email, formData.password);
@@ -164,10 +173,15 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
         } catch {
           // ignore
         }
-        const msg =
+        const serverMsg =
           axiosErr.response.data?.message ||
           axiosErr.response.data?.error ||
-          t('auth_err_login_blocked');
+          '';
+        const msg =
+          serverMsg ||
+          (looksLikeMobileDevice() && !isWithinISTWindow(10, 13)
+            ? t('auth_err_mobile_window')
+            : t('auth_err_login_blocked'));
         setErrors({ general: msg });
         return;
       }
@@ -190,12 +204,12 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
-        <Card className="w-full max-w-md my-auto max-h-[90dvh] overflow-y-auto bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] animate-fade-up">
+        <Card className="w-full max-w-md my-auto max-h-[90dvh] overflow-y-auto rounded-2xl">
           <CardHeader className="relative pb-6">
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-4 top-4 text-white/70 hover:bg-white/10 hover:text-white transition-colors duration-200"
+              className="absolute right-4 top-4 text-muted-foreground hover:bg-hover-overlay hover:text-foreground transition-colors duration-200"
               onClick={onClose}
             >
               <X className="h-5 w-5" />
@@ -204,7 +218,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
               <div className="mb-6 flex justify-center">
                 <TwitterLogo size="xl" className="text-white" />
               </div>
-              <CardTitle className="text-2xl font-bold text-white">
+              <CardTitle className="text-2xl font-bold text-foreground">
                 {mode === 'login' ? t('auth_sign_in_title') : t('auth_signup_title')}
               </CardTitle>
             </div>
@@ -212,7 +226,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
         <CardContent className="space-y-6">
           {errors.general && (
-            <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 text-red-400 text-sm">
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-destructive text-sm">
               {errors.general}
             </div>
           )}
@@ -221,113 +235,113 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             {mode === 'signup' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="displayName" className="text-white">{t('auth_display_name')}</Label>
+                  <Label htmlFor="displayName" className="text-foreground">{t('auth_display_name')}</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
                     <Input
                       id="displayName"
                       type="text"
                       placeholder={t('auth_display_name_placeholder')}
                       value={formData.displayName}
                       onChange={(e) => handleInputChange('displayName', e.target.value)}
-                      className="pl-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
+                      className="pl-10 bg-transparent border-border text-white placeholder:text-muted-foreground focus:border-brand"
                       disabled={isLoading}
                     />
                   </div>
                   {errors.displayName && (
-                    <p className="text-red-400 text-sm">{errors.displayName}</p>
+                    <p className="text-destructive text-sm">{errors.displayName}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="username" className="text-white">{t('auth_username')}</Label>
+                  <Label htmlFor="username" className="text-foreground">{t('auth_username')}</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">@</span>
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">@</span>
                     <Input
                       id="username"
                       type="text"
                       placeholder={t('auth_username_placeholder')}
                       value={formData.username}
                       onChange={(e) => handleInputChange('username', e.target.value)}
-                      className="pl-8 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
+                      className="pl-8 bg-transparent border-border text-white placeholder:text-muted-foreground focus:border-brand"
                       disabled={isLoading}
                     />
                   </div>
                   {errors.username && (
-                    <p className="text-red-400 text-sm">{errors.username}</p>
+                    <p className="text-destructive text-sm">{errors.username}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-white">{t('auth_phone_optional')}</Label>
+                  <Label htmlFor="phone" className="text-foreground">{t('auth_phone_optional')}</Label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
                     <Input
                       id="phone"
                       type="tel"
                       placeholder={t('auth_phone_placeholder')}
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
-                      className="pl-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
+                      className="pl-10 bg-transparent border-border text-white placeholder:text-muted-foreground focus:border-brand"
                       disabled={isLoading}
                     />
                   </div>
                   {errors.phone && (
-                    <p className="text-red-400 text-sm">{errors.phone}</p>
+                    <p className="text-destructive text-sm">{errors.phone}</p>
                   )}
                 </div>
               </>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-white">{t('auth_email')}</Label>
+              <Label htmlFor="email" className="text-foreground">{t('auth_email')}</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
                 <Input
                   id="email"
                   type="email"
                   placeholder={t('auth_email_placeholder')}
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="pl-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
+                  className="pl-10 bg-transparent border-border text-white placeholder:text-muted-foreground focus:border-brand"
                   disabled={isLoading}
                 />
               </div>
               {errors.email && (
-                <p className="text-red-400 text-sm">{errors.email}</p>
+                <p className="text-destructive text-sm">{errors.email}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-white">{t('auth_password')}</Label>
+              <Label htmlFor="password" className="text-foreground">{t('auth_password')}</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder={t('auth_password_placeholder')}
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
-                  className="pl-10 pr-10 bg-white/[0.03] border-white/[0.1] text-white placeholder-gray-400 focus:border-brand focus:ring-brand/30"
+                  className="pl-10 pr-10 bg-transparent border-border text-white placeholder:text-muted-foreground focus:border-brand"
                   disabled={isLoading}
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-white"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
               {errors.password && (
-                <p className="text-red-400 text-sm">{errors.password}</p>
+                <p className="text-destructive text-sm">{errors.password}</p>
               )}
               {mode === 'login' && (
                 <button
                   type="button"
-                  className="text-blue-400 text-sm hover:underline"
+                  className="text-brand text-sm hover:underline"
                   onClick={() => {
                     onClose();
                     router.push('/forgot-password');
@@ -340,7 +354,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
           <Button
             type="submit"
-              className="w-full bg-brand-gradient animate-gradient text-white font-bold py-3 rounded-full text-lg shadow-lg shadow-brand/30 hover:brightness-110 hover:scale-[1.02] transition-all"
+              className="w-full bg-brand text-white font-bold py-3 rounded-full text-lg hover:bg-x-blue-hover"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -355,18 +369,18 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
           </form>
 
           <div className="relative">
-            <Separator className="bg-gray-700" />
-            <span className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black px-2 text-gray-400 text-sm">
+            <Separator className="bg-border" />
+            <span className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-muted-foreground text-sm">
               {t('auth_or')}
             </span>
           </div>
 
           <div className="text-center">
-            <p className="text-gray-400">
+            <p className="text-muted-foreground">
               {mode === 'login' ? t('auth_no_account') : t('auth_have_account')}
               <Button
                 variant="link"
-                className="text-blue-400 hover:text-blue-300 font-semibold pl-1"
+                className="text-brand hover:text-brand/80 font-semibold pl-1"
                 onClick={switchMode}
                 disabled={isLoading}
               >
@@ -376,7 +390,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
           </div>
 
           {mode === 'signup' && (
-            <div className="text-center text-xs text-gray-400">
+            <div className="text-center text-xs text-muted-foreground">
               {t('auth_terms')}
             </div>
           )}

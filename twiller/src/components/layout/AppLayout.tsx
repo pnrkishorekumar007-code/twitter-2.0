@@ -4,13 +4,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import LoadingSpinner from "../loading-spinner";
 import Sidebar from "./Sidebar";
 import RightSidebar from "./Rightsidebar";
-import MobileBottomNav from "./MobileBottomNav";
+import MobileNav from "./MobileNav";
 import MobileDrawer from "./MobileDrawer";
 import { TwillerBrand } from "../Twitterlogo";
 import { NotificationsProvider } from "@/context/NotificationsContext";
 import { BookmarksProvider } from "@/context/BookmarksContext";
 import { MessagesProvider } from "@/context/MessagesContext";
-import { motion, AnimatePresence } from "@/lib/motion";
+import { motion, AnimatePresence, MotionConfig } from "@/lib/motion";
 import { usePathname, useRouter } from "next/navigation";
 
 export type AppPage =
@@ -27,7 +27,7 @@ export type AppPage =
   | "more";
 
 // Every sidebar destination maps to a real URL. Page ids stay in sync with
-// the `page` values used by Sidebar / MobileBottomNav / MobileDrawer.
+// the `page` values used by Sidebar / MobileNav / MobileDrawer.
 const PAGE_PATH: Record<AppPage, string> = {
   home: "/home",
   explore: "/explore",
@@ -71,7 +71,16 @@ function pageFromPathname(pathname: string): AppPage {
   }
 }
 
-const Mainlayout = ({ children }: { children: React.ReactNode }) => {
+/**
+ * AppLayout — the X desktop shell.
+ *
+ * CSS Grid columns mirror the official client at every breakpoint:
+ *   mobile  (<640px)  : 1fr                      (bottom nav + FAB)
+ *   tablet  (640–1023): 80px   minmax(0,1fr)     (icon rail)
+ *   desktop(≥1024px) : 275px  minmax(600px,1fr) 350px
+ * Ultrawide keeps the canvas centered with a 1600px cap.
+ */
+const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -116,7 +125,7 @@ const Mainlayout = ({ children }: { children: React.ReactNode }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-dvh bg-background flex items-center justify-center">
+      <div className="grid min-h-dvh w-full place-items-center bg-background">
         <div className="text-center space-y-4">
           <TwillerBrand className="justify-center" />
           <div className="flex justify-center">
@@ -130,67 +139,71 @@ const Mainlayout = ({ children }: { children: React.ReactNode }) => {
   if (!user) return null; // guard effect above redirects to "/"
 
   return (
-    <BookmarksProvider>
-      <MessagesProvider>
-        <NotificationsProvider>
-          <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-full focus:bg-brand focus:px-5 focus:py-2.5 focus:text-white focus:shadow-lg"
-      >
-        Skip to content
-      </a>
-
-      <div className="mx-auto flex w-full max-w-[1265px] justify-center">
-        {/* Left rail — icons-only on tablet (md→lg, 88px), full sidebar with
-            labels from laptop+ (lg, 260px). Hidden on mobile (<768px). */}
-        <aside className="hidden md:flex md:w-[88px] lg:w-[260px] shrink-0 sticky top-0 h-dvh border-r border-border/60">
-          <Sidebar currentPage={currentPage} onNavigate={navigate} />
-        </aside>
-
-        {/* Center column — the active route's page (≤600px, flexes to fill,
-            always centered). */}
-        <main
-          id="main-content"
-          className="flex-1 min-w-0 max-w-[600px] border-x border-border/60 pb-16 md:pb-0"
-        >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="min-h-dvh"
+    <MotionConfig reducedMotion="user">
+      <BookmarksProvider>
+        <MessagesProvider>
+          <NotificationsProvider>
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-full focus:bg-brand focus:px-5 focus:py-2.5 focus:text-white"
             >
-              {children}
-            </motion.div>
-          </AnimatePresence>
-        </main>
+              Skip to content
+            </a>
 
-        {/* Right rail — trends / suggestions. Sticky, fixed 350px, hidden
-            only on mobile (<768px). */}
-        <aside className="hidden md:block w-[350px] shrink-0">
-          <div className="sticky top-0 h-dvh overflow-y-auto no-scrollbar p-4">
-            <RightSidebar />
-          </div>
-        </aside>
-      </div>
+            {/* Full X shell as CSS Grid. The third column (right rail) is only
+                mounted once 275+600+350 actually fits — below that it would
+                force a horizontal scrollbar, which we never allow. */}
+            <div className="mx-auto grid w-full max-w-[1600px] min-h-dvh grid-cols-1 sm:grid-cols-[80px_minmax(0,1fr)] lg:grid-cols-[275px_minmax(600px,1fr)] min-[1226px]:grid-cols-[275px_minmax(600px,1fr)_350px]">
+              {/* Left navigation — icon rail on tablet, full sidebar on desktop.
+                  Opaque background + high z-index: scrolled content must never
+                  be visible beneath the navigation chrome. */}
+              <aside className="hidden sm:sticky sm:top-0 sm:h-dvh sm:flex sm:flex-col lg:w-auto z-30 bg-background">
+                <Sidebar currentPage={currentPage} onNavigate={navigate} />
+              </aside>
 
-      <MobileBottomNav
-        currentPage={currentPage}
-        onNavigate={navigate}
-        onOpenMenu={() => setDrawerOpen(true)}
-      />
-      <MobileDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        currentPage={currentPage}
-        onNavigate={navigate}
-      />
-        </NotificationsProvider>
-      </MessagesProvider>
-    </BookmarksProvider>
+              {/* Center feed */}
+              <main
+                id="main-content"
+                className="min-w-0 w-full sm:border-x border-border pb-16 sm:pb-0"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={pathname}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    className="min-h-dvh"
+                  >
+                    {children}
+                  </motion.div>
+                </AnimatePresence>
+              </main>
+
+              {/* Right rail — search, trends, suggestions (only when it fits) */}
+              <aside className="hidden min-[1226px]:block min-[1226px]:sticky min-[1226px]:top-0 min-[1226px]:h-dvh overflow-y-auto no-scrollbar z-30 bg-background">
+                <div className="px-8 py-1">
+                  <RightSidebar />
+                </div>
+              </aside>
+            </div>
+
+            <MobileNav
+              currentPage={currentPage}
+              onNavigate={navigate}
+              onOpenMenu={() => setDrawerOpen(true)}
+            />
+            <MobileDrawer
+              open={drawerOpen}
+              onClose={() => setDrawerOpen(false)}
+              currentPage={currentPage}
+              onNavigate={navigate}
+            />
+          </NotificationsProvider>
+        </MessagesProvider>
+      </BookmarksProvider>
+    </MotionConfig>
   );
 };
 
-export default Mainlayout;
+export default AppLayout;

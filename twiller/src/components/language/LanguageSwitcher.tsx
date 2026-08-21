@@ -51,16 +51,16 @@ export default function LanguageSwitcher() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-2 text-white hover:bg-gray-900 rounded-full px-3 py-2">
+          <button className="flex items-center gap-2 text-foreground hover:bg-accent rounded-full px-3 py-2">
             <Globe className="h-5 w-5" />
             <span className="hidden md:inline">{t("language")}</span>
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-black border-gray-800">
+        <DropdownMenuContent className="bg-popover border-border">
           {LANGUAGES.map((l) => (
             <DropdownMenuItem
               key={l.code}
-              className={`text-white hover:bg-gray-900 ${l.code === lang ? "font-bold" : ""}`}
+              className={`text-foreground hover:bg-accent ${l.code === lang ? "font-bold" : ""}`}
               onClick={() => handleSelect(l.code)}
             >
               {l.label}
