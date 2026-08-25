@@ -24,7 +24,6 @@
     "mongoose": "^8.18.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^9.0.5",
-    "nodemon": "^3.1.10",
     "pdfkit": "^0.19.1",
     "razorpay": "^2.9.5",
     "socket.io": "^4.8.3",
@@ -33,5 +32,8 @@
   },
   "overrides": {
     "uuid": "^11.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }

@@ -1,19 +1,23 @@
 import jwt from "jsonwebtoken";
 
-const DEV_SECRET = "twiller-dev-secret-change-me";
-
 let warnedMissingSecret = false;
 
-// One shared secret keeps the number of env vars small; set JWT_SECRET in
-// production. LOGIN_OTP_SECRET is an optional second secret used only for
-// hashing OTPs (see services/loginOtpService.js).
+// JWT_SECRET is the ONLY secret used for signing session tokens.
+// Never fall back to LOGIN_OTP_SECRET (used only for OTP hashing) or a
+// hardcoded value — doing so would let anyone forge auth tokens.
 export function getJwtSecret() {
-  const secret = process.env.JWT_SECRET || process.env.LOGIN_OTP_SECRET || DEV_SECRET;
-  if (!process.env.JWT_SECRET && !process.env.LOGIN_OTP_SECRET && !warnedMissingSecret) {
-    warnedMissingSecret = true;
-    console.warn(
-      "⚠️ JWT_SECRET not set — using an insecure development secret. Set JWT_SECRET in backend/.env."
-    );
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("JWT_SECRET is required in production");
+    }
+    if (!warnedMissingSecret) {
+      warnedMissingSecret = true;
+      console.warn(
+        "⚠️ JWT_SECRET not set — using an insecure development secret. Set JWT_SECRET in backend/.env."
+      );
+    }
+    return "twiller-dev-secret-change-me";
   }
   return secret;
 }

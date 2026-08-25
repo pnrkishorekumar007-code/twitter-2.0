@@ -26,4 +26,6 @@ const TweetSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
 });
 
+TweetSchema.index({ author: 1, timestamp: -1 });
+
 export default mongoose.model("Tweet", TweetSchema);

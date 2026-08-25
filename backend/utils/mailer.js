@@ -1,5 +1,14 @@
 import nodemailer from "nodemailer";
 
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ---------------------------------------------------------------------------
 // Email delivery — Brevo (preferred) with automatic Gmail SMTP fallback.
 //
@@ -252,13 +261,13 @@ export async function sendSubscriptionActivatedEmail({
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
       <h2 style="color:#1d9bf0">Twiller Subscription Activated</h2>
-      <p>Hello ${customerName},</p>
+      <p>Hello ${escapeHtml(customerName)},</p>
       <p>Your subscription has been activated successfully.</p>
       <table cellpadding="6" style="border-collapse:collapse;margin:16px 0">
-        <tr><td><b>Plan:</b></td><td>${planLabel}</td></tr>
-        <tr><td><b>Amount:</b></td><td>₹${amount}</td></tr>
-        <tr><td><b>Start Date:</b></td><td>${startDate}</td></tr>
-        <tr><td><b>Expiry Date:</b></td><td>${expiryDate}</td></tr>
+        <tr><td><b>Plan:</b></td><td>${escapeHtml(planLabel)}</td></tr>
+        <tr><td><b>Amount:</b></td><td>₹${escapeHtml(amount)}</td></tr>
+        <tr><td><b>Start Date:</b></td><td>${escapeHtml(startDate)}</td></tr>
+        <tr><td><b>Expiry Date:</b></td><td>${escapeHtml(expiryDate)}</td></tr>
       </table>
       <p>Invoice attached.</p>
       <p>Thank you for choosing Twiller.</p>

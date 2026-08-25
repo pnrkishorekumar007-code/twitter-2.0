@@ -128,24 +128,25 @@ router.post(
         return res.status(400).send({ error: "Missing payment verification data." });
       }
 
-      // 1. Validate the Razorpay signature
+      // 1. Validate the Razorpay signature (constant-time comparison)
       const expectedSignature = crypto
         .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
         .update(`${razorpay_order_id}|${razorpay_payment_id}`)
         .digest("hex");
-      if (expectedSignature !== razorpay_signature) {
+      const sigBuf = Buffer.from(razorpay_signature, "hex");
+      const expectedBuf = Buffer.from(expectedSignature, "hex");
+      if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
         return res.status(400).send({ error: "Payment verification failed." });
       }
 
-      // 2. Look up the stored order; must still be PENDING (prevents double-processing)
-      const subscription = await Subscription.findOne({ orderId: razorpay_order_id });
+      // 2. Atomically claim the order — only one request can process it
+      const subscription = await Subscription.findOneAndUpdate(
+        { orderId: razorpay_order_id, status: "PENDING", paymentId: null },
+        { $set: { status: "PROCESSING" } },
+        { new: true }
+      );
       if (!subscription) {
-        return res.status(404).send({ error: "Order not found." });
-      }
-      if (subscription.status !== "PENDING" || subscription.paymentId) {
-        return res.status(400).send({
-          error: "This order has already been processed.",
-        });
+        return res.status(400).send({ error: "This order has already been processed or is invalid." });
       }
 
       const user = await User.findById(subscription.userId);
@@ -243,8 +244,22 @@ router.post(
  * middleware above already parsed it, so we re-serialise; alternatively
  * the raw body can be preserved with a custom middleware if preferred.
  */
-router.post("/webhook", express.json({ verify: verifyRazorpaySignature }), async (req, res) => {
+router.post("/webhook", async (req, res) => {
   const event = req.body;
+
+  // Verify the webhook signature using the raw body captured before parsing.
+  const rawBody = req.rawBody;
+  const signature = req.headers["x-razorpay-signature"];
+  if (!rawBody || !signature) {
+    return res.status(400).send({ error: "Missing signature or body" });
+  }
+  const expected = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+    .update(rawBody)
+    .digest("hex");
+  if (!crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"))) {
+    return res.status(400).send({ error: "Invalid webhook signature" });
+  }
 
   if (event.event === "payment.captured") {
     const { order_id, id: payment_id } = event.payload?.payment?.entity || {};
@@ -253,8 +268,12 @@ router.post("/webhook", express.json({ verify: verifyRazorpaySignature }), async
     }
 
     try {
-      const subscription = await Subscription.findOne({ orderId: order_id });
-      if (!subscription || subscription.status !== "PENDING") {
+      const subscription = await Subscription.findOneAndUpdate(
+        { orderId: order_id, status: "PENDING" },
+        { $set: { status: "PROCESSING" } },
+        { new: true }
+      );
+      if (!subscription) {
         return res.status(200).send({ ok: true });
       }
 

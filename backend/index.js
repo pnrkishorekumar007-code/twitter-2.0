@@ -48,6 +48,14 @@ app.use(
     credentials: true,
   })
 );
+// Preserve the raw body for Razorpay webhook signature verification (must run
+// before express.json() parses the body). The webhook handler reads req.rawBody.
+app.use("/payment/webhook", (req, _res, next) => {
+  let data = "";
+  req.setEncoding("utf8");
+  req.on("data", (chunk) => { data += chunk; });
+  req.on("end", () => { req.rawBody = data; next(); });
+});
 app.use(express.json());
 app.use(cookieParser());
 
@@ -89,7 +97,7 @@ app.use((err, req, res, next) => {
 });
 
 const port = process.env.PORT || 5000;
-const url = process.env.MONGODB_URL || process.env.MONGODB_URI || process.env.MONOGDB_URL;
+const url = process.env.MONGODB_URL || process.env.MONGODB_URI;
 
 if (!url) {
   console.error("❌ MONGODB_URL is not set. Add it to backend/.env.");
@@ -114,6 +122,15 @@ function sanitizeUser(u) {
   if (!u) return u;
   const obj = u.toObject ? u.toObject() : { ...u };
   delete obj.password;
+  delete obj.__v;
+  delete obj.loginHistory;
+  delete obj.paymentStatus;
+  delete obj.subscriptionStartDate;
+  delete obj.subscriptionEndDate;
+  delete obj.quotaMonth;
+  delete obj.tweetsUsed;
+  delete obj.tweetLimit;
+  delete obj.lastPasswordResetRequest;
   return obj;
 }
 
@@ -315,9 +332,10 @@ app.get(["/tweets/following", "/feed/following"], requireAnyAuth, async (req, re
   }
 });
 // reply to a tweet
-app.post("/tweet/:id/reply", async (req, res) => {
+app.post("/tweet/:id/reply", requireAnyAuth, async (req, res) => {
   try {
-    const { userId, content } = req.body;
+    const userId = req.user.uid;
+    const { content } = req.body;
     if (!userId) return res.status(400).send({ error: "UserId required" });
     if (!content || !content.trim())
       return res.status(400).send({ error: "Reply cannot be empty" });
@@ -338,9 +356,9 @@ app.post("/tweet/:id/reply", async (req, res) => {
   }
 });
 //  LIKE TWEET
-app.post("/like/:tweetid", async (req, res) => {
+app.post("/like/:tweetid", requireAnyAuth, async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.user.uid;
     const tweet = await Tweet.findById(req.params.tweetid);
     if (!tweet) return res.status(404).send({ error: "Tweet not found" });
     const alreadyLiked = tweet.likedBy.some(
@@ -361,9 +379,9 @@ app.post("/like/:tweetid", async (req, res) => {
   }
 });
 // retweet
-app.post("/retweet/:tweetid", async (req, res) => {
+app.post("/retweet/:tweetid", requireAnyAuth, async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.user.uid;
     const tweet = await Tweet.findById(req.params.tweetid);
     if (!tweet) return res.status(404).send({ error: "Tweet not found" });
     const alreadyRetweeted = tweet.retweetedBy.some(

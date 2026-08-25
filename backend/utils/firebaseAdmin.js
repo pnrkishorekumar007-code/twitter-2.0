@@ -5,7 +5,9 @@ let app = null;
 
 function buildServiceAccount() {
   const full = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (full) return JSON.parse(full);
+  if (full) {
+    try { return JSON.parse(full); } catch { return null; }
+  }
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY;

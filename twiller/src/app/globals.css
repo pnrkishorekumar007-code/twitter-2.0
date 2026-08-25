@@ -162,6 +162,7 @@
   html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    font-size: 17px;
   }
   .dark {
     color-scheme: dark;
@@ -246,11 +247,11 @@
 
 html[data-lang="ta"],
 html[data-lang="zh"] {
-  font-size: 17px;
+  font-size: 18px;
 }
 
 html[data-lang="hi"] {
-  font-size: 16.5px;
+  font-size: 17.5px;
 }
 
 .lang-font {

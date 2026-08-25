@@ -10,7 +10,7 @@ import {
   User,
   Settings,
   LogOut,
-  Sparkles,
+  Crown,
   Feather,
   MoreHorizontal,
   Users,
@@ -81,6 +81,9 @@ export default function Sidebar({
     { name: t("messages"), icon: Mail, current: currentPage === "messages", page: "messages", count: unreadTotal },
     { name: t("bookmarks"), icon: Bookmark, current: currentPage === "bookmarks", page: "bookmarks" },
     { name: t("profile"), icon: User, current: currentPage === "profile", page: "profile" },
+    { name: t("sidebar_people"), icon: Users, current: currentPage === "search", page: "search" },
+    { name: t("premium"), icon: Crown, current: currentPage === "pricing", page: "pricing" },
+    { name: t("settings"), icon: Settings, current: currentPage === "settings", page: "settings" },
   ];
 
   const focusComposer = () => {
@@ -175,88 +178,30 @@ export default function Sidebar({
             {navigation.map((item) => (
               <li key={item.page}>{renderNavButton(item)}</li>
             ))}
-
-            {/* More — reveals People / Premium / Settings.
-                NOTE: no Tooltip here — nesting Tooltip inside
-                DropdownMenuTrigger(asChild) makes Radix attach its open
-                handlers to the Tooltip root instead of the button, which
-                silently breaks the menu. */}
-            <li>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="nav-row"
-                    aria-haspopup="menu"
-                    className={cn(
-                      forceExpanded ? "" : "justify-center lg:justify-start",
-                      ["search", "pricing", "settings"].includes(currentPage)
-                        ? "bg-hover-overlay"
-                        : ""
-                    )}
-                  >
-                    <span className="relative flex items-center">
-                      <MoreHorizontal className="h-[26px] w-[26px] shrink-0" strokeWidth={1.8} aria-hidden="true" />
-                    </span>
-                    <span
-                      className={cn(
-                        "ml-5 truncate text-xl leading-6",
-                        forceExpanded ? "inline" : "hidden lg:inline"
-                      )}
-                    >
-                      {t("more")}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="top" align="start" className="w-[300px] rounded-2xl border-border bg-popover p-2">
-                  <DropdownMenuItem
-                    className="rounded-full px-4 py-3 text-sm"
-                    onClick={() => onNavigate?.("search")}
-                  >
-                    <Users className="mr-3 h-5 w-5" aria-hidden="true" />
-                    {t("sidebar_people")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="rounded-full px-4 py-3 text-sm"
-                    onClick={() => onNavigate?.("pricing")}
-                  >
-                    <Sparkles className="mr-3 h-5 w-5" aria-hidden="true" />
-                    {t("premium")}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-border" />
-                  <DropdownMenuItem
-                    className="rounded-full px-4 py-3 text-sm"
-                    onClick={() => onNavigate?.("settings")}
-                  >
-                    <Settings className="mr-3 h-5 w-5" aria-hidden="true" />
-                    {t("settings")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </li>
           </ul>
-
-          {/* Post button */}
-          <div className={cn("mt-3 px-0.5", forceExpanded ? "" : "flex justify-center lg:block")}>
-            <Button
-              size="xl"
-              className={cn(
-                forceExpanded
-                  ? "w-full px-4"
-                  : "w-[52px] lg:w-full lg:px-4"
-              )}
-              onClick={focusComposer}
-            >
-              <span className={forceExpanded ? "hidden" : "grid lg:hidden place-items-center"}>
-                <Feather className="h-6 w-6" aria-hidden="true" />
-              </span>
-              <span className={forceExpanded ? "text-base" : "hidden lg:inline text-base"}>
-                {t("post")}
-              </span>
-            </Button>
-          </div>
         </nav>
 
-        {/* Account chip */}
+        {/* Post button — pinned above profile */}
+        <div className={cn("px-2 py-2", forceExpanded ? "" : "flex justify-center lg:block")}>
+          <Button
+            size="xl"
+            className={cn(
+              forceExpanded
+                ? "w-full px-4"
+                : "w-[52px] lg:w-full lg:px-4"
+            )}
+            onClick={focusComposer}
+          >
+            <span className={forceExpanded ? "hidden" : "grid lg:hidden place-items-center"}>
+              <Feather className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <span className={forceExpanded ? "text-base" : "hidden lg:inline text-base"}>
+              {t("post")}
+            </span>
+          </Button>
+        </div>
+
+        {/* Account chip — always at the very bottom */}
         <div className="p-2">
           {user && (
             <DropdownMenu>

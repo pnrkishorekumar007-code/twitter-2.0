@@ -16,7 +16,7 @@ export const ensureOtpVerified = async (req, res, next) => {
 
   try {
     const payload = verifyAuthToken(token);
-    if (payload.type !== "login" && payload.type !== "auth") {
+    if (payload.type !== "auth") {
       throw new Error("Invalid token type");
     }
     req.userId = payload.sub;

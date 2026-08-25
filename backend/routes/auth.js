@@ -97,7 +97,7 @@ router.post("/login/start", deviceDetect, async (req, res) => {
   try {
     const { email } = req.body;
     const user = await findUserByEmail(email);
-    if (!user) return res.status(404).send({ error: "User not found" });
+    if (!user) return res.status(401).send({ error: "Invalid email or password" });
 
     const { deviceType } = req.deviceInfo;
 
@@ -122,11 +122,11 @@ router.post("/login/start", deviceDetect, async (req, res) => {
   }
 });
 
-router.post("/login/verify", deviceDetect, async (req, res) => {
+router.post("/login/verify", deviceDetect, rateLimit({ windowMs: 10 * 60 * 1000, max: 10 }), async (req, res) => {
   try {
     const { email, code } = req.body;
     const user = await findUserByEmail(email);
-    if (!user) return res.status(404).send({ error: "User not found" });
+    if (!user) return res.status(401).send({ error: "Invalid email or password" });
 
     const result = await verifyOtp({ identifier: email, purpose: "login", code });
     if (!result.ok) return res.status(400).send({ error: result.reason });
@@ -136,7 +136,8 @@ router.post("/login/verify", deviceDetect, async (req, res) => {
     user.loginHistory.unshift({ ...req.deviceInfo, loggedInAt: new Date() });
     user.loginHistory = user.loginHistory.slice(0, 25);
     await user.save();
-    return res.status(200).send({ user: sanitizeUser(user) });
+    const authToken = signAuthToken({ userId: user._id, email: user.email });
+    return res.status(200).send({ user: sanitizeUser(user), token: authToken });
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -315,7 +316,7 @@ router.post("/send-login-otp", async (req, res) => {
 });
 
 // Verifies the OTP, records the successful login and issues the session JWT.
-router.post("/verify-login-otp", deviceDetect, async (req, res) => {
+router.post("/verify-login-otp", deviceDetect, rateLimit({ windowMs: 10 * 60 * 1000, max: 10 }), async (req, res) => {
   try {
     const { email, code, loginToken, method } = req.body || {};
     const loginMethod = method === "google" ? "google" : "email";
@@ -418,7 +419,7 @@ router.post("/register-otp", async (req, res) => {
   }
 });
 
-router.post("/register-verify", async (req, res) => {
+router.post("/register-verify", rateLimit({ windowMs: 10 * 60 * 1000, max: 10 }), async (req, res) => {
   try {
     const { email, code, loginToken, displayName, username, phone, avatar } = req.body;
 

@@ -159,13 +159,11 @@ router.post("/messages/send", requireAnyAuth, async (req, res) => {
     if (!receiver) return res.status(404).send({ error: "User not found" });
 
     const participants = normalizeParticipants(current._id, receiverId);
-    let conversation = await Conversation.findOne({ participants });
-    if (!conversation) {
-      conversation = await Conversation.create({
-        participants,
-        lastMessageAt: new Date(),
-      });
-    }
+    const conversation = await Conversation.findOneAndUpdate(
+      { participants },
+      { $setOnInsert: { participants, lastMessageAt: new Date() } },
+      { upsert: true, new: true }
+    );
 
     const doc = await Message.create({
       conversationId: conversation._id,
@@ -175,15 +173,14 @@ router.post("/messages/send", requireAnyAuth, async (req, res) => {
     });
     await doc.populate("senderId", PROFILE_SELECT);
 
-    conversation.lastMessage = cleanText;
-    conversation.lastMessageAt = new Date();
-    conversation.lastSenderId = current._id;
     const key = String(receiverId);
-    if (!conversation.unreadCount || typeof conversation.unreadCount.get !== "function") {
-      conversation.unreadCount = new Map();
-    }
-    conversation.unreadCount.set(key, (conversation.unreadCount.get(key) || 0) + 1);
-    await conversation.save();
+    await Conversation.updateOne(
+      { _id: conversation._id },
+      {
+        $set: { lastMessage: cleanText, lastMessageAt: new Date(), lastSenderId: current._id },
+        $inc: { [`unreadCount.${key}`]: 1 },
+      }
+    );
 
     const payload = {
       message: doc.toObject({ versionKey: false }),
@@ -300,9 +297,13 @@ router.get("/messages/:conversationId", requireAnyAuth, async (req, res) => {
       return res.status(404).send({ error: "Conversation not found" });
     }
 
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+    const skip = Math.max(parseInt(req.query.skip, 10) || 0, 0);
     const messages = await Message.find({ conversationId })
       .populate("senderId", PROFILE_SELECT)
       .sort({ createdAt: 1 })
+      .skip(skip)
+      .limit(limit)
       .lean();
 
     return res.status(200).send({

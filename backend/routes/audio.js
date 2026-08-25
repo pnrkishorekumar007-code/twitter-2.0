@@ -278,7 +278,7 @@ router.get("/audio/feed", requireAnyAuth, async (req, res) => {
         .sort({ createdAt: -1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize)
-        .populate("userId", "username displayName avatar email"),
+        .populate("userId", "username displayName avatar"),
       AudioTweet.countDocuments(),
     ]);
 

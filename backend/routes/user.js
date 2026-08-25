@@ -58,6 +58,23 @@ router.patch("/profile/update", requireAnyAuth, async (req, res) => {
       return res.status(400).send({ error: "Display name cannot be empty." });
     }
 
+    if (patch.accountType && !["public", "private"].includes(patch.accountType)) {
+      return res.status(400).send({ error: "Invalid account type." });
+    }
+
+    if (patch.displayName && String(patch.displayName).length > 50) {
+      return res.status(400).send({ error: "Display name too long (max 50 characters)." });
+    }
+    if (patch.bio && String(patch.bio).length > 500) {
+      return res.status(400).send({ error: "Bio too long (max 500 characters)." });
+    }
+    if (patch.location && String(patch.location).length > 100) {
+      return res.status(400).send({ error: "Location too long (max 100 characters)." });
+    }
+    if (patch.website && String(patch.website).length > 200) {
+      return res.status(400).send({ error: "Website URL too long (max 200 characters)." });
+    }
+
     Object.assign(user, patch);
     await user.save();
     return res.status(200).send(sanitizeUser(user));

@@ -155,7 +155,7 @@ router.post("/users/unfollow/:id", requireAnyAuth, async (req, res) => {
  * GET /api/users/followers/:id
  * Users following the given profile, each with populated profile fields.
  */
-router.get("/users/followers/:id", async (req, res) => {
+router.get("/users/followers/:id", requireAnyAuth, async (req, res) => {
   try {
     const { id } = req.params;
     if (!validObjectId(id)) return res.status(400).send({ error: "Invalid user id" });
@@ -177,7 +177,7 @@ router.get("/users/followers/:id", async (req, res) => {
  * GET /api/users/following/:id
  * Users the given profile follows, each with populated profile fields.
  */
-router.get("/users/following/:id", async (req, res) => {
+router.get("/users/following/:id", requireAnyAuth, async (req, res) => {
   try {
     const { id } = req.params;
     if (!validObjectId(id)) return res.status(400).send({ error: "Invalid user id" });

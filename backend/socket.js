@@ -8,8 +8,12 @@ let io = null;
 // Users who have keyword notifications enabled sit in the "keyword-tweets"
 // room and receive a "keyword-tweet" event whenever a new tweet matches.
 export function initSocket(httpServer) {
+  const allowedOrigins = (process.env.FRONTEND_ORIGIN || "http://localhost:3000")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
   io = new Server(httpServer, {
-    cors: { origin: "*", methods: ["GET", "POST"] },
+    cors: { origin: allowedOrigins, methods: ["GET", "POST"], credentials: true },
   });
 
   // Authenticate the socket with the same tokens the REST API accepts:
