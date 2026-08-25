@@ -194,6 +194,10 @@ export default function ProfilePage() {
         </h1>
         <p className="text-muted-foreground flex items-center gap-1.5 truncate">
           @{user.username}
+          {user.accountType === "private" && (
+            <Lock className="h-3.5 w-3.5" aria-label="Private account" />
+          )}
+        </p>
         {/* Tweet quota — remaining tweets for this billing month */}
         {typeof user.tweetLimit === "number" && (
           <button
@@ -226,11 +230,6 @@ export default function ProfilePage() {
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
           </button>
         )}
-
-        {user.accountType === "private" && (
-            <Lock className="h-3.5 w-3.5" aria-label="Private account" />
-          )}
-        </p>
         {user.bio && (
           <p className="mt-2 text-foreground text-[15px] break-words whitespace-pre-wrap">
             {user.bio}

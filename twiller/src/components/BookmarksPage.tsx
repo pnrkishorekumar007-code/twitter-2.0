@@ -40,7 +40,7 @@ export default function BookmarksPage() {
     return () => {
       cancelled = true;
     };
-  }, [user?.email]);
+  }, [email]);
 
   // Live-filter so removing a bookmark removes the tweet instantly (the
   // context updates optimistically; this page just re-derives the list).

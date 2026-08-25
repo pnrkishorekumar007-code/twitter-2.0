@@ -1,9 +1,10 @@
-import axios from "axios";
+import axios, { type InternalAxiosRequestConfig } from "axios";
 import { auth } from "@/context/firebase";
 
-// NOTE: Next.js only exposes env vars to the browser if they're
-// prefixed NEXT_PUBLIC_. Set NEXT_PUBLIC_BACKEND_URL in your .env.local
-// and in your Vercel project settings.
+interface TwillerRequestConfig extends InternalAxiosRequestConfig {
+  _twillerRetried?: boolean;
+}
+
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000",
   headers: {
@@ -12,10 +13,7 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-// Attach the current session token so protected routes can authenticate.
-// Prefers the Twiller session JWT (issued after a completed login); falls back
-// to the Firebase ID token for accounts signed in through the older flow.
-axiosInstance.interceptors.request.use(async (config) => {
+axiosInstance.interceptors.request.use(async (config: TwillerRequestConfig) => {
   try {
     if (typeof window !== "undefined") {
       const jwtToken = localStorage.getItem("twiller-jwt");
@@ -35,10 +33,6 @@ axiosInstance.interceptors.request.use(async (config) => {
   return config;
 });
 
-// If the stored Twiller JWT was rejected (expired or signed with an old
-// secret), clear it and retry the request once with the Firebase ID token
-// instead. Without this, a stale "twiller-jwt" in localStorage would keep
-// every protected call failing with 401 even while signed in via Firebase.
 axiosInstance.interceptors.response.use(
   (res) => res,
   async (error) => {

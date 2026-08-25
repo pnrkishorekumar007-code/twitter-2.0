@@ -182,7 +182,7 @@ const Composer = ({ onTweetPosted, onAudioPosted }: ComposerProps) => {
             onChange={(e) => setContent(e.target.value)}
             placeholder="What's happening?"
             rows={1}
-            maxLength={maxLength * 2}
+            maxLength={maxLength}
             aria-label="What's happening?"
             className="min-h-[26px] w-full resize-none overflow-hidden border-0 bg-transparent py-2 text-xl leading-6 text-foreground outline-none placeholder:text-muted-foreground"
           />
@@ -197,6 +197,7 @@ const Composer = ({ onTweetPosted, onAudioPosted }: ComposerProps) => {
                   </div>
                 </div>
               ) : (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={imageurl}
                   alt="Tweet preview"

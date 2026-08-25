@@ -157,6 +157,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
           formData.displayName,
           formData.phone || undefined
         );
+        // signup() already redirects to /verify-login-otp — do not call onClose().
+        return;
       }
       onClose();
       setFormData({ email: '', password: '', username: '', displayName: '', phone: '' });

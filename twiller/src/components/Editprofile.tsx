@@ -286,6 +286,7 @@ const Editprofile = ({ isopen, onclose }: { isopen: boolean; onclose: () => void
                     }`}
                   >
                     {formData.banner ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={formData.banner}
                         alt="Profile banner preview"

@@ -179,6 +179,9 @@ router.post("/messages/send", requireAnyAuth, async (req, res) => {
     conversation.lastMessageAt = new Date();
     conversation.lastSenderId = current._id;
     const key = String(receiverId);
+    if (!conversation.unreadCount || typeof conversation.unreadCount.get !== "function") {
+      conversation.unreadCount = new Map();
+    }
     conversation.unreadCount.set(key, (conversation.unreadCount.get(key) || 0) + 1);
     await conversation.save();
 

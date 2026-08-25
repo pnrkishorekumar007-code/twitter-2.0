@@ -67,7 +67,7 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
-  googlesignin: () => void;
+  googlesignin: () => Promise<void>;
   completeLogin: (data: { user?: User; token?: string }) => void;
 }
 
@@ -96,14 +96,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // HTML matches the client's first paint. Real auth state resolves in the
   // onAuthStateChanged effect below. (auth is null during SSR.)
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [token, setToken] = useState<string | null>(() =>
-    typeof window !== "undefined" ? localStorage.getItem("twiller-jwt") : null
-  );
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (!auth) return;
     // Check for existing session
-    const unsubcribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser?.email) {
         const otpPending =
           typeof window !== "undefined" &&
@@ -145,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       setIsLoading(false);
     });
-    return () => unsubcribe();
+    return () => unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

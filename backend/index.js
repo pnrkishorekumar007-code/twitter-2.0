@@ -67,13 +67,9 @@ app.use((req, res, next) => {
 
 app.use("/", audioRoutes); // /audio/otp/request, /audio/upload
 app.use("/", userRoutes); // /notifications/:email, /language/otp*, /profile/*
-app.use("/api", userRoutes); // alias so /api/profile/update and /api/profile/banner also work
 app.use("/", followRoutes); // /users/follow/:id, /users/followers/:id, ...
-app.use("/api", followRoutes); // alias so /api/users/* also works
 app.use("/", bookmarkRoutes); // /bookmarks, /bookmarks/ids, /bookmarks/:tweetId
-app.use("/api", bookmarkRoutes); // alias so /api/bookmarks* also works
 app.use("/", messageRoutes); // /messages/conversations, /messages/:id, /messages/send
-app.use("/api", messageRoutes); // alias so /api/messages* also works
 
 app.use((err, req, res, next) => {
   if (err?.name === "MulterError") {
@@ -106,6 +102,13 @@ mongoose
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
   });
+
+function sanitizeUser(u) {
+  if (!u) return u;
+  const obj = u.toObject ? u.toObject() : { ...u };
+  delete obj.password;
+  return obj;
+}
 
 // Register — only whitelisted profile fields are persisted. Plan/tweet-limit
 // fields are never accepted from the client (otherwise anyone could self-assign
@@ -171,12 +174,12 @@ app.post("/register", async (req, res) => {
     }
     const existinguser = await findUserByEmail(email);
     if (existinguser) {
-      return res.status(200).send(existinguser);
+      return res.status(200).send(sanitizeUser(existinguser));
     }
     const body = { ...req.body, email };
     const newUser = new User(pickFields(body, REGISTER_FIELDS));
     await newUser.save();
-    return res.status(201).send(newUser);
+    return res.status(201).send(sanitizeUser(newUser));
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -192,7 +195,7 @@ app.get("/loggedinuser", async (req, res) => {
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
-    return res.status(200).send(user);
+    return res.status(200).send(sanitizeUser(user));
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -206,7 +209,8 @@ app.patch("/userupdate/:email", async (req, res) => {
       { $set: pickFields(req.body, PROFILE_FIELDS) },
       { new: true, upsert: false }
     );
-    return res.status(200).send(updated);
+    if (!updated) return res.status(404).send({ error: "User not found" });
+    return res.status(200).send(sanitizeUser(updated));
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -331,6 +335,7 @@ app.post("/like/:tweetid", async (req, res) => {
   try {
     const { userId } = req.body;
     const tweet = await Tweet.findById(req.params.tweetid);
+    if (!tweet) return res.status(404).send({ error: "Tweet not found" });
     const alreadyLiked = tweet.likedBy.some(
       (id) => String(id) === String(userId)
     );
@@ -353,6 +358,7 @@ app.post("/retweet/:tweetid", async (req, res) => {
   try {
     const { userId } = req.body;
     const tweet = await Tweet.findById(req.params.tweetid);
+    if (!tweet) return res.status(404).send({ error: "Tweet not found" });
     const alreadyRetweeted = tweet.retweetedBy.some(
       (id) => String(id) === String(userId)
     );

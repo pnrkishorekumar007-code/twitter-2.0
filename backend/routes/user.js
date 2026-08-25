@@ -17,6 +17,13 @@ import { verifyAuthToken } from "../utils/jwt.js";
 
 const router = express.Router();
 
+function sanitizeUser(u) {
+  if (!u) return u;
+  const obj = u.toObject ? u.toObject() : { ...u };
+  delete obj.password;
+  return obj;
+}
+
 // Profile fields a client is allowed to change. Everything else in the request
 // body is ignored, so a caller can never silently overwrite plan/subscription
 // or security-related fields via this endpoint.
@@ -53,7 +60,7 @@ router.patch("/profile/update", requireAnyAuth, async (req, res) => {
 
     Object.assign(user, patch);
     await user.save();
-    return res.status(200).send(user);
+    return res.status(200).send(sanitizeUser(user));
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -103,15 +110,19 @@ router.get("/login-history", requireAnyAuth, async (req, res) => {
 /**
  * TASK 5: Notification preference toggle
  */
-router.patch("/notifications/:email", async (req, res) => {
+router.patch("/notifications/:email", requireAnyAuth, async (req, res) => {
   try {
     const { email } = req.params;
     const { enabled } = req.body;
+    if (req.user.email !== email) {
+      return res.status(403).send({ error: "Cannot modify another user's settings" });
+    }
     const user = await User.findOneAndUpdate(
       { email },
       { $set: { notificationsEnabled: !!enabled } },
       { new: true }
     );
+    if (!user) return res.status(404).send({ error: "User not found" });
     return res.status(200).send(user);
   } catch (error) {
     return res.status(400).send({ error: error.message });
@@ -399,7 +410,7 @@ router.post(
 
       user.preferredLanguage = targetLanguage;
       await user.save();
-      return res.status(200).send(user);
+      return res.status(200).send(sanitizeUser(user));
     } catch (error) {
       return res.status(400).send({ error: error.message });
     }

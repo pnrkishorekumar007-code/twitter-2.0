@@ -60,6 +60,13 @@ function isValidEmail(email) {
 }
 
 // Validates the short-lived login token and returns the userId it is bound to.
+function sanitizeUser(u) {
+  if (!u) return u;
+  const obj = u.toObject ? u.toObject() : { ...u };
+  delete obj.password;
+  return obj;
+}
+
 function authorizeLoginToken({ email, loginToken }) {
   if (!loginToken) {
     return { ok: false, error: "Missing login token. Please start login again." };
@@ -118,7 +125,7 @@ router.post("/login/start", deviceDetect, async (req, res) => {
 router.post("/login/verify", deviceDetect, async (req, res) => {
   try {
     const { email, code } = req.body;
-    const user = await User.findOne({ email });
+    const user = await findUserByEmail(email);
     if (!user) return res.status(404).send({ error: "User not found" });
 
     const result = await verifyOtp({ identifier: email, purpose: "login", code });
@@ -129,7 +136,7 @@ router.post("/login/verify", deviceDetect, async (req, res) => {
     user.loginHistory.unshift({ ...req.deviceInfo, loggedInAt: new Date() });
     user.loginHistory = user.loginHistory.slice(0, 25);
     await user.save();
-    return res.status(200).send({ user });
+    return res.status(200).send({ user: sanitizeUser(user) });
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -207,7 +214,7 @@ router.post("/login", deviceDetect, async (req, res) => {
         success: true,
         requiresOtp: false,
         message: "Login successful.",
-        user,
+        user: sanitizeUser(user),
         token: authToken,
       });
     }
@@ -350,7 +357,7 @@ router.post("/verify-login-otp", deviceDetect, async (req, res) => {
     return res.status(200).send({
       success: true,
       message: "Login verified.",
-      user,
+      user: sanitizeUser(user),
       token: authToken,
     });
   } catch (error) {
@@ -450,7 +457,7 @@ router.post("/register-verify", async (req, res) => {
     return res.status(201).send({
       success: true,
       message: "Account created successfully.",
-      user: newUser,
+      user: sanitizeUser(newUser),
       token: authToken,
     });
   } catch (error) {

@@ -150,7 +150,7 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
 
   const sendOtp = async (openModal = true) => {
     if (!user) return;
-    const res = await axiosInstance.post("/audio/send-otp", { email: user.email });
+    await axiosInstance.post("/audio/send-otp", { email: user.email });
     if (openModal) setOtpOpen(true);
   };
 
