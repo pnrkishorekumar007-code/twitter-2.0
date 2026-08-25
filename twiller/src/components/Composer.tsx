@@ -17,6 +17,7 @@ import AudioTweetRecorder from "./audio/AudioTweetRecorder";
 import { useToast } from "./Toast";
 import { AnimatePresence, motion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { Button } from "./ui/button";
 import { getErrorMessage, type Tweet } from "@/lib/types";
 
 interface ComposerProps {
@@ -172,7 +173,7 @@ const Composer = ({ onTweetPosted, onAudioPosted }: ComposerProps) => {
       <form onSubmit={handleSubmit} className="flex gap-3 px-4 py-3">
         <Avatar className="h-10 w-10 shrink-0">
           <AvatarImage src={user.avatar} alt={user.displayName} />
-          <AvatarFallback>{user.displayName[0]}</AvatarFallback>
+          <AvatarFallback>{user.displayName?.[0] || "U"}</AvatarFallback>
         </Avatar>
 
         <div className="min-w-0 flex-1">
@@ -232,7 +233,7 @@ const Composer = ({ onTweetPosted, onAudioPosted }: ComposerProps) => {
 
           {/* Toolbar — hairline separator above, X pattern */}
           <div className="mt-1 flex items-center justify-between gap-2 border-t border-border pt-2">
-            <div className="-ml-2 flex items-center">
+            <div className="flex items-center gap-0.5">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -240,61 +241,53 @@ const Composer = ({ onTweetPosted, onAudioPosted }: ComposerProps) => {
                 className="hidden"
                 onChange={handlePhotoUpload}
               />
-              <button
-                type="button"
-                className="grid h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10"
+              <Button
+                variant="toolbar-icon"
                 onClick={() => fileInputRef.current?.click()}
                 aria-label="Add image"
               >
-                <ImageIcon className="h-[18px] w-[18px]" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "grid h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10",
-                  showAudio && "bg-brand/10"
-                )}
+                <ImageIcon className="" aria-hidden="true" />
+              </Button>
+              <Button
+                variant="toolbar-icon"
+                className={showAudio ? "bg-brand/10" : undefined}
                 onClick={() => setShowAudio((s) => !s)}
                 aria-label="Record audio"
                 aria-expanded={showAudio}
               >
-                <Mic className="h-[18px] w-[18px]" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "grid h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10",
-                  showEmoji && "bg-brand/10"
-                )}
+                <Mic className="" aria-hidden="true" />
+              </Button>
+              <Button
+                variant="toolbar-icon"
+                className={showEmoji ? "bg-brand/10" : undefined}
                 onClick={() => setShowEmoji((s) => !s)}
                 aria-label="Emoji"
                 aria-expanded={showEmoji}
               >
-                <Smile className="h-[18px] w-[18px]" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="grid h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10"
+                <Smile className="" aria-hidden="true" />
+              </Button>
+              <Button
+                variant="toolbar-icon"
                 aria-label="Add GIF"
               >
-                <span className="grid h-[18px] w-[21px] place-items-center rounded-[4px] border-2 border-current text-[9px] font-extrabold leading-none">
+                <span className="grid h-[23px] w-[26px] place-items-center rounded-[4px] border-2 border-current text-[11px] font-extrabold leading-none">
                   GIF
                 </span>
-              </button>
-              <button
-                type="button"
-                className="hidden h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10 sm:grid"
+              </Button>
+              <Button
+                variant="toolbar-icon"
+                className="hidden sm:grid"
                 aria-label="Schedule post"
               >
-                <CalendarClock className="h-[18px] w-[18px]" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="hidden h-[34px] w-[34px] place-items-center rounded-full text-brand transition-colors duration-150 hover:bg-brand/10 sm:grid"
+                <CalendarClock className="" aria-hidden="true" />
+              </Button>
+              <Button
+                variant="toolbar-icon"
+                className="hidden sm:grid"
                 aria-label="Add location"
               >
-                <MapPin className="h-[18px] w-[18px]" aria-hidden="true" />
-              </button>
+                <MapPin className="" aria-hidden="true" />
+              </Button>
             </div>
 
             <div className="flex shrink-0 items-center gap-3">
@@ -352,7 +345,7 @@ const Composer = ({ onTweetPosted, onAudioPosted }: ComposerProps) => {
                   {showCount && (
                     <span
                       className={cn(
-                        "text-[13px]",
+                        "text-sm",
                         isOverLimit ? "text-[#f4212e]" : "text-muted-foreground"
                       )}
                     >
@@ -362,13 +355,12 @@ const Composer = ({ onTweetPosted, onAudioPosted }: ComposerProps) => {
                 </div>
               )}
 
-              <button
+              <Button
                 type="submit"
                 disabled={!content.trim() || isLoading || isOverLimit || limitReached}
-                className="h-9 rounded-full bg-brand px-4 text-[15px] font-bold text-white transition-colors duration-200 hover:bg-x-blue-hover disabled:opacity-50 active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 {isLoading ? "Posting..." : "Post"}
-              </button>
+              </Button>
             </div>
           </div>
 

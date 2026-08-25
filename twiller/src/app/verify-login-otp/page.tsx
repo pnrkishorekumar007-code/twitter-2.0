@@ -1,7 +1,6 @@
 ﻿import { Suspense } from "react";
 import type { Metadata } from "next";
 import VerifyLoginOtp from "@/components/VerifyLoginOtp";
-import { AuthProvider } from "@/context/AuthContext";
 import { ToastProvider } from "@/components/Toast";
 
 export const metadata: Metadata = {
@@ -19,12 +18,10 @@ function LoadingFallback() {
 
 export default function VerifyLoginOtpPage() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <Suspense fallback={<LoadingFallback />}>
-          <VerifyLoginOtp />
-        </Suspense>
-      </ToastProvider>
-    </AuthProvider>
+    <ToastProvider>
+      <Suspense fallback={<LoadingFallback />}>
+        <VerifyLoginOtp />
+      </Suspense>
+    </ToastProvider>
   );
 }

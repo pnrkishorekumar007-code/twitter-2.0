@@ -28,6 +28,8 @@ import { findUserByEmail, normalizeEmail } from "./utils/emailLookup.js";
 import { requireTweetLimit, rollbackTweetUsed } from "./middleware/tweetLimit.js";
 import { requireAnyAuth } from "./middleware/auth.js";
 import { rateLimit } from "./utils/rateLimiter.js";
+import { startScheduler } from "./utils/scheduler.js";
+import { verifyEmailTransport } from "./utils/mailer.js";
 
 dotenv.config();
 const app = express();
@@ -58,9 +60,12 @@ app.get("/", (req, res) => {
 
 app.use("/auth", authRoutes);
 app.use("/payment", paymentRoutes);
-// OTP protection middleware for all routes except the open auth/registration flows
+// OTP protection middleware — only applies to mutating requests (POST, PATCH,
+// PUT, DELETE). GET requests are always public so the feed, tweet details, and
+// profile pages load without a session token.
 app.use((req, res, next) => {
-  const open = ["/auth", "/register", "/login", "/login/start", "/login/verify", "/send-login-otp", "/verify-login-otp", "/auth/register-otp", "/auth/register-verify", "/auth/send-register-otp"]; // paths that do not require OTP
+  if (req.method === "GET") return next();
+  const open = ["/auth", "/register", "/login", "/login/start", "/login/verify", "/send-login-otp", "/verify-login-otp", "/auth/register-otp", "/auth/register-verify", "/auth/send-register-otp", "/payment/webhook", "/loggedinuser"]; // paths that do not require OTP
   if (open.some(p => req.path.startsWith(p))) return next();
   return ensureOtpVerified(req, res, next);
 });
@@ -97,6 +102,8 @@ mongoose
     console.log("✅ Connected to MongoDB");
     server.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);
+      startScheduler();
+      verifyEmailTransport();
     });
   })
   .catch((err) => {

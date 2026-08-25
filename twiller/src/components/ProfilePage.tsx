@@ -33,8 +33,8 @@ import type { Tweet } from "@/lib/types";
 function EmptyState({ title, sub }: { title: string; sub: string }) {
   return (
     <div className="py-20 text-center px-6">
-      <p className="text-2xl font-bold text-foreground">{title}</p>
-      <p className="text-muted-foreground mt-1">{sub}</p>
+      <p className="text-xl font-bold text-foreground">{title}</p>
+      <p className="text-sm text-muted-foreground mt-1">{sub}</p>
     </div>
   );
 }
@@ -95,7 +95,7 @@ export default function ProfilePage() {
   if (!user) return null;
 
   const tabClass =
-    "rounded-none bg-transparent h-11 sm:h-12 flex-1 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand text-muted-foreground font-semibold border-b border-transparent hover:bg-accent/60 text-[13px] sm:text-sm";
+    "rounded-none bg-transparent h-11 sm:h-12 flex-1 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand text-muted-foreground font-semibold border-b border-transparent hover:bg-accent/60 text-sm";
 
   return (
     <div className="min-h-dvh">
@@ -112,10 +112,10 @@ export default function ProfilePage() {
           </Button>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("twiller:go-back"))}
-            className="rounded-full p-2 -ml-1 hover:bg-accent transition-colors"
+            className="rounded-full p-2 -ml-1 hover:bg-accent transition-colors text-foreground"
             aria-label="Go back"
           >
-            <ArrowLeft className="h-5 w-5 text-foreground" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0">
             <h1 className="text-lg font-bold text-foreground truncate">
@@ -148,7 +148,7 @@ export default function ProfilePage() {
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/25" />
         )}
         <button
-          className="absolute top-3 right-3 z-10 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+          className="absolute top-3 right-3 z-10 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
           aria-label="Change banner"
           onClick={() => setShowEditModal(true)}
         >
@@ -161,7 +161,7 @@ export default function ProfilePage() {
           <Avatar className="h-20 w-20 md:h-25 md:w-25 xl:h-35 xl:w-35 border-4 border-background -mt-10 md:-mt-12 xl:-mt-14 bg-accent transition-transform hover:scale-105 duration-300">
             <AvatarImage src={user.avatar} alt={user.displayName} />
             <AvatarFallback className="text-2xl md:text-3xl xl:text-4xl">
-              {user.displayName[0]}
+              {user.displayName?.[0] || "U"}
             </AvatarFallback>
           </Avatar>
           <div className="flex gap-2 mt-2">
@@ -186,12 +186,12 @@ export default function ProfilePage() {
       </div>
 
       <div className="mt-4 px-4 space-y-1">
-        <h1 className="text-xl sm:text-2xl font-extrabold text-foreground flex items-center gap-1.5 break-words">
+        <h2 className="text-xl sm:text-2xl font-extrabold text-foreground flex items-center gap-1.5 break-words">
           {user.displayName}
           {user.verified && (
             <BadgeCheck className="h-5 w-5 text-brand shrink-0" />
           )}
-        </h1>
+        </h2>
         <p className="text-muted-foreground flex items-center gap-1.5 truncate">
           @{user.username}
           {user.accountType === "private" && (
@@ -231,7 +231,7 @@ export default function ProfilePage() {
           </button>
         )}
         {user.bio && (
-          <p className="mt-2 text-foreground text-[15px] break-words whitespace-pre-wrap">
+          <p className="mt-2 text-foreground text-base break-words whitespace-pre-wrap">
             {user.bio}
           </p>
         )}
@@ -300,7 +300,7 @@ export default function ProfilePage() {
         {user.accountType === "private" && (
           <button
             type="button"
-            className="mt-4 flex w-full items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground hover:bg-accent transition-colors"
+            className="mt-4 flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left text-sm font-semibold text-foreground hover:bg-accent transition-colors"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("twiller:go-follow-requests"))
             }
@@ -355,7 +355,7 @@ export default function ProfilePage() {
                 <div key={r._id || i} className="flex gap-3 px-4 py-4">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user.avatar} alt={user.displayName} />
-                    <AvatarFallback>{user.displayName[0]}</AvatarFallback>
+                    <AvatarFallback>{user.displayName?.[0] || "U"}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">

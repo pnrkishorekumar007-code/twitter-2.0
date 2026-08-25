@@ -37,6 +37,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useMessages } from "@/context/MessagesContext";
 import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
 
 interface SidebarProps {
   currentPage?: string;
@@ -89,16 +90,13 @@ export default function Sidebar({
 
   const renderNavButton = (item: NavItem) => {
     const button = (
-      <button
-        type="button"
+      <Button
+        variant="nav-row"
         aria-current={item.current ? "page" : undefined}
         onClick={() => onNavigate?.(item.page)}
         className={cn(
-          "group flex h-11 w-full items-center rounded-full p-3 transition-colors duration-[180ms] outline-none focus-visible:ring-2 focus-visible:ring-brand",
-          forceExpanded ? "justify-start" : "justify-center lg:justify-start",
-          item.current
-            ? "bg-hover-overlay text-foreground"
-            : "text-foreground hover:bg-hover-overlay"
+          forceExpanded ? "" : "justify-center lg:justify-start",
+          item.current ? "bg-hover-overlay" : ""
         )}
       >
         <span className="relative flex items-center justify-start">
@@ -109,14 +107,14 @@ export default function Sidebar({
           />
           {item.badge && (
             <span
-              className="absolute -top-1 -right-1 grid h-[17px] min-w-[17px] place-items-center rounded-full border-2 border-background bg-brand px-[3px] text-[10px] font-bold leading-none text-white"
+              className="absolute -top-1 -right-1 grid h-[17px] min-w-[17px] place-items-center rounded-full border-2 border-background bg-brand px-[3px] text-xs font-bold leading-none text-white"
               aria-hidden="true"
             >
               •
             </span>
           )}
           {item.count != null && item.count > 0 && (
-            <span className="absolute -top-1.5 -right-2 grid h-[18px] min-w-[18px] place-items-center rounded-full border-2 border-background bg-brand px-1 text-[11px] font-bold text-white">
+            <span               className="absolute -top-1.5 -right-2 grid h-[18px] min-w-[18px] place-items-center rounded-full border-2 border-background bg-brand px-1 text-xs font-bold text-white">
               {item.count > 99 ? "99+" : item.count}
             </span>
           )}
@@ -125,12 +123,12 @@ export default function Sidebar({
           className={cn(
             "ml-5 truncate text-xl leading-6",
             forceExpanded ? "inline" : "hidden lg:inline",
-            item.current ? "font-bold" : "font-normal"
+            item.current ? "!font-bold" : "font-normal"
           )}
         >
           {item.name}
         </span>
-      </button>
+      </Button>
     );
 
     if (forceExpanded) return button;
@@ -186,15 +184,14 @@ export default function Sidebar({
             <li>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
+                  <Button
+                    variant="nav-row"
                     aria-haspopup="menu"
                     className={cn(
-                      "group flex h-11 w-full items-center rounded-full p-3 transition-colors duration-[180ms] outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                      forceExpanded ? "justify-start" : "justify-center lg:justify-start",
+                      forceExpanded ? "" : "justify-center lg:justify-start",
                       ["search", "pricing", "settings"].includes(currentPage)
-                        ? "bg-hover-overlay text-foreground"
-                        : "text-foreground hover:bg-hover-overlay"
+                        ? "bg-hover-overlay"
+                        : ""
                     )}
                   >
                     <span className="relative flex items-center">
@@ -208,18 +205,18 @@ export default function Sidebar({
                     >
                       {t("more")}
                     </span>
-                  </button>
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="start" className="w-[300px] rounded-2xl border-border bg-popover p-2">
                   <DropdownMenuItem
-                    className="rounded-full px-4 py-3 text-[15px]"
+                    className="rounded-full px-4 py-3 text-sm"
                     onClick={() => onNavigate?.("search")}
                   >
                     <Users className="mr-3 h-5 w-5" aria-hidden="true" />
                     {t("sidebar_people")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    className="rounded-full px-4 py-3 text-[15px]"
+                    className="rounded-full px-4 py-3 text-sm"
                     onClick={() => onNavigate?.("pricing")}
                   >
                     <Sparkles className="mr-3 h-5 w-5" aria-hidden="true" />
@@ -227,7 +224,7 @@ export default function Sidebar({
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem
-                    className="rounded-full px-4 py-3 text-[15px]"
+                    className="rounded-full px-4 py-3 text-sm"
                     onClick={() => onNavigate?.("settings")}
                   >
                     <Settings className="mr-3 h-5 w-5" aria-hidden="true" />
@@ -240,23 +237,22 @@ export default function Sidebar({
 
           {/* Post button */}
           <div className={cn("mt-3 px-0.5", forceExpanded ? "" : "flex justify-center lg:block")}>
-            <button
-              type="button"
-              onClick={focusComposer}
+            <Button
+              size="xl"
               className={cn(
-                "grid h-[52px] place-items-center rounded-full bg-brand font-bold text-white transition-colors duration-[180ms] hover:bg-x-blue-hover outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98]",
                 forceExpanded
                   ? "w-full px-4"
                   : "w-[52px] lg:w-full lg:px-4"
               )}
+              onClick={focusComposer}
             >
               <span className={forceExpanded ? "hidden" : "grid lg:hidden place-items-center"}>
                 <Feather className="h-6 w-6" aria-hidden="true" />
               </span>
-              <span className={forceExpanded ? "text-[17px]" : "hidden lg:inline text-[17px]"}>
+              <span className={forceExpanded ? "text-base" : "hidden lg:inline text-base"}>
                 {t("post")}
               </span>
-            </button>
+            </Button>
           </div>
         </nav>
 
@@ -274,7 +270,7 @@ export default function Sidebar({
                 >
                   <Avatar className="h-10 w-10 shrink-0">
                     <AvatarImage src={user.avatar} alt={user.displayName} />
-                    <AvatarFallback>{user.displayName[0]}</AvatarFallback>
+                    <AvatarFallback>{user.displayName?.[0] || "U"}</AvatarFallback>
                   </Avatar>
                   <span
                     className={cn(
@@ -282,10 +278,10 @@ export default function Sidebar({
                       forceExpanded ? "block" : "hidden lg:block"
                     )}
                   >
-                    <span className="block truncate text-[15px] font-bold text-foreground">
+                    <span className="block truncate text-sm font-bold text-foreground">
                       {user.displayName}
                     </span>
-                    <span className="block truncate text-sm text-muted-foreground">
+                    <span className="block truncate text-xs text-muted-foreground">
                       @{user.username}
                     </span>
                   </span>
@@ -300,14 +296,14 @@ export default function Sidebar({
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-[300px] rounded-2xl border-border bg-popover p-2">
                 <DropdownMenuItem
-                  className="rounded-full px-4 py-3 text-[15px]"
+                  className="rounded-full px-4 py-3 text-sm"
                   onClick={() => onNavigate?.("settings")}
                 >
                   <Settings className="mr-3 h-5 w-5" aria-hidden="true" />
                   {t("settings")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="rounded-full px-4 py-3 text-[15px]"
+                  className="rounded-full px-4 py-3 text-sm"
                   onClick={toggleTheme}
                 >
                   {theme === "dark" ? (
@@ -320,7 +316,7 @@ export default function Sidebar({
                 <DropdownMenuSeparator className="bg-border" />
                 <DropdownMenuItem
                   variant="destructive"
-                  className="rounded-full px-4 py-3 text-[15px] font-bold"
+                  className="rounded-full px-4 py-3 text-sm font-bold"
                   onClick={logout}
                 >
                   <LogOut className="mr-3 h-5 w-5" aria-hidden="true" />

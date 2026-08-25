@@ -207,13 +207,15 @@ export default function PricingPage() {
     <div className="min-h-dvh">
       <div className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden h-10 w-10"
             onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
-            className="md:hidden grid h-10 w-10 shrink-0 place-items-center rounded-full text-foreground hover:bg-accent transition-colors active:scale-95"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
-          </button>
+          </Button>
           <div>
             <h1 className="text-xl font-extrabold text-foreground flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-brand" />

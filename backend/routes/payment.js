@@ -4,7 +4,7 @@ import crypto from "crypto";
 import User from "../models/user.js";
 import Subscription from "../models/subscription.js";
 import { requireAnyAuth } from "../middleware/auth.js";
-import { requirePaymentWindow } from "../middleware/paymentWindow.js";
+import { requirePaymentWindow, requirePaymentWindowWithGrace } from "../middleware/paymentWindow.js";
 import { paymentWindowStatus } from "../utils/paymentWindow.js";
 import { PLANS, storedTweetLimit } from "../utils/plans.js";
 import { generateInvoicePdf } from "../utils/invoice.js";
@@ -106,7 +106,7 @@ router.post(
 router.post(
   "/verify",
   requireAnyAuth,
-  requirePaymentWindow,
+  requirePaymentWindowWithGrace,
   async (req, res) => {
     try {
       // Rate limit verification attempts: max 20 per hour per account.
@@ -233,5 +233,127 @@ router.post(
     }
   }
 );
+
+/**
+ * Razorpay webhook — called asynchronously by Razorpay when a payment event
+ * occurs. If the user's browser closed before /verify ran, this is the
+ * fallback that still activates the subscription.
+ *
+ * The raw body is needed for HMAC signature verification. The express.json
+ * middleware above already parsed it, so we re-serialise; alternatively
+ * the raw body can be preserved with a custom middleware if preferred.
+ */
+router.post("/webhook", express.json({ verify: verifyRazorpaySignature }), async (req, res) => {
+  const event = req.body;
+
+  if (event.event === "payment.captured") {
+    const { order_id, id: payment_id } = event.payload?.payment?.entity || {};
+    if (!order_id || !payment_id) {
+      return res.status(200).send({ ok: true });
+    }
+
+    try {
+      const subscription = await Subscription.findOne({ orderId: order_id });
+      if (!subscription || subscription.status !== "PENDING") {
+        return res.status(200).send({ ok: true });
+      }
+
+      const razorpay = getRazorpay();
+      const payment = await razorpay.payments.fetch(payment_id);
+      if (!payment || payment.status !== "captured") {
+        return res.status(200).send({ ok: true });
+      }
+
+      const user = await User.findById(subscription.userId);
+      if (!user) return res.status(200).send({ ok: true });
+
+      const startDate = new Date();
+      const endDate = new Date(Date.now() + SUBSCRIPTION_DAYS * 24 * 60 * 60 * 1000);
+      user.subscriptionPlan = subscription.planName;
+      user.tweetLimit = storedTweetLimit(subscription.planName);
+      user.tweetsUsed = 0;
+      user.subscriptionStartDate = startDate;
+      user.subscriptionEndDate = endDate;
+      user.paymentStatus = "active";
+      await user.save();
+
+      const invoiceNumber = `INV-${startDate.toISOString().slice(0, 10).replace(/-/g, "")}-${String(user._id).slice(-4).toUpperCase()}${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const invoicePdf = await generateInvoicePdf({
+        invoiceNumber,
+        customerName: user.displayName,
+        customerEmail: user.email,
+        planName: PLANS[subscription.planName].label,
+        amount: subscription.amount,
+        paymentId: payment_id,
+        orderId: order_id,
+        purchaseDate: formatIST(startDate),
+        expiryDate: formatIST(endDate),
+      });
+
+      subscription.paymentId = payment_id;
+      subscription.invoiceNumber = invoiceNumber;
+      subscription.status = "ACTIVE";
+      subscription.startDate = startDate;
+      subscription.endDate = endDate;
+      await subscription.save();
+
+      try {
+        await sendSubscriptionActivatedEmail({
+          to: user.email,
+          customerName: user.displayName,
+          planLabel: PLANS[subscription.planName].label,
+          amount: subscription.amount,
+          startDate: formatIST(startDate),
+          expiryDate: formatIST(endDate),
+          invoiceNumber,
+          invoicePdfBuffer: invoicePdf,
+        });
+      } catch (emailErr) {
+        console.error("Webhook email failed:", emailErr.message);
+      }
+    } catch (err) {
+      console.error("Webhook processing error:", err.message);
+    }
+  }
+
+  // Always return 200 so Razorpay does not retry.
+  return res.status(200).send({ ok: true });
+});
+
+// Signature verifier used as the express.json verify callback for the webhook
+// route. Re-attaches the raw body so HMAC can be validated.
+function verifyRazorpaySignature(req, _res, buf) {
+  const signature = req.headers["x-razorpay-signature"];
+  if (!signature) return;
+
+  const expectedSignature = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+    .update(buf)
+    .digest("hex");
+
+  if (expectedSignature !== signature) {
+    throw new Error("Invalid Razorpay webhook signature");
+  }
+}
+
+/**
+ * Subscription history — returns all past subscriptions for the current user.
+ */
+router.get("/history", requireAnyAuth, async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) return res.status(404).send({ error: "User not found" });
+
+    const subscriptions = await Subscription.find({ userId: user._id })
+      .sort({ createdAt: -1 })
+      .select("planName amount status invoiceNumber startDate endDate createdAt")
+      .lean();
+
+    return res.status(200).send({ subscriptions });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+});
 
 export default router;

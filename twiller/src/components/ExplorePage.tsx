@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { Search, TrendingUp, Flame, Newspaper, Video, Menu } from "lucide-react";
 import { motion, fadeUp, staggerContainer } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
+import { Button } from "./ui/button";
 
 const TRENDS = [
   { category: "Sports", tag: "Champions Trophy", posts: "2.4M posts", icon: Flame },
@@ -15,18 +17,22 @@ const TRENDS = [
 
 export default function ExplorePage() {
   const [query, setQuery] = useState("");
+  const { t } = useLanguage();
 
   return (
     <div className="min-h-dvh">
       <div className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3">
+        <h1 className="sr-only">{t("explore")}</h1>
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden h-10 w-10"
             onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
-            className="md:hidden grid h-10 w-10 shrink-0 place-items-center rounded-full text-foreground hover:bg-accent transition-colors active:scale-95"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
-          </button>
+          </Button>
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <input
@@ -35,7 +41,7 @@ export default function ExplorePage() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search"
               aria-label="Search"
-              className="h-10 w-full rounded-full bg-[#eff3f4] dark:bg-x-surface-hover border border-transparent pl-12 pr-4 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors duration-200 focus:border-brand focus:bg-background"
+              className="h-10 w-full rounded-full bg-[#eff3f4] dark:bg-x-surface-hover border border-transparent pl-12 pr-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors duration-200 focus:border-brand focus:bg-background"
             />
           </div>
         </div>

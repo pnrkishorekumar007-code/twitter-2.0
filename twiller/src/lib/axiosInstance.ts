@@ -22,9 +22,11 @@ axiosInstance.interceptors.request.use(async (config: TwillerRequestConfig) => {
         return config;
       }
     }
+    // No JWT — try a fresh Firebase ID token (forceRefresh avoids a stale
+    // cached token that the server might reject).
     const firebaseUser = auth?.currentUser;
     if (firebaseUser) {
-      const token = await firebaseUser.getIdToken();
+      const token = await firebaseUser.getIdToken(true);
       if (token) config.headers.Authorization = `Bearer ${token}`;
     }
   } catch {
@@ -44,13 +46,14 @@ axiosInstance.interceptors.response.use(
       typeof window !== "undefined"
     ) {
       config._twillerRetried = true;
+      // Remove stale JWT and try with a fresh Firebase ID token.
       if (localStorage.getItem("twiller-jwt")) {
         localStorage.removeItem("twiller-jwt");
       }
       const firebaseUser = auth?.currentUser;
       if (firebaseUser) {
         try {
-          const token = await firebaseUser.getIdToken();
+          const token = await firebaseUser.getIdToken(true);
           if (token) {
             config.headers = config.headers || {};
             config.headers.Authorization = `Bearer ${token}`;

@@ -60,11 +60,11 @@ export default function RootLayout({
         className={`${inter.variable} ${geistMono.variable} ${notoTamil.variable} ${notoDevanagari.variable} antialiased w-full min-h-dvh bg-background`}
       >
         <ThemeProvider>
-          <AuthProvider>
-            <LanguageProvider>
-              <ToastProvider>{children}</ToastProvider>
-            </LanguageProvider>
-          </AuthProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <LanguageProvider>{children}</LanguageProvider>
+            </AuthProvider>
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

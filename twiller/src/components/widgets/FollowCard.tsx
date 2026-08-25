@@ -73,14 +73,20 @@ export default function FollowCard() {
                 </Avatar>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1">
-                    <span className="truncate text-[15px] font-bold text-foreground hover:underline">
+                    <span
+                      className="truncate text-[15px] font-bold text-foreground hover:underline"
+                      title={user.displayName || "Unknown User"}
+                    >
                       {user.displayName || "Unknown User"}
                     </span>
                     {user.verified && (
                       <BadgeCheck className="h-[18px] w-[18px] shrink-0 text-brand" aria-label="Verified" />
                     )}
                   </div>
-                  <span className="block truncate text-sm text-muted-foreground">
+                  <span
+                    className="block truncate text-sm text-muted-foreground"
+                    title={`@${user.username || "unknown"}`}
+                  >
                     @{user.username || "unknown"}
                   </span>
                 </div>

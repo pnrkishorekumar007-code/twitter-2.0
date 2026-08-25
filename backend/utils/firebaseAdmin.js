@@ -31,7 +31,12 @@ export function getFirebaseAdmin() {
       );
       return null;
     }
-    app = initializeApp({ credential: cert(serviceAccount) });
+    try {
+      app = initializeApp({ credential: cert(serviceAccount) });
+    } catch (err) {
+      console.warn("⚠️ Firebase Admin SDK init failed:", err.message);
+      return null;
+    }
   }
   return {
     auth: () => getAuth(app),

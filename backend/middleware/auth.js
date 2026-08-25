@@ -15,9 +15,14 @@ export async function requireAuth(req, res, next) {
     return res.status(401).send({ error: "Authentication required." });
   }
 
-  const admin = getFirebaseAdmin();
+  let admin;
+  try {
+    admin = getFirebaseAdmin();
+  } catch {
+    return res.status(401).send({ error: "Authentication failed. Please log in again." });
+  }
   if (!admin) {
-    return res.status(503).send({
+    return res.status(401).send({
       error: "Firebase is not configured on the server. Set FIREBASE_* env vars.",
     });
   }
@@ -59,9 +64,15 @@ export async function requireAnyAuth(req, res, next) {
   }
 
   // 2) Firebase ID token (existing sessions).
-  const admin = getFirebaseAdmin();
+  let admin;
+  try {
+    admin = getFirebaseAdmin();
+  } catch {
+    // Firebase Admin SDK init failed (invalid/missing credentials).
+    return res.status(401).send({ error: "Authentication failed. Please log in again." });
+  }
   if (!admin) {
-    return res.status(503).send({
+    return res.status(401).send({
       error: "Firebase is not configured on the server. Set FIREBASE_* env vars.",
     });
   }

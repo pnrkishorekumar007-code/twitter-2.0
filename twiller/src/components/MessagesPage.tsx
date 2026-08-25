@@ -94,13 +94,15 @@ export default function MessagesPage() {
       {/* Page header */}
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-background">
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden h-10 w-10"
             onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
-            className="md:hidden grid h-10 w-10 shrink-0 place-items-center rounded-full text-foreground hover:bg-accent transition-colors active:scale-95"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
-          </button>
+          </Button>
           <h1 className="text-xl font-bold text-foreground">{t("messages")}</h1>
         </div>
         <Button

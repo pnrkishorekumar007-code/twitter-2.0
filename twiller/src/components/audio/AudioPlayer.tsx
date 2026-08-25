@@ -91,8 +91,10 @@ export default function AudioPlayer({ src, className = "", compact = false }: Au
           step={0.1}
           value={Math.min(currentTime, duration || 0)}
           onChange={(e) => handleSeek(Number(e.target.value))}
-          onPointerDown={() => setSeeking(true)}
-          onPointerUp={() => setSeeking(false)}
+        onPointerDown={() => setSeeking(true)}
+        onPointerUp={() => setSeeking(false)}
+        onPointerCancel={() => setSeeking(false)}
+        onPointerLeave={() => setSeeking(false)}
           aria-label="Seek"
           className="w-full h-1.5 appearance-none rounded-full bg-border outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-brand"
         />

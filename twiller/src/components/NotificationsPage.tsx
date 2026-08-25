@@ -9,7 +9,8 @@ import { useNotifications } from "@/context/NotificationsContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { motion, fadeUp, staggerContainer } from "@/lib/motion";
 import axiosInstance from "@/lib/axiosInstance";
-import type { FollowNotification } from "@/lib/types";
+import { getErrorMessage, type FollowNotification } from "@/lib/types";
+import { useToast } from "./Toast";
 
 function timeAgoShort(ts?: string) {
   if (!ts) return "";
@@ -35,6 +36,7 @@ const followSectionTitle = "Follow activity";
 export default function NotificationsPage() {
   const { settings, permission } = useNotifications();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [followNotifications, setFollowNotifications] = useState<
     FollowNotification[]
   >([]);
@@ -50,7 +52,10 @@ export default function NotificationsPage() {
           );
       })
       .catch(() => {
-        if (!cancelled) setFollowNotifications([]);
+        if (!cancelled) {
+          setFollowNotifications([]);
+          toast("Failed to load notifications", "error", getErrorMessage(new Error("Fetch failed")));
+        }
       });
     return () => {
       cancelled = true;
@@ -61,13 +66,15 @@ export default function NotificationsPage() {
     <div className="min-h-dvh">
       <div className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden h-10 w-10"
             onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
-            className="md:hidden grid h-10 w-10 shrink-0 place-items-center rounded-full text-foreground hover:bg-accent transition-colors active:scale-95"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
-          </button>
+          </Button>
           <div>
             <h1 className="text-xl font-bold text-foreground">{t("notifications")}</h1>
             <p className="text-xs text-muted-foreground mt-0.5">

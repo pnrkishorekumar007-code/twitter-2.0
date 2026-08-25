@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
   User,
@@ -12,6 +12,8 @@ import {
   Lock,
   Users,
   Menu,
+  Crown,
+  ExternalLink,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -56,6 +58,22 @@ export default function SettingsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [section, setSection] = useState("account");
   const [savingAccountType, setSavingAccountType] = useState(false);
+  const [subHistory, setSubHistory] = useState<
+    { planName: string; amount: number; status: string; invoiceNumber: string | null; startDate: string | null; endDate: string | null; createdAt: string }[]
+  >([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    if (section !== "subscription") return;
+    setLoadingHistory(true);
+    axiosInstance
+      .get("/payment/history")
+      .then((res) => setSubHistory(res.data.subscriptions || []))
+      .catch(() => {
+        toast("Failed to load payment history", "error");
+      })
+      .finally(() => setLoadingHistory(false));
+  }, [section]);
 
   if (!user) return null;
 
@@ -111,6 +129,7 @@ export default function SettingsPage() {
         <Tabs value={section} onValueChange={setSection} className="mt-4">
           <TabsList className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 w-full h-auto rounded-none bg-transparent p-0 justify-start">
             <SectionNav value="account" icon={User} label={t("settings_account")} />
+            <SectionNav value="subscription" icon={Crown} label={t("settings_subscription")} />
             <SectionNav value="appearance" icon={Palette} label={t("settings_appearance")} />
             <SectionNav value="language" icon={Globe} label={t("language")} />
             <SectionNav value="notifications" icon={Bell} label={t("notif_pref")} />
@@ -193,6 +212,92 @@ export default function SettingsPage() {
                   </p>
                 </button>
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="subscription" className="mt-0">
+            {/* Current plan card */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand/15">
+                  <Crown className="h-5 w-5 text-brand" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-foreground font-semibold">{t("settings_current_plan")}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {user.subscriptionPlan === "GOLD" ? "Gold" : user.subscriptionPlan === "SILVER" ? "Silver" : user.subscriptionPlan === "BRONZE" ? "Bronze" : "Free"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-accent/50 px-4 py-3">
+                  <p className="text-xs text-muted-foreground">{t("settings_tweets_used")}</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {user.subscriptionPlan === "GOLD" ? "∞" : `${user.tweetsUsed ?? 0} / ${user.tweetLimit ?? 1}`}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-accent/50 px-4 py-3">
+                  <p className="text-xs text-muted-foreground">{t("settings_expires")}</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {user.subscriptionEndDate
+                      ? new Date(user.subscriptionEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                className="rounded-full mt-4 w-full"
+                onClick={() => window.location.href = "/premium"}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                {t("settings_manage_plan")}
+              </Button>
+            </div>
+
+            {/* Invoice history */}
+            <div className="mt-5 rounded-2xl border border-border bg-card p-5">
+              <p className="text-foreground font-semibold mb-3">{t("settings_invoice_history")}</p>
+              {loadingHistory ? (
+                <p className="text-muted-foreground text-sm">{t("settings_loading")}</p>
+              ) : subHistory.length === 0 ? (
+                <p className="text-muted-foreground text-sm">{t("settings_no_invoices")}</p>
+              ) : (
+                <div className="space-y-3">
+                  {subHistory.map((sub, i) => (
+                    <div
+                      key={sub.invoiceNumber || i}
+                      className="flex items-center justify-between rounded-xl bg-accent/50 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-foreground text-sm font-medium">
+                          {sub.planName === "GOLD" ? "Gold" : sub.planName === "SILVER" ? "Silver" : sub.planName === "BRONZE" ? "Bronze" : "Free"}
+                          <span className="ml-2 text-muted-foreground font-normal">₹{sub.amount}</span>
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                          {sub.startDate
+                            ? new Date(sub.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                            : new Date(sub.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                      <span
+                        className={cn(
+                          "text-xs font-medium rounded-full px-2.5 py-0.5",
+                          sub.status === "ACTIVE"
+                            ? "bg-emerald-500/15 text-emerald-600"
+                            : sub.status === "FAILED"
+                            ? "bg-red-500/15 text-red-600"
+                            : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {sub.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
 

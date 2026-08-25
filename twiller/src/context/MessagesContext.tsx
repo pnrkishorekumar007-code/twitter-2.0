@@ -143,10 +143,13 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const conversationsRef = useRef(conversations);
+  conversationsRef.current = conversations;
+
   const sendMessage = useCallback(
     async (text: string): Promise<boolean> => {
       const activeId = activeIdRef.current;
-      const conv = conversations.find((c) => c._id === activeId);
+      const conv = conversationsRef.current.find((c) => c._id === activeId);
       const receiverId = conv?.otherUser?._id;
       const cleanText = text.trim();
       if (!activeId || !receiverId || !cleanText) return false;
@@ -181,7 +184,7 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
         setSending(false);
       }
     },
-    [conversations, refreshConversations, user]
+    [refreshConversations, user]
   );
 
   // Load the conversation list once per signed-in user.

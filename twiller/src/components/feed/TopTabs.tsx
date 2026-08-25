@@ -3,6 +3,7 @@
 import React from "react";
 import { motion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
 
 interface TopTabsProps {
   tabs: { value: string; label: string }[];
@@ -25,16 +26,13 @@ export default function TopTabs({ tabs, value, onChange, className }: TopTabsPro
       {tabs.map((tab) => {
         const active = tab.value === value;
         return (
-          <button
+          <Button
             key={tab.value}
-            type="button"
+            variant="tab"
             role="tab"
             aria-selected={active}
             onClick={() => onChange(tab.value)}
-            className={cn(
-              "relative flex-1 py-4 text-[15px] transition-colors duration-200 outline-none hover:bg-hover-overlay focus-visible:bg-hover-overlay",
-              active ? "font-bold text-foreground" : "font-medium text-muted-foreground"
-            )}
+            className={active ? "!font-bold text-foreground" : "font-medium text-muted-foreground"}
           >
             {tab.label}
             {active && (
@@ -44,7 +42,7 @@ export default function TopTabs({ tabs, value, onChange, className }: TopTabsPro
                 transition={{ type: "spring", stiffness: 500, damping: 40 }}
               />
             )}
-          </button>
+          </Button>
         );
       })}
     </div>

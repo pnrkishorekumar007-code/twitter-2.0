@@ -45,7 +45,7 @@ function formatClock(totalSeconds: number) {
 export default function VerifyLoginOtp() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { completeLogin } = useAuth();
+  const { completeLogin, suppressAuthListener } = useAuth();
   const { toast } = useToast();
 
   const [session, setSession] = useState<PendingSession | null>(() =>
@@ -100,9 +100,10 @@ export default function VerifyLoginOtp() {
     try {
       const isRegistration = localStorage.getItem("twiller-login-is-registration") === "1";
 
+      let verifyRes;
       if (isRegistration) {
         const regData = JSON.parse(localStorage.getItem("twiller-registration-data") || "{}");
-        const res = await axiosInstance.post("/auth/register-verify", {
+        verifyRes = await axiosInstance.post("/auth/register-verify", {
           email: effectiveEmail,
           code,
           loginToken: session.token,
@@ -111,20 +112,24 @@ export default function VerifyLoginOtp() {
           phone: regData.phone,
           avatar: regData.avatar,
         });
-        completeLogin(res.data);
       } else {
-        const res = await axiosInstance.post("/auth/verify-login-otp", {
+        verifyRes = await axiosInstance.post("/auth/verify-login-otp", {
           email: effectiveEmail,
           code,
           loginToken: session.token,
           method: session.method,
         });
-        completeLogin(res.data);
       }
 
       clearPending();
+      // Prevent onAuthStateChanged from racing with the redirect: suppress
+      // the listener while we update context state and navigate away.
+      suppressAuthListener(true);
+      completeLogin(verifyRes.data);
       toast("Login successful", "success");
-      router.replace("/");
+      await router.replace("/");
+      // Allow the listener to run again on the next page.
+      requestAnimationFrame(() => suppressAuthListener(false));
     } catch (err) {
       setError(getErrorMessage(err, "Verification failed. Please try again."));
     } finally {

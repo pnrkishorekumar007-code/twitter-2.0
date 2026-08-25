@@ -8,13 +8,14 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "./firebase";
 import axiosInstance from "../lib/axiosInstance";
 import type { LoginHistoryEntry } from "../lib/types";
 import { getErrorMessage } from "../lib/types";
 import { getClientInfo } from "@/lib/clientInfo";
+import { useToast } from "@/components/Toast";
 
 export interface User {
   _id: string;
@@ -69,6 +70,9 @@ interface AuthContextType {
   isLoading: boolean;
   googlesignin: () => Promise<void>;
   completeLogin: (data: { user?: User; token?: string }) => void;
+  /** Set true before calling completeLogin + router.replace to prevent
+   *  onAuthStateChanged from racing with the redirect. */
+  suppressAuthListener: (suppress: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -91,6 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const router = useRouter();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   // Always start loading (true) — including on the server — so the SSR
   // HTML matches the client's first paint. Real auth state resolves in the
@@ -98,69 +103,98 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [token, setToken] = useState<string | null>(null);
 
+  // When a manual login flow (login / signup / googlesignin) is in progress,
+  // suppress onAuthStateChanged from fetching /loggedinuser so it doesn't
+  // race with the manual flow's own /loggedinuser call.
+  const loginInProgress = useRef(false);
+
   useEffect(() => {
     if (!auth) return;
-    // Check for existing session
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser?.email) {
-        const otpPending =
-          typeof window !== "undefined" &&
-          localStorage.getItem(PENDING_OTP_FLAG) === "1";
 
-        // A Chrome OTP verification is still required for this account. Do not
-        // restore the session from Firebase — otherwise a Google login could
-        // reach the dashboard before OTP verification. Send the user to the
-        // OTP page instead.
-        if (otpPending) {
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (firebaseUser) => {
+        // If a manual login flow is in progress, don't interfere — the flow
+        // will call completeLogin() or handle the error itself.
+        if (loginInProgress.current) return;
+
+        if (firebaseUser?.email) {
+          const otpPending =
+            typeof window !== "undefined" &&
+            localStorage.getItem(PENDING_OTP_FLAG) === "1";
+
+          // A Chrome OTP verification is still required for this account. Do
+          // not restore the session from Firebase — send to OTP page instead.
+          if (otpPending) {
+            setUser(null);
+            localStorage.removeItem("twitter-user");
+            if (localStorage.getItem("twiller-login-token")) {
+              router.push(
+                `/verify-login-otp?email=${encodeURIComponent(firebaseUser.email)}`
+              );
+            } else {
+              localStorage.removeItem(PENDING_OTP_FLAG);
+            }
+            setIsLoading(false);
+            return;
+          }
+
+          try {
+            const res = await axiosInstance.get("/loggedinuser", {
+              params: { email: firebaseUser.email },
+            });
+
+            if (res.data) {
+              setUser(res.data);
+              localStorage.setItem("twitter-user", JSON.stringify(res.data));
+            }
+          } catch (err) {
+            console.error("Failed to fetch user:", err);
+          }
+        } else {
           setUser(null);
           localStorage.removeItem("twitter-user");
-          if (localStorage.getItem("twiller-login-token")) {
-            router.push(
-              `/verify-login-otp?email=${encodeURIComponent(firebaseUser.email)}`
-            );
-          } else {
-            localStorage.removeItem(PENDING_OTP_FLAG);
-          }
-          setIsLoading(false);
-          return;
         }
-
-        try {
-          const res = await axiosInstance.get("/loggedinuser", {
-            params: { email: firebaseUser.email },
-          });
-
-          if (res.data) {
-            setUser(res.data);
-            localStorage.setItem("twitter-user", JSON.stringify(res.data));
+        setIsLoading(false);
+      },
+      (error) => {
+        // Handle Firebase initialization errors (e.g. auth/invalid-credential
+        // from a stale session belonging to a previous Firebase project).
+        console.warn("Firebase auth state error:", error?.message || error);
+        const code = (error as { code?: string })?.code;
+        if (code === "auth/invalid-credential" || code === "auth/invalid-api-key") {
+          // Clear stale Firebase session data so the user sees a clean login
+          // screen instead of an infinite loading spinner.
+          if (auth) {
+            signOut(auth).catch(() => {});
           }
-        } catch (err) {
-          console.error("Failed to fetch user:", err);
+          localStorage.removeItem("twitter-user");
+          localStorage.removeItem("twiller-jwt");
+          localStorage.removeItem(PENDING_OTP_FLAG);
         }
-      } else {
-        setUser(null);
-        localStorage.removeItem("twitter-user");
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    });
+    );
     return () => unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
+    loginInProgress.current = true;
     try {
       if (!auth) {
         throw new Error("Firebase not configured. Add NEXT_PUBLIC_FIREBASE_* env vars.");
       }
-// Authenticate credentials with Firebase without persisting session.
+      // Authenticate credentials with Firebase without persisting session.
       await signInWithEmailAndPassword(auth, email, password);
-      // Sign out immediately to prevent onAuthStateChanged from setting user before OTP verification.
+      // Sign out immediately to prevent onAuthStateChanged from setting user
+      // before OTP verification.
       await signOut(auth);
       // No user state is set here; OTP verification will call completeLogin.
-
     } finally {
       setIsLoading(false);
+      loginInProgress.current = false;
     }
   };
 
@@ -172,6 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     phone?: string
   ) => {
     setIsLoading(true);
+    loginInProgress.current = true;
     try {
       if (!auth) {
         throw new Error("Firebase not configured. Add NEXT_PUBLIC_FIREBASE_* env vars.");
@@ -184,14 +219,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const fe = firebaseErr as { code?: string };
         if (fe.code === "auth/email-already-in-use") {
           // Firebase account exists — check if backend user also exists.
+          // Use a direct fetch (no auth header) to avoid 401 from the OTP guard.
           try {
-            await axiosInstance.get("/loggedinuser", { params: { email } });
-            throw new Error("An account with this email already exists. Please log in.");
+            const checkRes = await fetch(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/loggedinuser?email=${encodeURIComponent(email)}`
+            );
+            if (checkRes.ok) {
+              // Both Firebase AND backend user exist — this is a real duplicate.
+              throw new Error("An account with this email already exists. Please log in.");
+            }
+            // Backend user doesn't exist — Firebase account is orphaned. Proceed
+            // with registration (backend will create the user after OTP verify).
           } catch (checkErr) {
-            if (checkErr instanceof Error && checkErr.message === "An account with this email already exists. Please log in.") {
+            if (
+              checkErr instanceof Error &&
+              checkErr.message === "An account with this email already exists. Please log in."
+            ) {
               throw checkErr;
             }
-            // Backend user doesn't exist — proceed with registration OTP.
+            // Network error or other issue — proceed with registration OTP.
           }
         } else {
           throw firebaseErr;
@@ -220,6 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       router.push(`/verify-login-otp?email=${encodeURIComponent(email)}`);
     } finally {
       setIsLoading(false);
+      loginInProgress.current = false;
     }
   };
 
@@ -267,6 +314,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  /** Temporarily suppress onAuthStateChanged from fetching /loggedinuser.
+   *  Call suppressAuthListener(true) before completeLogin + router.replace,
+   *  then suppressAuthListener(false) in a microtask after navigation. */
+  const suppressAuthListener = (suppress: boolean) => {
+    loginInProgress.current = suppress;
+  };
+
   const updateProfile = async (profileData: {
     displayName: string;
     bio: string;
@@ -277,9 +331,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }) => {
     if (!user) return;
 
-    // Send only the editable fields to the new auth-gated endpoint. Falls back
-    // to the legacy /userupdate/:email route so this works against a backend
-    // that hasn't been restarted with the new routes yet.
     const res = await axiosInstance
       .patch(`/profile/update`, profileData)
       .catch((err) => {
@@ -315,8 +366,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       localStorage.setItem("twitter-user", JSON.stringify(res.data));
     }
   };
+
   const googlesignin = async () => {
     setIsLoading(true);
+    loginInProgress.current = true;
 
     try {
       if (!auth) {
@@ -330,12 +383,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("No email found in Google account");
       }
 
-      let userData;
+      // Check if the backend user exists using the Firebase ID token
+      // (not the Twiller JWT, which doesn't exist yet for new users).
+      let userData: User | null = null;
       let isNewUser = false;
 
       try {
+        const idToken = await firebaseuser.getIdToken();
         const res = await axiosInstance.get("/loggedinuser", {
           params: { email: firebaseuser.email },
+          headers: { Authorization: `Bearer ${idToken}` },
         });
         userData = res.data;
       } catch {
@@ -372,6 +429,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       // Existing user: device gate + OTP (always requires OTP now).
+      if (!userData) return;
       try {
         const res = await axiosInstance.post("/auth/login", {
           email: userData.email,
@@ -402,10 +460,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         };
         if (axiosErr?.response?.status === 403) {
           await logout();
-          alert(
+          toast(
             axiosErr.response.data?.message ||
               axiosErr.response.data?.error ||
-              "Login is not allowed on this device right now."
+              "Login is not allowed on this device right now.",
+            "error"
           );
           return;
         }
@@ -424,13 +483,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
       if (code === "auth/popup-blocked") {
-        alert("Pop-up blocked. Allow pop-ups for this site and try again.");
+        toast("Pop-up blocked. Allow pop-ups for this site and try again.", "error");
         return;
       }
       console.error("Google Sign-In Error:", error);
-      alert(getErrorMessage(error, "Login failed"));
+      toast(getErrorMessage(error, "Login failed"), "error");
     } finally {
       setIsLoading(false);
+      loginInProgress.current = false;
     }
   };
 
@@ -448,6 +508,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isLoading,
         googlesignin,
         completeLogin,
+        suppressAuthListener,
       }}
     >
       {children}

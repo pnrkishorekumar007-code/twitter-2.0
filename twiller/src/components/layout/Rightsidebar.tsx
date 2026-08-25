@@ -6,6 +6,7 @@ import SearchBar from "../widgets/SearchBar";
 import TrendingCard from "../widgets/TrendingCard";
 import FollowCard from "../widgets/FollowCard";
 import { useLanguage } from "@/context/LanguageContext";
+import { Button } from "../ui/button";
 
 export default function RightSidebar() {
   const { t } = useLanguage();
@@ -35,13 +36,11 @@ export default function RightSidebar() {
         <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
           {t("right_subscribe_desc")}
         </p>
-        <button
-          type="button"
+        <Button
           onClick={() => window.dispatchEvent(new CustomEvent("twiller:go-premium"))}
-          className="h-9 rounded-full bg-brand px-4 text-[15px] font-bold text-white transition-colors duration-200 hover:bg-x-blue-hover active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           {t("right_subscribe_btn")}
-        </button>
+        </Button>
       </section>
 
       {/* Trends */}
@@ -51,7 +50,7 @@ export default function RightSidebar() {
       <FollowCard />
 
       {/* Footer links */}
-      <nav aria-label="Footer" className="space-y-2 p-4 text-[13px] leading-4 text-muted-foreground">
+      <nav aria-label="Footer" className="space-y-2 p-4 text-xs leading-4 text-muted-foreground">
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {[t("right_terms"), t("right_privacy"), t("right_cookies"), t("right_accessibility"), t("right_ads")].map(
             (label) => (

@@ -5,13 +5,40 @@ import nodemailer from "nodemailer";
 //
 // Hierarchy:
 //   1. Brevo Transactional Email API (when BREVO_API_KEY starts with xkeysib-)
-//   2. Gmail SMTP (when EMAIL_USER + EMAIL_PASS are set)
+//   2. Gmail SMTP (when EMAIL_USER + EMAIL_PASS are set and not placeholders)
 //   3. Skip + log (no provider configured)
 //
 // If Brevo fails for any reason other than rate-limiting, the mailer
 // automatically falls back to Gmail SMTP so that OTP / transactional emails
 // are never silently dropped due to a single provider misconfiguration.
 // ---------------------------------------------------------------------------
+
+// Placeholders that must be treated as "not configured".
+const PLACEHOLDER_USERS = new Set([
+  "youraddress@gmail.com",
+  "your_email@gmail.com",
+  "email@example.com",
+  "",
+]);
+const PLACEHOLDER_PASS = new Set([
+  "your16charapppassword",
+  "your_app_password",
+  "xxxx-xxxx-xxxx-xxxx",
+  "",
+]);
+
+/** Check if Gmail SMTP credentials are real (not placeholder). */
+function isGmailConfigured() {
+  const user = (process.env.EMAIL_USER || "").trim();
+  const pass = (process.env.EMAIL_PASS || "").trim();
+  if (!user || !pass) return false;
+  if (PLACEHOLDER_USERS.has(user.toLowerCase())) return false;
+  if (PLACEHOLDER_PASS.has(pass)) return false;
+  // App passwords are exactly 16 chars (no dashes) or 16 chars with dashes (xxxx-xxxx-xxxx-xxxx)
+  const stripped = pass.replace(/-/g, "");
+  if (stripped.length < 10) return false;
+  return true;
+}
 
 /** Human-readable Brevo status code messages (never expose API keys). */
 const BREVO_ERROR_MAP = {
@@ -89,7 +116,7 @@ function getTransporter() {
 }
 
 async function sendViaGmail({ to, subject, html, attachments }) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return null;
+  if (!isGmailConfigured()) return null;
   const t = getTransporter();
   await t.sendMail({
     from: `"Twiller" <${process.env.EMAIL_USER}>`,
@@ -99,6 +126,48 @@ async function sendViaGmail({ to, subject, html, attachments }) {
     attachments,
   });
   return { delivered: true, provider: "gmail" };
+}
+
+// ---------------------------------------------------------------------------
+// Startup verification — called once after MongoDB connects. Prints a clear
+// status line so ops can confirm email is working without checking logs.
+// ---------------------------------------------------------------------------
+export async function verifyEmailTransport() {
+  const hasBrevo =
+    !!process.env.BREVO_API_KEY &&
+    process.env.BREVO_API_KEY.startsWith("xkeysib-");
+  const hasGmail = isGmailConfigured();
+
+  if (!hasBrevo && !hasGmail) {
+    console.warn(
+      "⚠️  Email not configured — no BREVO_API_KEY or valid EMAIL_USER/EMAIL_PASS found."
+    );
+    console.warn(
+      "   Password-reset and subscription emails will be skipped."
+    );
+    return;
+  }
+
+  if (hasBrevo) {
+    console.log("✓ Brevo Transactional Email API configured");
+  }
+
+  if (hasGmail) {
+    try {
+      const t = getTransporter();
+      await t.verify();
+      console.log("✓ Gmail SMTP Connected");
+    } catch (err) {
+      console.error(
+        "✗ Gmail SMTP connection failed:",
+        err.message || err.code || "unknown error"
+      );
+      console.error(
+        "  Check that EMAIL_USER and EMAIL_PASS (Gmail App Password) are correct."
+      );
+      // Don't crash — the app can still run without email.
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -140,7 +209,7 @@ export async function sendMail({ to, subject, html, attachments }) {
   if (gmailResult) return gmailResult;
 
   // ── No provider configured ────────────────────────────────────────────
-  console.warn("⚠️ No email provider configured (BREVO_API_KEY or EMAIL_USER/EMAIL_PASS).");
+  console.warn("⚠️ No email provider configured (BREVO_API_KEY or valid EMAIL_USER/EMAIL_PASS).");
   console.warn("   Email not sent — to:", to, "subject:", subject);
   return { skipped: true };
 }

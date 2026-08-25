@@ -22,7 +22,8 @@ import axiosInstance from "@/lib/axiosInstance";
 import { AnimatePresence, motion } from "@/lib/motion";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { formatNumber, fullDate, timeAgo } from "@/lib/format";
-import type { Tweet, TweetReply } from "@/lib/types";
+import { useToast } from "./Toast";
+import { getErrorMessage, type Tweet, type TweetReply } from "@/lib/types";
 
 interface TweetDetailModalProps {
   tweetId: string | null;
@@ -51,6 +52,7 @@ export default function TweetDetailModal({
     setImageFailed(false);
   }
 
+  const { toast } = useToast();
   const loading = tweetId !== null && tweetId !== loadedId;
 
   useEffect(() => {
@@ -97,8 +99,8 @@ export default function TweetDetailModal({
       });
       setTweet(res.data);
       onTweetUpdated?.(res.data);
-    } catch {
-      // ignore
+    } catch (error) {
+      toast("Failed to like tweet", "error", getErrorMessage(error));
     } finally {
       setActionLoading(false);
     }
@@ -113,8 +115,8 @@ export default function TweetDetailModal({
       });
       setTweet(res.data);
       onTweetUpdated?.(res.data);
-    } catch {
-      // ignore
+    } catch (error) {
+      toast("Failed to retweet", "error", getErrorMessage(error));
     } finally {
       setActionLoading(false);
     }
@@ -127,9 +129,10 @@ export default function TweetDetailModal({
         await navigator.share({ title: "Twiller", text: tweet.content });
       } else {
         await navigator.clipboard.writeText(window.location.href);
+        toast("Link copied to clipboard", "success");
       }
     } catch {
-      // ignore
+      toast("Failed to copy link", "error");
     }
   };
 
@@ -144,8 +147,8 @@ export default function TweetDetailModal({
       setTweet(res.data);
       setReply("");
       onTweetUpdated?.(res.data);
-    } catch {
-      // ignore
+    } catch (error) {
+      toast("Failed to post reply", "error", getErrorMessage(error));
     } finally {
       setPosting(false);
     }

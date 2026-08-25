@@ -11,6 +11,7 @@ import { useToast } from "./Toast";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Button } from "./ui/button";
 import { motion } from "@/lib/motion";
 import { getErrorMessage, type Tweet } from "@/lib/types";
 import { Menu } from "lucide-react";
@@ -40,23 +41,8 @@ const Feed = () => {
   }, [toast, t]);
 
   useEffect(() => {
-    let cancelled = false;
-    axiosInstance
-      .get("/post")
-      .then((res) => {
-        if (!cancelled) setForYouTweets(Array.isArray(res.data) ? res.data : []);
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        toast(t("feed_load_error"), "error", getErrorMessage(error));
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingForYou(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [toast, t]);
+    fetchForYou();
+  }, [fetchForYou]);
 
   useEffect(() => {
     if (activeTab !== "following") return;
@@ -127,24 +113,23 @@ const Feed = () => {
       transition={{ duration: 0.25 }}
       className="max-w-[380px] py-16 px-8 mx-auto text-center"
     >
-      <p className="text-3xl font-extrabold text-foreground leading-9">
+      <p className="text-2xl font-extrabold text-foreground leading-9">
         {isFollowing ? t("feed_following_empty_title") : t("feed_empty_title")}
       </p>
-      <p className="text-muted-foreground mt-2 text-[15px] leading-5">
+      <p className="text-muted-foreground mt-2 text-sm leading-5">
         {isFollowing
           ? t("feed_empty_desc")
           : t("feed_empty_hint")}
       </p>
       {isFollowing && (
-        <button
-          type="button"
+        <Button
+          className="mt-6"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("twiller:go-search"))
           }
-          className="mt-6 h-9 rounded-full bg-brand px-4 text-[15px] font-bold text-white transition-colors duration-200 hover:bg-x-blue-hover active:scale-[0.98]"
         >
           {t("feed_find_people")}
-        </button>
+        </Button>
       )}
     </motion.div>
   );
@@ -161,14 +146,14 @@ const Feed = () => {
       {/* Sticky header + tabs */}
       <div className="sticky top-0 z-20 border-b border-border bg-background">
         <div className="flex h-[53px] items-center gap-4 px-4">
-          <button
-            type="button"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors duration-200 hover:bg-hover-overlay md:hidden outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          <Button
+            variant="ghost"
+            size="icon"
             aria-label={t("more")}
             onClick={() => window.dispatchEvent(new CustomEvent("twiller:open-menu"))}
           >
             <Menu className="h-5 w-5 text-foreground" aria-hidden="true" />
-          </button>
+          </Button>
           <h1 className="truncate text-xl font-bold text-foreground">{t("home")}</h1>
           {user && (
             <button
@@ -179,7 +164,7 @@ const Feed = () => {
             >
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user.avatar} alt={user.displayName} />
-                <AvatarFallback>{user.displayName[0]}</AvatarFallback>
+                <AvatarFallback>{user.displayName?.[0] || "U"}</AvatarFallback>
               </Avatar>
             </button>
           )}
