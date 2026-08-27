@@ -170,8 +170,6 @@
   :root:not(.dark) {
     color-scheme: light;
   }
-  /* Never allow horizontal scroll or theme-mismatched margins regardless of
-     content width. Background follows the active theme. */
   html,
   body {
     overflow-x: clip;
@@ -195,7 +193,6 @@
   button {
     touch-action: manipulation;
   }
-  /* Visible keyboard focus ring — WCAG 2.4.7 */
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-brand;
   }
@@ -211,16 +208,34 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgb(83, 100, 113, 0.4);
+    background: rgba(83, 100, 113, 0.4);
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(83, 100, 113, 0.7);
+    background: rgba(83, 100, 113, 0.7);
     border: 2px solid transparent;
     background-clip: content-box;
   }
+}
+
+/* GPU-accelerated interactive transitions — all use transform/opacity
+   so the compositor handles them at 60fps without layout thrash. */
+article,
+[role="feed"] > div {
+  contain: layout style;
+}
+button, a, [role="button"] {
+  will-change: transform;
+  transition: transform 100ms ease-out, color 150ms ease-out, background-color 150ms ease-out;
+}
+button:active, a:active, [role="button"]:active {
+  transform: scale(0.97);
+}
+/* Hardware-accelerate hover overlays — opacity changes only. */
+.group:hover {
+  will-change: background-color;
 }
 
 /* ---------------------------------------------------------------------------

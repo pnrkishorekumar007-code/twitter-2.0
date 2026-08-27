@@ -12,7 +12,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
-import { motion } from "@/lib/motion";
 import { getErrorMessage, type Tweet } from "@/lib/types";
 import { Menu } from "lucide-react";
 
@@ -29,20 +28,30 @@ const Feed = () => {
   const { t } = useLanguage();
   useTweetNotifications(activeTab === "forYou" ? forYouTweets : followingTweets);
 
+  // Initial fetch — inline async function avoids the setState-in-effect lint rule.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await axiosInstance.get("/post");
+        if (!cancelled) setForYouTweets(Array.isArray(res.data) ? res.data : []);
+      } catch (error) {
+        if (!cancelled) toast(t("feed_load_error"), "error", getErrorMessage(error));
+      } finally {
+        if (!cancelled) setLoadingForYou(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [toast, t]);
+
   const fetchForYou = useCallback(async () => {
     try {
       const res = await axiosInstance.get("/post");
       setForYouTweets(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       toast(t("feed_load_error"), "error", getErrorMessage(error));
-    } finally {
-      setLoadingForYou(false);
     }
   }, [toast, t]);
-
-  useEffect(() => {
-    fetchForYou();
-  }, [fetchForYou]);
 
   useEffect(() => {
     if (activeTab !== "following") return;
@@ -64,17 +73,16 @@ const Feed = () => {
     };
   }, [toast, activeTab, t]);
 
-  const handleTabChange = (value: string) => {
+  const handleTabChange = useCallback((value: string) => {
     if (value === "forYou" || value === "following") {
-      // Only show skeletons on the first load — cached content switches instantly.
       if (value === "following" && followingTweets.length === 0) {
         setLoadingFollowing(true);
       }
       setActiveTab(value);
     }
-  };
+  }, [followingTweets.length]);
 
-  const handlenewtweet = (newtweet: Tweet) => {
+  const handlenewtweet = useCallback((newtweet: Tweet) => {
     setForYouTweets((prev) => [newtweet, ...prev]);
 
     const authorId =
@@ -90,9 +98,9 @@ const Feed = () => {
     if (isOwnTweet || isFollowed) {
       setFollowingTweets((prev) => [newtweet, ...prev]);
     }
-  };
+  }, [user]);
 
-  const renderTweets = (list: Tweet[]) =>
+  const renderTweets = useCallback((list: Tweet[]) =>
     list
       .filter(
         (tweet) =>
@@ -101,37 +109,9 @@ const Feed = () => {
           typeof tweet.author !== "string"
       )
       .map((tweet) => (
-        <motion.div key={tweet._id} variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.15 } } }}>
-          <TweetCard tweet={tweet} />
-        </motion.div>
-      ));
-
-  const renderEmptyState = (isFollowing: boolean) => (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.25 }}
-      className="max-w-[380px] py-16 px-8 mx-auto text-center"
-    >
-      <p className="text-2xl font-extrabold text-foreground leading-9">
-        {isFollowing ? t("feed_following_empty_title") : t("feed_empty_title")}
-      </p>
-      <p className="text-muted-foreground mt-2 text-sm leading-5">
-        {isFollowing
-          ? t("feed_empty_desc")
-          : t("feed_empty_hint")}
-      </p>
-      {isFollowing && (
-        <Button
-          className="mt-6"
-          onClick={() =>
-            window.dispatchEvent(new CustomEvent("twiller:go-search"))
-          }
-        >
-          {t("feed_find_people")}
-        </Button>
-      )}
-    </motion.div>
+        <TweetCard key={tweet._id} tweet={tweet} />
+      )),
+    []
   );
 
   const isLoading =
@@ -144,7 +124,7 @@ const Feed = () => {
   return (
     <div className="min-h-dvh">
       {/* Sticky header + tabs */}
-      <div className="sticky top-0 z-20 border-b border-border bg-background">
+      <div className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="flex h-[53px] items-center gap-4 px-4">
           <Button
             variant="ghost"
@@ -159,7 +139,7 @@ const Feed = () => {
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent("twiller:go-profile"))}
-              className="ml-auto shrink-0 rounded-full transition-transform duration-200 active:scale-95 md:hidden outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="ml-auto shrink-0 rounded-full transition-transform duration-150 active:scale-95 md:hidden outline-none focus-visible:ring-2 focus-visible:ring-brand"
               aria-label={t("profile")}
             >
               <Avatar className="h-8 w-8">
@@ -190,15 +170,30 @@ const Feed = () => {
             ))}
           </>
         ) : currentList.length === 0 ? (
-          renderEmptyState(activeTab === "following")
+          <div className="max-w-[380px] py-16 px-8 mx-auto text-center">
+            <p className="text-2xl font-extrabold text-foreground leading-9">
+              {activeTab === "following" ? t("feed_following_empty_title") : t("feed_empty_title")}
+            </p>
+            <p className="text-muted-foreground mt-2 text-sm leading-5">
+              {activeTab === "following"
+                ? t("feed_empty_desc")
+                : t("feed_empty_hint")}
+            </p>
+            {activeTab === "following" && (
+              <Button
+                className="mt-6"
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("twiller:go-search"))
+                }
+              >
+                {t("feed_find_people")}
+              </Button>
+            )}
+          </div>
         ) : (
-          <motion.div
-            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
-            initial="hidden"
-            animate="visible"
-          >
+          <div>
             {renderTweets(currentList)}
-          </motion.div>
+          </div>
         )}
       </div>
     </div>

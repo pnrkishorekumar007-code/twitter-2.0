@@ -74,8 +74,11 @@ export default function ResetPassword() {
   // the sessionStorage handoff.
   const [savedIdentifier, setSavedIdentifier] = useState("");
   const [resetToken, setResetToken] = useState("");
-  // Code deadline: fixed at mount (the handoff carries the remaining TTL).
-  const [deadlineMs] = useState(() => Date.now() + 5 * 60 * 1000);
+  // Code deadline: derived from server-provided TTL; falls back to 5 minutes.
+  const [deadlineMs] = useState(() => {
+    const ttl = requestInfo?.expiresIn;
+    return Date.now() + (typeof ttl === "number" ? ttl * 1000 : 5 * 60 * 1000);
+  });
   const [now, setNow] = useState(() => Date.now());
   const { toast } = useToast();
 

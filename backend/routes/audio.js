@@ -18,6 +18,7 @@ import {
   signAudioUploadToken,
   RESEND_COOLDOWN_MS,
 } from "../services/audioOtpService.js";
+import { stripHtml } from "../utils/inputSanitize.js";
 
 const router = express.Router();
 
@@ -230,7 +231,7 @@ router.post(
         return fail(400, "Audio must not exceed 5 minutes.");
       }
 
-      const safeCaption = String(caption || "").trim().slice(0, 500);
+      const safeCaption = stripHtml(String(caption || "")).trim().slice(0, 500);
 
       const tweet = new Tweet({
         author: req.audioUser._id,
@@ -242,17 +243,29 @@ router.post(
       });
       await tweet.save();
       persisted = true;
-      notifyKeywordTweet(tweet);
 
-      const audioTweet = await AudioTweet.create({
-        userId: req.audioUser._id,
-        tweetId: tweet._id,
-        audioUrl: result.secure_url,
-        cloudinaryId: result.public_id,
-        duration,
-        fileSize: req.file.size,
-        caption: safeCaption,
-      });
+      let audioTweet;
+      try {
+        audioTweet = await AudioTweet.create({
+          userId: req.audioUser._id,
+          tweetId: tweet._id,
+          audioUrl: result.secure_url,
+          cloudinaryId: result.public_id,
+          duration,
+          fileSize: req.file.size,
+          caption: safeCaption,
+        });
+      } catch (metaErr) {
+        // The tweet + slot are already committed. If the metadata document
+        // fails to persist, roll everything back so the user is not left with
+        // a phantom tweet or a burned post quota, then report failure.
+        await Tweet.deleteOne({ _id: tweet._id }).catch(() => {});
+        await getCloudinary().uploader.destroy(result.public_id).catch(() => {});
+        releaseSlot();
+        return specError(res, 400, metaErr.message || "Failed to finalize audio tweet.");
+      }
+
+      notifyKeywordTweet(tweet);
 
       return res.status(201).send({
         success: true,

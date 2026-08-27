@@ -2,6 +2,7 @@ import { io, Socket } from "socket.io-client";
 import { auth } from "@/context/firebase";
 
 let socket: Socket | null = null;
+let refCount = 0;
 
 // Same token resolution the REST client uses: Twiller session JWT first,
 // Firebase ID token as a fallback.
@@ -33,6 +34,11 @@ export function getSocket(): Socket | null {
   return socket;
 }
 
+// Reference-counted connect: each consumer acquires one reference for the
+// lifetime of their effect, and releases it with disconnectSocket(). The
+// underlying connection (and its listeners) are only torn down once the last
+// consumer releases, so one consumer's unmount no longer silently kills the
+// real-time listeners that another consumer still depends on.
 export async function connectSocket(): Promise<Socket | null> {
   const s = getSocket();
   if (!s) return null;
@@ -40,11 +46,13 @@ export async function connectSocket(): Promise<Socket | null> {
   if (!token) return null;
   s.auth = { token };
   if (s.disconnected) s.connect();
+  refCount += 1;
   return s;
 }
 
 export function disconnectSocket() {
-  if (socket) {
+  refCount = Math.max(0, refCount - 1);
+  if (refCount === 0 && socket) {
     socket.removeAllListeners();
     socket.disconnect();
     socket = null;

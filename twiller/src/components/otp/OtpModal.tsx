@@ -57,12 +57,10 @@ export default function OtpModal({
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open || !onResend) {
-      return () => {
-        if (resendTimerRef.current !== null) clearInterval(resendTimerRef.current);
-      };
-    }
-  }, [open, onResend]);
+    return () => {
+      if (resendTimerRef.current !== null) clearInterval(resendTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (countdown <= 0) {

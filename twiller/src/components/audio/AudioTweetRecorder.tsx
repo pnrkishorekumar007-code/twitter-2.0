@@ -75,11 +75,13 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const durationRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetUpload = () => {
     setBlob(null);
     setDuration(0);
+    durationRef.current = 0;
     setCaption("");
     setAudioToken(null);
     setProgress(0);
@@ -108,16 +110,18 @@ export default function AudioTweetRecorder({ onPosted }: { onPosted: () => void 
       mediaRecorderRef.current = recorder;
       setRecording(true);
       setDuration(0);
-      timerRef.current = setInterval(() => {
-        setDuration((d) => {
-          const next = d + 1;
-          if (next >= MAX_DURATION_SEC && timerRef.current !== null) {
-            clearInterval(timerRef.current);
-            mediaRecorderRef.current?.stop();
-          }
-          return next;
-        });
+      durationRef.current = 0;
+      const recordTimer = setInterval(() => {
+        const next = durationRef.current + 1;
+        durationRef.current = next;
+        setDuration(next);
+        if (next >= MAX_DURATION_SEC) {
+          clearInterval(recordTimer);
+          timerRef.current = null;
+          mediaRecorderRef.current?.stop();
+        }
       }, 1000);
+      timerRef.current = recordTimer;
     } catch {
       setError("Microphone access denied or unavailable.");
     }

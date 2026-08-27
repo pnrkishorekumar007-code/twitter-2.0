@@ -8,7 +8,7 @@ import FollowCard from "../widgets/FollowCard";
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "../ui/button";
 
-export default function RightSidebar() {
+function RightSidebarInner() {
   const { t } = useLanguage();
 
   const trends = [
@@ -70,3 +70,6 @@ export default function RightSidebar() {
     </div>
   );
 }
+
+const RightSidebar = React.memo(RightSidebarInner);
+export default RightSidebar;

@@ -5,6 +5,7 @@ import Conversation from "../models/conversation.js";
 import Message from "../models/message.js";
 import { requireAnyAuth } from "../middleware/auth.js";
 import { emitToUser } from "../socket.js";
+import { rateLimit } from "../utils/rateLimiter.js";
 
 const router = express.Router();
 
@@ -136,6 +137,8 @@ router.post("/messages/conversations", requireAnyAuth, async (req, res) => {
  */
 router.post("/messages/send", requireAnyAuth, async (req, res) => {
   try {
+    const limiter = rateLimit({ key: `dm:${req.user?.uid || req.user?.email || req.ip}`, windowMs: 60 * 1000, max: 30 });
+    if (!limiter.allowed) return res.status(429).send({ error: "Too many messages. Please slow down." });
     const { receiverId, text } = req.body;
     const cleanText = String(text || "").trim();
 

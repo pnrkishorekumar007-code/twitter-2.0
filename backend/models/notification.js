@@ -28,4 +28,7 @@ const NotificationSchema = new mongoose.Schema(
 
 NotificationSchema.index({ recipient: 1, read: 1, timestamp: -1 });
 
+// Auto-delete notifications older than 90 days to prevent unbounded growth.
+NotificationSchema.index({ timestamp: 1 }, { expireAfterSeconds: 7776000 });
+
 export default mongoose.model("Notification", NotificationSchema);

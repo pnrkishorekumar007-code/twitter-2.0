@@ -144,7 +144,9 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
   );
 
   const conversationsRef = useRef(conversations);
-  conversationsRef.current = conversations;
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   const sendMessage = useCallback(
     async (text: string): Promise<boolean> => {

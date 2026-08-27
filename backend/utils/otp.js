@@ -2,10 +2,15 @@ import crypto from "crypto";
 import Otp from "../models/otp.js";
 import { sendMail } from "./mailer.js";
 
-const OTP_SECRET = process.env.LOGIN_OTP_SECRET || process.env.JWT_SECRET || "twiller-dev-otp-secret";
+const OTP_SECRET = process.env.LOGIN_OTP_SECRET || process.env.JWT_SECRET;
+if (!OTP_SECRET) {
+  console.warn("⚠️  Neither LOGIN_OTP_SECRET nor JWT_SECRET is set. Using fallback dev secret — DO NOT deploy with this.");
+}
+const OTP_SECRET_KEY = OTP_SECRET || "twiller-dev-otp-secret";
+const MAX_ATTEMPTS = 5;
 
-function hmacOtp(code) {
-  return crypto.createHmac("sha256", OTP_SECRET).update(String(code)).digest("hex");
+export function hmacOtp(code) {
+  return crypto.createHmac("sha256", OTP_SECRET_KEY).update(String(code)).digest("hex");
 }
 
 export function generateOtpCode() {
@@ -23,17 +28,15 @@ function safeEqual(a, b) {
   }
 }
 
-// Creates + emails an OTP. (SMS would need a paid provider like Twilio;
-// for the free-tier version we send every OTP to the user's email, and
-// note in the message which channel it "represents" — see routes.)
+// Creates + emails an OTP. Invalidates any previous unconsumed codes for the
+// same identifier+purpose to prevent multi-code confusion.
 export async function issueOtp({ identifier, purpose, emailTo, label }) {
+  await Otp.deleteMany({ identifier, purpose, consumed: false });
   const code = generateOtpCode();
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
   const hashedCode = hmacOtp(code);
-  await Otp.create({ identifier, purpose, code: hashedCode, expiresAt });
+  await Otp.create({ identifier, purpose, code: hashedCode, expiresAt, attempts: 0 });
 
-  // The code is delivered to the user's email only — it is never shown on
-  // screen. Any delivery failure is surfaced to the caller as an error.
   const mailResult = await sendMail({
     to: emailTo,
     subject: `Your Twiller verification code${label ? " – " + label : ""}`,
@@ -49,6 +52,14 @@ export async function verifyOtp({ identifier, purpose, code }) {
   const otp = await Otp.findOne({ identifier, purpose, consumed: false }).sort({ createdAt: -1 });
   if (!otp) return { ok: false, reason: "No OTP requested" };
   if (otp.expiresAt < new Date()) return { ok: false, reason: "OTP expired" };
+
+  const attempts = (otp.attempts || 0) + 1;
+  if (attempts > MAX_ATTEMPTS) {
+    await Otp.updateOne({ _id: otp._id }, { consumed: true });
+    return { ok: false, reason: "Too many incorrect attempts. Please request a new code." };
+  }
+  await Otp.updateOne({ _id: otp._id }, { attempts });
+
   if (!safeEqual(otp.code, hmacOtp(code))) return { ok: false, reason: "Incorrect OTP" };
   otp.consumed = true;
   await otp.save();

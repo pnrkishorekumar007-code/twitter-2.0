@@ -34,4 +34,9 @@ const LoginHistorySchema = new mongoose.Schema(
 // pagination (find({ userId }).sort({ loginTime: -1 }).skip().limit()).
 LoginHistorySchema.index({ userId: 1, loginTime: -1 });
 
+// Auto-delete documents older than 90 days to prevent unbounded growth.
+// MongoDB TTL indexes delete documents `expireAfterSeconds` after the indexed
+// date value. Setting 90 days = 7,776,000 seconds.
+LoginHistorySchema.index({ loginTime: 1 }, { expireAfterSeconds: 7776000 });
+
 export default mongoose.model("LoginHistory", LoginHistorySchema);

@@ -51,17 +51,16 @@ export default function NotificationsPage() {
             Array.isArray(res.data) ? res.data : []
           );
       })
-      .catch(() => {
+      .catch((err) => {
         if (!cancelled) {
           setFollowNotifications([]);
-          toast("Failed to load notifications", "error", getErrorMessage(new Error("Fetch failed")));
+          toast("Failed to load notifications", "error", getErrorMessage(err));
         }
       });
     return () => {
       cancelled = true;
     };
-  }, []);
-
+  }, [toast]);
   return (
     <div className="min-h-dvh">
       <div className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3">

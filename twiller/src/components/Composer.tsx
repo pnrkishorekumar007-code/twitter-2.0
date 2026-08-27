@@ -8,8 +8,6 @@ import {
   Smile,
   Mic,
   X,
-  CalendarClock,
-  MapPin,
 } from "lucide-react";
 import axios from "axios";
 import axiosInstance from "@/lib/axiosInstance";
@@ -265,28 +263,6 @@ const Composer = ({ onTweetPosted, onAudioPosted }: ComposerProps) => {
                 aria-expanded={showEmoji}
               >
                 <Smile className="" aria-hidden="true" />
-              </Button>
-              <Button
-                variant="toolbar-icon"
-                aria-label="Add GIF"
-              >
-                <span className="grid h-[23px] w-[26px] place-items-center rounded-[4px] border-2 border-current text-[11px] font-extrabold leading-none">
-                  GIF
-                </span>
-              </Button>
-              <Button
-                variant="toolbar-icon"
-                className="hidden sm:grid"
-                aria-label="Schedule post"
-              >
-                <CalendarClock className="" aria-hidden="true" />
-              </Button>
-              <Button
-                variant="toolbar-icon"
-                className="hidden sm:grid"
-                aria-label="Add location"
-              >
-                <MapPin className="" aria-hidden="true" />
               </Button>
             </div>
 

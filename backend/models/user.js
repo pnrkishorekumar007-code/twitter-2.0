@@ -62,4 +62,10 @@ const UserSchema = new mongoose.Schema({
   },
 });
 
+// Performance indexes — these speed up the most frequent queries.
+// email/username already indexed via `unique: true` in schema definition.
+UserSchema.index({ "followers": 1 });
+UserSchema.index({ "following": 1 });
+UserSchema.index({ preferredLanguage: 1 });
+
 export default mongoose.model("User", UserSchema);

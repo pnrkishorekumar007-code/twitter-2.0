@@ -2,7 +2,7 @@ import express from "express";
 import User from "../models/user.js";
 import { deviceDetect } from "../middleware/deviceDetect.js";
 import { isWithinISTWindow } from "../utils/time.js";
-import { issueOtp, verifyOtp, generateOtpCode } from "../utils/otp.js";
+import { issueOtp, verifyOtp, generateOtpCode, hmacOtp } from "../utils/otp.js";
 import Otp from "../models/otp.js";
 import { generateLetterPassword } from "../utils/passwordGenerator.js";
 import { setFirebaseUserPassword } from "../utils/firebaseAdmin.js";
@@ -25,12 +25,13 @@ import {
 import { recordLogin } from "../services/loginHistoryService.js";
 import { getFirebaseAdmin } from "../utils/firebaseAdmin.js";
 import { findUserByEmail } from "../utils/emailLookup.js";
+import sanitizeUser from "../utils/sanitizeUser.js";
 
 const router = express.Router();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const RESET_OTP_TTL_MS = 5 * 60 * 1000;
+const RESET_OTP_TTL_MS = 10 * 60 * 1000;
 
 // A "mobile device" for the IST window rule includes tablets.
 function isMobileClass(deviceType) {
@@ -60,13 +61,6 @@ function isValidEmail(email) {
 }
 
 // Validates the short-lived login token and returns the userId it is bound to.
-function sanitizeUser(u) {
-  if (!u) return u;
-  const obj = u.toObject ? u.toObject() : { ...u };
-  delete obj.password;
-  return obj;
-}
-
 function authorizeLoginToken({ email, loginToken }) {
   if (!loginToken) {
     return { ok: false, error: "Missing login token. Please start login again." };
@@ -109,7 +103,14 @@ router.post("/login/start", deviceDetect, async (req, res) => {
 
     const browser = req.deviceInfo.browser;
 
-    // All browsers require email OTP verification
+    // Microsoft Edge / IE: direct login — no OTP (consistent with /login route)
+    if (!isMobileClass(deviceType) && isMicrosoftBrowser(browser)) {
+      const authToken = signAuthToken({ userId: user._id.toString(), email: user.email });
+      res.cookie("auth_token", authToken, { httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production" });
+      return res.status(200).send({ requiresOtp: false, user: sanitizeUser(user), token: authToken });
+    }
+
+    // All other browsers require email OTP verification
     await issueOtp({
       identifier: user.email,
       purpose: "login",
@@ -122,11 +123,16 @@ router.post("/login/start", deviceDetect, async (req, res) => {
   }
 });
 
-router.post("/login/verify", deviceDetect, rateLimit({ windowMs: 10 * 60 * 1000, max: 10 }), async (req, res) => {
+router.post("/login/verify", deviceDetect, async (req, res) => {
   try {
     const { email, code } = req.body;
     const user = await findUserByEmail(email);
     if (!user) return res.status(401).send({ error: "Invalid email or password" });
+
+    const limiter = rateLimit({ key: `login-verify:${user._id}`, windowMs: 10 * 60 * 1000, max: 10 });
+    if (!limiter.allowed) {
+      return res.status(429).send({ error: "Too many verification attempts. Please try again later." });
+    }
 
     const result = await verifyOtp({ identifier: email, purpose: "login", code });
     if (!result.ok) return res.status(400).send({ error: result.reason });
@@ -210,7 +216,7 @@ router.post("/login", deviceDetect, async (req, res) => {
     if (!isMobileClass(deviceType) && isMicrosoftBrowser(browser)) {
       await recordLogin({ userId: user._id, deviceInfo: req.deviceInfo, loginMethod: method });
       const authToken = signAuthToken({ userId: user._id.toString(), email: user.email });
-      res.cookie("auth_token", authToken, { httpOnly: true, sameSite: "strict" });
+      res.cookie("auth_token", authToken, { httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production" });
       return res.status(200).send({
         success: true,
         requiresOtp: false,
@@ -316,10 +322,15 @@ router.post("/send-login-otp", async (req, res) => {
 });
 
 // Verifies the OTP, records the successful login and issues the session JWT.
-router.post("/verify-login-otp", deviceDetect, rateLimit({ windowMs: 10 * 60 * 1000, max: 10 }), async (req, res) => {
+router.post("/verify-login-otp", deviceDetect, async (req, res) => {
   try {
     const { email, code, loginToken, method } = req.body || {};
     const loginMethod = method === "google" ? "google" : "email";
+
+    const limiter = rateLimit({ key: `verify-login:${email}`, windowMs: 10 * 60 * 1000, max: 10 });
+    if (!limiter.allowed) {
+      return res.status(429).send({ error: "Too many verification attempts. Please try again later." });
+    }
 
     const authz = authorizeLoginToken({ email, loginToken });
     if (!authz.ok) return res.status(403).send({ error: authz.error });
@@ -354,7 +365,7 @@ router.post("/verify-login-otp", deviceDetect, rateLimit({ windowMs: 10 * 60 * 1
 
     const authToken = signAuthToken({ userId: user._id.toString(), email: user.email });
     // Set auth token as HttpOnly cookie for subsequent protected requests
-    res.cookie('auth_token', authToken, { httpOnly: true, sameSite: 'strict' });
+    res.cookie('auth_token', authToken, { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === "production" });
     return res.status(200).send({
       success: true,
       message: "Login verified.",
@@ -419,11 +430,17 @@ router.post("/register-otp", async (req, res) => {
   }
 });
 
-router.post("/register-verify", rateLimit({ windowMs: 10 * 60 * 1000, max: 10 }), async (req, res) => {
+router.post("/register-verify", async (req, res) => {
   try {
     const { email, code, loginToken, displayName, username, phone, avatar } = req.body;
 
     if (!email) return res.status(400).send({ error: "Email is required." });
+
+    const limiter = rateLimit({ key: `register-verify:${email}`, windowMs: 10 * 60 * 1000, max: 10 });
+    if (!limiter.allowed) {
+      return res.status(429).send({ error: "Too many verification attempts. Please try again later." });
+    }
+
     if (!code || !/^\d{6}$/.test(String(code))) {
       return res.status(400).send({ error: "Please enter the 6-digit code." });
     }
@@ -542,7 +559,7 @@ async function deliverForgotPasswordOtp({ user, isEmail }) {
   await Otp.create({
     identifier: identifierKey,
     purpose: "password_reset",
-    code,
+    code: hmacOtp(code),
     expiresAt,
   });
 
@@ -605,7 +622,7 @@ router.post("/forgot-password", async (req, res) => {
       }
     }
     if (!user) {
-      return res.status(404).send({ error: "No account found with that email/phone" });
+      return res.status(404).send({ error: "If an account exists with that email/phone, you will receive a verification code." });
     }
 
     // Security rule: only one reset request per 24 hours.
@@ -760,7 +777,7 @@ router.post("/forgot-password/verify", async (req, res) => {
       }
     }
     if (!user) {
-      return res.status(404).send({ error: "No account found with that email/phone" });
+      return res.status(404).send({ error: "If an account exists with that email/phone, you will receive a verification code." });
     }
 
     // Cap incorrect attempts to 5 per 10 minutes per account.
@@ -843,7 +860,7 @@ router.post("/forgot-password/regenerate", async (req, res) => {
       user &&
       ((isEmail &&
         String(user.email || "").toLowerCase() !== identifier.toLowerCase()) ||
-        (!isEmail && String(user.phone || "") !== identifier))
+        (!isEmail && normalizePhone(String(user.phone || "")) !== normalizePhone(identifier)))
     ) {
       user = null; // token belongs to a different account
     }

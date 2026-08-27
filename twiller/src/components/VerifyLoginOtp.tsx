@@ -102,7 +102,12 @@ export default function VerifyLoginOtp() {
 
       let verifyRes;
       if (isRegistration) {
-        const regData = JSON.parse(localStorage.getItem("twiller-registration-data") || "{}");
+        let regData: { displayName?: string; username?: string; phone?: string; avatar?: string } = {};
+      try {
+        regData = JSON.parse(localStorage.getItem("twiller-registration-data") || "{}");
+      } catch {
+        regData = {};
+      }
         verifyRes = await axiosInstance.post("/auth/register-verify", {
           email: effectiveEmail,
           code,
@@ -127,8 +132,9 @@ export default function VerifyLoginOtp() {
       suppressAuthListener(true);
       completeLogin(verifyRes.data);
       toast("Login successful", "success");
-      await router.replace("/");
-      // Allow the listener to run again on the next page.
+      // Use replace for instant navigation — no history entry created.
+      router.replace("/home");
+      // Allow the listener to run again after navigation completes.
       requestAnimationFrame(() => suppressAuthListener(false));
     } catch (err) {
       setError(getErrorMessage(err, "Verification failed. Please try again."));

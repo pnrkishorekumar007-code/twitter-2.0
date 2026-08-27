@@ -1,7 +1,16 @@
-// Lightweight in-memory sliding-window rate limiter. Suitable for a single
-// Node process (this app's deployment). For multi-instance setups, swap the
-// internals for a Redis-backed limiter — the exported API stays the same.
+// Lightweight in-memory sliding-window rate limiter.
+//
+// ✅ Single-process deployments (Render free tier, single dyno): fully safe.
+// ⚠️  Multi-instance deployments (horizontal scaling): this limiter is per-
+//    process and will NOT share state across instances.  For those, swap the
+//    internals for a Redis-backed store (e.g. `@upstash/ratelimit`) while
+//    keeping the same exported API.
+//
+// The periodic sweep ensures the Map never grows unbounded.
+
 const buckets = new Map();
+const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // run every 5 min
+const STALE_THRESHOLD_MS = 15 * 60 * 1000; // drop entries older than 15 min
 
 /**
  * @param {object} opts
@@ -29,15 +38,24 @@ export function rateLimit({ key, windowMs, max }) {
   return { allowed: true, retryAfterMs: 0 };
 }
 
-// Periodic sweep so the map doesn't grow forever. Keeps entries for the
-// longest window we ever use (10 min) plus a small margin.
-setInterval(
-  () => {
-    const now = Date.now();
-    for (const [key, arr] of buckets) {
-      while (arr.length && arr[0] <= now - 15 * 60 * 1000) arr.shift();
-      if (arr.length === 0) buckets.delete(key);
-    }
-  },
-  5 * 60 * 1000
-).unref?.();
+// Periodic sweep so the map doesn't grow forever.
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, arr] of buckets) {
+    while (arr.length && arr[0] <= now - STALE_THRESHOLD_MS) arr.shift();
+    if (arr.length === 0) buckets.delete(key);
+  }
+}, SWEEP_INTERVAL_MS).unref?.();
+
+// Expose bucket count for health-check endpoints or logging.
+export function getActiveBucketCount() {
+  return buckets.size;
+}
+
+// Warn once at import time if scaling beyond a single process is detected.
+if (process.env.WEB_CONCURRENCY && Number(process.env.WEB_CONCURRENCY) > 1) {
+  console.warn(
+    "⚠️  Rate limiter is in-memory and NOT shared across processes. " +
+    "Set REDIS_URL and swap to a Redis-backed limiter for horizontal scaling."
+  );
+}

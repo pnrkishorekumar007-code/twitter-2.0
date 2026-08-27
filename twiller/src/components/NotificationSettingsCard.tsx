@@ -51,6 +51,20 @@ export default function NotificationSettingsCard() {
   }[permission];
 
   const save = async () => {
+    // Enabling keyword notifications is only meaningful if the browser can
+    // actually show popups. Prompt for permission before persisting; if it
+    // can't be granted, revert the toggle instead of silently reporting success.
+    if (enabled && permission !== "granted") {
+      if (permission === "denied" || permission === "unsupported") {
+        setEnabled(false);
+        return;
+      }
+      const result = await requestPermission();
+      if (result !== "granted") {
+        setEnabled(false);
+        return;
+      }
+    }
     const ok = await updateSettings(enabled);
     if (!ok) setEnabled(settings.keywordNotifications);
   };

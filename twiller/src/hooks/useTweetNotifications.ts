@@ -40,7 +40,7 @@ export function useTweetNotifications(tweets: Tweet[]) {
 
     if (!permissionAsked.current && Notification.permission === "default") {
       permissionAsked.current = true;
-      Notification.requestPermission();
+      Notification.requestPermission().catch(() => {});
     }
     if (Notification.permission !== "granted") return;
 

@@ -78,9 +78,13 @@ export async function sendSms({ to, text }) {
  * to the user's email so the flow can be tested end-to-end on the free tier.
  */
 export async function sendMobileOtpFallback({ emailTo, text }) {
+  const safeText = String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
   return sendMail({
     to: emailTo,
     subject: "Twiller Language Change Verification",
-    html: `<p>${text.replace(/\n/g, "<br/>")}</p>`,
+    html: `<p>${safeText.replace(/\n/g, "<br/>")}</p>`,
   });
 }

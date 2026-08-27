@@ -135,6 +135,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             String(Date.now() + (loginRes.data.expiresIn ?? 300) * 1000)
           );
           localStorage.setItem('twiller-login-method', 'email');
+          localStorage.setItem('twiller-otp-pending', '1');
           onClose();
           router.push(`/verify-login-otp?email=${encodeURIComponent(formData.email)}`);
           return;
@@ -148,6 +149,12 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             token: loginRes.data.token,
             user: loginRes.data.user,
           });
+          // Instant redirect — don't wait for onAuthStateChanged.
+          onClose();
+          setFormData({ email: '', password: '', username: '', displayName: '', phone: '' });
+          setErrors({});
+          router.replace("/home");
+          return;
         }
       } else {
         await signup(
@@ -157,7 +164,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
           formData.displayName,
           formData.phone || undefined
         );
-        // signup() already redirects to /verify-login-otp — do not call onClose().
         return;
       }
       onClose();

@@ -1,23 +1,15 @@
 import jwt from "jsonwebtoken";
 
-let warnedMissingSecret = false;
-
 // JWT_SECRET is the ONLY secret used for signing session tokens.
 // Never fall back to LOGIN_OTP_SECRET (used only for OTP hashing) or a
 // hardcoded value — doing so would let anyone forge auth tokens.
 export function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("JWT_SECRET is required in production");
-    }
-    if (!warnedMissingSecret) {
-      warnedMissingSecret = true;
-      console.warn(
-        "⚠️ JWT_SECRET not set — using an insecure development secret. Set JWT_SECRET in backend/.env."
-      );
-    }
-    return "twiller-dev-secret-change-me";
+    throw new Error(
+      "JWT_SECRET is not set. Add a strong random secret to backend/.env.\n" +
+      "  Generate one with: node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\""
+    );
   }
   return secret;
 }

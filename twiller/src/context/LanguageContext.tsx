@@ -160,6 +160,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           targetLanguage: target,
           languageToken,
         });
+        lastErr = undefined;
       } catch (secondErr) {
         lastErr = secondErr;
       }

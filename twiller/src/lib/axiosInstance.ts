@@ -11,7 +11,46 @@ const axiosInstance = axios.create({
     "Content-Type": "application/json",
   },
   withCredentials: true,
+  timeout: 15000,
 });
+
+// Cached Firebase ID token — avoids a forced refresh on every request.
+let cachedFirebaseToken: string | null = null;
+let cachedFirebaseUid: string | null = null;
+
+function clearFirebaseTokenCache() {
+  cachedFirebaseToken = null;
+  cachedFirebaseUid = null;
+}
+
+async function getFirebaseIdToken(forceRefresh = false): Promise<string | null> {
+  const firebaseUser = auth?.currentUser;
+  if (!firebaseUser) return null;
+
+  // Return cached token if same user and not forcing refresh.
+  if (!forceRefresh && cachedFirebaseToken && cachedFirebaseUid === firebaseUser.uid) {
+    return cachedFirebaseToken;
+  }
+
+  try {
+    const token = await firebaseUser.getIdToken(forceRefresh);
+    cachedFirebaseToken = token;
+    cachedFirebaseUid = firebaseUser.uid;
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+// Clear cache on sign-out. Guard against stacking if module reloads.
+if (typeof window !== "undefined" && !(localStorage as Record<string, unknown>).__twillerPatched) {
+  const origSetItem = localStorage.setItem.bind(localStorage);
+  (localStorage as Record<string, unknown>).__twillerPatched = true;
+  localStorage.setItem = (key: string, value: string) => {
+    origSetItem(key, value);
+    if (key === "twiller-jwt" && (!value || value === "null" || value === "undefined")) clearFirebaseTokenCache();
+  };
+}
 
 axiosInstance.interceptors.request.use(async (config: TwillerRequestConfig) => {
   try {
@@ -22,13 +61,9 @@ axiosInstance.interceptors.request.use(async (config: TwillerRequestConfig) => {
         return config;
       }
     }
-    // No JWT — try a fresh Firebase ID token (forceRefresh avoids a stale
-    // cached token that the server might reject).
-    const firebaseUser = auth?.currentUser;
-    if (firebaseUser) {
-      const token = await firebaseUser.getIdToken(true);
-      if (token) config.headers.Authorization = `Bearer ${token}`;
-    }
+    // No JWT — use cached Firebase ID token (no forced refresh).
+    const token = await getFirebaseIdToken(false);
+    if (token) config.headers.Authorization = `Bearer ${token}`;
   } catch {
     // Token fetch failure — let the server reject if auth is required.
   }
@@ -50,22 +85,17 @@ axiosInstance.interceptors.response.use(
       if (localStorage.getItem("twiller-jwt")) {
         localStorage.removeItem("twiller-jwt");
       }
-      const firebaseUser = auth?.currentUser;
-      if (firebaseUser) {
-        try {
-          const token = await firebaseUser.getIdToken(true);
-          if (token) {
-            config.headers = config.headers || {};
-            config.headers.Authorization = `Bearer ${token}`;
-            return axiosInstance(config);
-          }
-        } catch {
-          // Retry failed — reject the original error.
-        }
+      // Force refresh only on 401 retry.
+      const token = await getFirebaseIdToken(true);
+      if (token) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token}`;
+        return axiosInstance(config);
       }
     }
     return Promise.reject(error);
   }
 );
 
+export { clearFirebaseTokenCache };
 export default axiosInstance;

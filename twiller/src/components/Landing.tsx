@@ -2,9 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import AuthModal from "./Authmodel";
 import TwitterLogo from "./Twitterlogo";
 import { useAuth } from "@/context/AuthContext";
+import dynamic from "next/dynamic";
+
+const AuthModal = dynamic(() => import("./Authmodel"), {
+  ssr: false,
+  loading: () => null,
+});
 
 export default function LandingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -12,7 +17,6 @@ export default function LandingPage() {
   const { user, googlesignin } = useAuth();
   const router = useRouter();
 
-  // Signed-in users land on the home feed at /home.
   useEffect(() => {
     if (user) {
       router.replace("/home");
@@ -53,7 +57,7 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => googlesignin()}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-transparent text-[15px] font-bold text-white transition-colors duration-200 hover:bg-hover-overlay focus-visible:ring-2 focus-visible:ring-brand active:scale-[0.98] outline-none"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-transparent text-[15px] font-bold text-white transition-colors duration-150 hover:bg-hover-overlay focus-visible:ring-2 focus-visible:ring-brand active:scale-[0.98] outline-none"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                 <path
@@ -88,7 +92,7 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => openAuthModal("signup")}
-              className="h-11 w-full rounded-full bg-brand text-[15px] font-bold text-white transition-colors duration-200 hover:bg-x-blue-hover focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-[0.98] outline-none"
+              className="h-11 w-full rounded-full bg-brand text-[15px] font-bold text-white transition-colors duration-150 hover:bg-x-blue-hover focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-[0.98] outline-none"
             >
               Create account
             </button>
@@ -115,7 +119,7 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => openAuthModal("login")}
-              className="mt-4 h-11 w-full rounded-full border border-border bg-transparent text-[15px] font-bold text-brand transition-colors duration-200 hover:bg-hover-overlay focus-visible:ring-2 focus-visible:ring-brand active:scale-[0.98] outline-none"
+              className="mt-4 h-11 w-full rounded-full border border-border bg-transparent text-[15px] font-bold text-brand transition-colors duration-150 hover:bg-hover-overlay focus-visible:ring-2 focus-visible:ring-brand active:scale-[0.98] outline-none"
             >
               Log in
             </button>

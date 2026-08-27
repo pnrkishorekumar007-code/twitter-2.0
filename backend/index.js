@@ -2,6 +2,7 @@ import http from "http";
 import dns from "dns";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -24,6 +25,10 @@ import bookmarkRoutes from "./routes/bookmarks.js";
 import messageRoutes from "./routes/messages.js";
 import { ensureOtpVerified } from "./middleware/otpGuardMiddleware.js";
 import { findUserByEmail, normalizeEmail } from "./utils/emailLookup.js";
+import sanitizeUser from "./utils/sanitizeUser.js";
+import { stripHtml } from "./utils/inputSanitize.js";
+import { ALLOWED_ORIGINS } from "./utils/allowedOrigins.js";
+import { csrfGuard } from "./middleware/csrfGuard.js";
 
 import { requireTweetLimit, rollbackTweetUsed } from "./middleware/tweetLimit.js";
 import { requireAnyAuth } from "./middleware/auth.js";
@@ -33,14 +38,10 @@ import { verifyEmailTransport } from "./utils/mailer.js";
 
 dotenv.config();
 const app = express();
-const allowedOrigins = (process.env.FRONTEND_ORIGIN || "http://localhost:3000")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
         return callback(null, true);
       }
       return callback(new Error(`CORS: origin ${origin} is not allowed`));
@@ -52,12 +53,18 @@ app.use(
 // before express.json() parses the body). The webhook handler reads req.rawBody.
 app.use("/payment/webhook", (req, _res, next) => {
   let data = "";
+  const MAX_WEBHOOK_BODY = 1024 * 1024; // 1 MB
   req.setEncoding("utf8");
-  req.on("data", (chunk) => { data += chunk; });
+  req.on("data", (chunk) => { data += chunk; if (data.length > MAX_WEBHOOK_BODY) { req.destroy(); } });
   req.on("end", () => { req.rawBody = data; next(); });
 });
 app.use(express.json());
 app.use(cookieParser());
+app.use(helmet({
+  contentSecurityPolicy: false, // disabled to allow inline scripts/styles used by the frontend
+  crossOriginEmbedderPolicy: false,
+}));
+app.use(csrfGuard);
 
 const server = http.createServer(app);
 initSocket(server);
@@ -93,7 +100,8 @@ app.use((err, req, res, next) => {
     return res.status(400).send({ success: false, message: msg, error: msg });
   }
   console.error(err);
-  return res.status(500).send({ error: err?.message || "Internal server error" });
+  const isDev = process.env.NODE_ENV !== "production";
+  return res.status(500).send({ error: isDev ? (err?.message || "Internal server error") : "Internal server error" });
 });
 
 const port = process.env.PORT || 5000;
@@ -103,9 +111,15 @@ if (!url) {
   console.error("❌ MONGODB_URL is not set. Add it to backend/.env.");
   process.exit(1);
 }
+if (url.includes("user:pass@") || url.includes("your_cloud_name")) {
+  console.error("❌ MONGODB_URL still contains placeholder values. Replace it with your real MongoDB connection string in backend/.env");
+  console.error("   Local dev:  mongodb://localhost:27017/twiller");
+  console.error("   Atlas:      mongodb+srv://USER:PASSWORD@cluster.mongodb.net/twiller");
+  process.exit(1);
+}
 
 mongoose
-  .connect(url)
+  .connect(url, { serverSelectionTimeoutMS: 5000 })
   .then(() => {
     console.log("✅ Connected to MongoDB");
     server.listen(port, () => {
@@ -117,22 +131,6 @@ mongoose
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
   });
-
-function sanitizeUser(u) {
-  if (!u) return u;
-  const obj = u.toObject ? u.toObject() : { ...u };
-  delete obj.password;
-  delete obj.__v;
-  delete obj.loginHistory;
-  delete obj.paymentStatus;
-  delete obj.subscriptionStartDate;
-  delete obj.subscriptionEndDate;
-  delete obj.quotaMonth;
-  delete obj.tweetsUsed;
-  delete obj.tweetLimit;
-  delete obj.lastPasswordResetRequest;
-  return obj;
-}
 
 // Register — only whitelisted profile fields are persisted. Plan/tweet-limit
 // fields are never accepted from the client (otherwise anyone could self-assign
@@ -192,6 +190,10 @@ const REGISTER_EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 app.post("/register", async (req, res) => {
   try {
+    const limiter = rateLimit({ key: `register:${req.ip}`, windowMs: 60 * 60 * 1000, max: 10 });
+    if (!limiter.allowed) {
+      return res.status(429).send({ error: "Too many registration attempts. Please try again later." });
+    }
     const email = normalizeEmail(req.body.email);
     if (!email || !REGISTER_EMAIL_RE.test(email)) {
       return res.status(400).send({ error: "Invalid email address." });
@@ -208,9 +210,13 @@ app.post("/register", async (req, res) => {
     return res.status(400).send({ error: error.message });
   }
 });
-// loggedinuser
+// loggedinuser — rate limited to prevent enumeration attacks.
 app.get("/loggedinuser", async (req, res) => {
   try {
+    const limiter = rateLimit({ key: `loggedinuser:${req.ip}`, windowMs: 60 * 1000, max: 30 });
+    if (!limiter.allowed) {
+      return res.status(429).send({ error: "Too many requests. Please slow down." });
+    }
     const email = normalizeEmail(req.query.email);
     if (!email) {
       return res.status(400).send({ error: "Email required" });
@@ -224,10 +230,13 @@ app.get("/loggedinuser", async (req, res) => {
     return res.status(400).send({ error: error.message });
   }
 });
-// update Profile
-app.patch("/userupdate/:email", async (req, res) => {
+// update Profile — requires authentication; user can only update their own profile.
+app.patch("/userupdate/:email", requireAnyAuth, async (req, res) => {
   try {
     const email = normalizeEmail(req.params.email);
+    if (normalizeEmail(req.user?.email) !== email) {
+      return res.status(403).send({ error: "You can only update your own profile." });
+    }
     const updated = await User.findOneAndUpdate(
       { email },
       { $set: pickFields(req.body, PROFILE_FIELDS) },
@@ -271,7 +280,7 @@ app.post("/post", pinTextAuthor, requireTweetLimit, async (req, res) => {
 
     const tweet = new Tweet({
       author: req.body.author,
-      content: String(req.body?.content || "").trim().slice(0, 200),
+      content: stripHtml(String(req.body?.content || "")).trim().slice(0, 200),
       image: req.body?.image || null,
       type: "text",
     });
@@ -282,17 +291,27 @@ app.post("/post", pinTextAuthor, requireTweetLimit, async (req, res) => {
       throw saveErr;
     }
     notifyKeywordTweet(tweet);
-    await tweet.populate("author");
+    await tweet.populate("author", "displayName username avatar verified");
     return res.status(201).send(tweet);
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
 });
-// get all tweet
+// get all tweet — paginated for performance
 app.get("/post", async (req, res) => {
   try {
-    const tweet = await Tweet.find().sort({ timestamp: -1 }).populate("author");
-    return res.status(200).send(tweet);
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const tweets = await Tweet.find()
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("author", "displayName username avatar verified")
+      .lean();
+
+    return res.status(200).send(tweets);
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -301,8 +320,8 @@ app.get("/post", async (req, res) => {
 app.get("/tweet/:id", async (req, res) => {
   try {
     const tweet = await Tweet.findById(req.params.id)
-      .populate("author")
-      .populate("replies.user");
+      .populate("author", "displayName username avatar verified")
+      .populate("replies.user", "displayName username avatar verified");
     if (!tweet) return res.status(404).send({ error: "Tweet not found" });
     return res.status(200).send(tweet);
   } catch (error) {
@@ -315,18 +334,27 @@ app.get("/tweet/:id", async (req, res) => {
 // pending requests are excluded automatically.
 app.get(["/tweets/following", "/feed/following"], requireAnyAuth, async (req, res) => {
   try {
-    const current = await User.findOne({ email: req.user?.email || "" });
+    const current = await User.findOne({ email: req.user?.email || "" })
+      .select("following")
+      .lean();
     if (!current) return res.status(404).send({ error: "User not found" });
 
     const following = (current.following || []).map((id) => id.toString());
 
     if (following.length === 0) return res.status(200).send([]);
 
-    const tweet = await Tweet.find({ author: { $in: following } })
-      .sort({ timestamp: -1 })
-      .populate("author");
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
 
-    return res.status(200).send(tweet);
+    const tweets = await Tweet.find({ author: { $in: following } })
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("author", "displayName username avatar verified")
+      .lean();
+
+    return res.status(200).send(tweets);
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -334,71 +362,82 @@ app.get(["/tweets/following", "/feed/following"], requireAnyAuth, async (req, re
 // reply to a tweet
 app.post("/tweet/:id/reply", requireAnyAuth, async (req, res) => {
   try {
+    const limiter = rateLimit({ key: `reply:${req.user.uid}`, windowMs: 10 * 60 * 1000, max: 30 });
+    if (!limiter.allowed) return res.status(429).send({ error: "Too many replies. Please slow down." });
     const userId = req.user.uid;
     const { content } = req.body;
     if (!userId) return res.status(400).send({ error: "UserId required" });
     if (!content || !content.trim())
       return res.status(400).send({ error: "Reply cannot be empty" });
 
+    const trimmed = stripHtml(content).trim().slice(0, 280);
     const tweet = await Tweet.findById(req.params.id);
     if (!tweet) return res.status(404).send({ error: "Tweet not found" });
 
-    tweet.replies.push({ user: userId, content: content.trim() });
+    tweet.replies.push({ user: userId, content: trimmed });
     tweet.comments = tweet.replies.length;
     await tweet.save();
 
     const updated = await Tweet.findById(req.params.id)
-      .populate("author")
-      .populate("replies.user");
+      .populate("author", "displayName username avatar verified")
+      .populate("replies.user", "displayName username avatar verified");
     return res.status(201).send(updated);
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
 });
-//  LIKE TWEET
+//  LIKE TWEET — atomic toggle (no TOCTOU race)
 app.post("/like/:tweetid", requireAnyAuth, async (req, res) => {
   try {
+    const limiter = rateLimit({ key: `like:${req.user.uid}`, windowMs: 10 * 60 * 1000, max: 60 });
+    if (!limiter.allowed) return res.status(429).send({ error: "Too many requests. Please slow down." });
     const userId = req.user.uid;
-    const tweet = await Tweet.findById(req.params.tweetid);
-    if (!tweet) return res.status(404).send({ error: "Tweet not found" });
-    const alreadyLiked = tweet.likedBy.some(
-      (id) => String(id) === String(userId)
-    );
-    if (!alreadyLiked) {
-      tweet.likes += 1;
-      tweet.likedBy.push(userId);
-    } else {
-      tweet.likes = Math.max(0, tweet.likes - 1);
-      tweet.likedBy = tweet.likedBy.filter((id) => String(id) !== String(userId));
-    }
-    await tweet.save();
-    await tweet.populate("author");
-    res.send(tweet);
+    const tweetId = req.params.tweetid;
+    // Try to add the like atomically (only if user not already in array)
+    const added = await Tweet.findOneAndUpdate(
+      { _id: tweetId, likedBy: { $ne: userId } },
+      { $addToSet: { likedBy: userId }, $inc: { likes: 1 } },
+      { new: true }
+    ).populate("author", "displayName username avatar verified");
+
+    if (added) return res.send(added);
+
+    // User already liked — remove atomically
+    const removed = await Tweet.findOneAndUpdate(
+      { _id: tweetId, likedBy: userId },
+      { $pull: { likedBy: userId }, $inc: { likes: -1 } },
+      { new: true }
+    ).populate("author", "displayName username avatar verified");
+
+    if (!removed) return res.status(404).send({ error: "Tweet not found" });
+    res.send(removed);
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
 });
-// retweet
+// retweet — atomic toggle (no TOCTOU race)
 app.post("/retweet/:tweetid", requireAnyAuth, async (req, res) => {
   try {
+    const limiter = rateLimit({ key: `retweet:${req.user.uid}`, windowMs: 10 * 60 * 1000, max: 30 });
+    if (!limiter.allowed) return res.status(429).send({ error: "Too many retweets. Please slow down." });
     const userId = req.user.uid;
-    const tweet = await Tweet.findById(req.params.tweetid);
-    if (!tweet) return res.status(404).send({ error: "Tweet not found" });
-    const alreadyRetweeted = tweet.retweetedBy.some(
-      (id) => String(id) === String(userId)
-    );
-    if (!alreadyRetweeted) {
-      tweet.retweets += 1;
-      tweet.retweetedBy.push(userId);
-    } else {
-      tweet.retweets = Math.max(0, tweet.retweets - 1);
-      tweet.retweetedBy = tweet.retweetedBy.filter(
-        (id) => String(id) !== String(userId)
-      );
-    }
-    await tweet.save();
-    await tweet.populate("author");
-    res.send(tweet);
+    const tweetId = req.params.tweetid;
+    const added = await Tweet.findOneAndUpdate(
+      { _id: tweetId, retweetedBy: { $ne: userId } },
+      { $addToSet: { retweetedBy: userId }, $inc: { retweets: 1 } },
+      { new: true }
+    ).populate("author", "displayName username avatar verified");
+
+    if (added) return res.send(added);
+
+    const removed = await Tweet.findOneAndUpdate(
+      { _id: tweetId, retweetedBy: userId },
+      { $pull: { retweetedBy: userId }, $inc: { retweets: -1 } },
+      { new: true }
+    ).populate("author", "displayName username avatar verified");
+
+    if (!removed) return res.status(404).send({ error: "Tweet not found" });
+    res.send(removed);
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }

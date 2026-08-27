@@ -10,6 +10,7 @@ import { PLANS, storedTweetLimit } from "../utils/plans.js";
 import { generateInvoicePdf } from "../utils/invoice.js";
 import { sendSubscriptionActivatedEmail } from "../utils/mailer.js";
 import { rateLimit } from "../utils/rateLimiter.js";
+import sanitizeUser from "../utils/sanitizeUser.js";
 
 const router = express.Router();
 
@@ -228,7 +229,7 @@ router.post(
         console.error("Subscription email failed:", emailErr.message);
       }
 
-      return res.status(200).send({ success: true, user, subscription });
+      return res.status(200).send({ success: true, user: sanitizeUser(user), subscription });
     } catch (error) {
       return res.status(400).send({ error: error.message });
     }
@@ -252,6 +253,10 @@ router.post("/webhook", async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
   if (!rawBody || !signature) {
     return res.status(400).send({ error: "Missing signature or body" });
+  }
+  // Validate hex format and length before calling timingSafeEqual (which throws on mismatched lengths)
+  if (!/^[0-9a-f]{64}$/i.test(signature)) {
+    return res.status(400).send({ error: "Invalid webhook signature format" });
   }
   const expected = crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)

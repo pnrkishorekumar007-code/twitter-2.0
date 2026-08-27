@@ -14,15 +14,10 @@ import {
   RESEND_COOLDOWN_MS,
 } from "../services/languageOtpService.js";
 import { verifyAuthToken } from "../utils/jwt.js";
+import sanitizeUser from "../utils/sanitizeUser.js";
+import { stripHtml } from "../utils/inputSanitize.js";
 
 const router = express.Router();
-
-function sanitizeUser(u) {
-  if (!u) return u;
-  const obj = u.toObject ? u.toObject() : { ...u };
-  delete obj.password;
-  return obj;
-}
 
 // Profile fields a client is allowed to change. Everything else in the request
 // body is ignored, so a caller can never silently overwrite plan/subscription
@@ -52,6 +47,11 @@ router.patch("/profile/update", requireAnyAuth, async (req, res) => {
     const patch = {};
     for (const key of PROFILE_EDITABLE_FIELDS) {
       if (req.body[key] !== undefined) patch[key] = req.body[key];
+    }
+
+    // Strip HTML from user-generated text fields to prevent stored XSS.
+    for (const key of ["displayName", "bio", "location", "website"]) {
+      if (typeof patch[key] === "string") patch[key] = stripHtml(patch[key]);
     }
 
     if (patch.displayName !== undefined && !String(patch.displayName).trim()) {
@@ -100,7 +100,7 @@ router.patch("/profile/banner", requireAnyAuth, async (req, res) => {
       { new: true }
     );
     if (!user) return res.status(404).send({ error: "User not found" });
-    return res.status(200).send(user);
+    return res.status(200).send(sanitizeUser(user));
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -131,7 +131,7 @@ router.patch("/notifications/:email", requireAnyAuth, async (req, res) => {
   try {
     const { email } = req.params;
     const { enabled } = req.body;
-    if (req.user.email !== email) {
+    if (String(req.user.email || "").toLowerCase() !== String(email || "").toLowerCase()) {
       return res.status(403).send({ error: "Cannot modify another user's settings" });
     }
     const user = await User.findOneAndUpdate(
@@ -140,7 +140,10 @@ router.patch("/notifications/:email", requireAnyAuth, async (req, res) => {
       { new: true }
     );
     if (!user) return res.status(404).send({ error: "User not found" });
-    return res.status(200).send(user);
+    return res.status(200).send({
+      keywordNotifications: user.keywordNotifications !== false,
+      keywords: DEFAULT_KEYWORDS,
+    });
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -148,8 +151,7 @@ router.patch("/notifications/:email", requireAnyAuth, async (req, res) => {
 
 /**
  * TASK: KEYWORD-BASED BROWSER NOTIFICATIONS
- * Returns the user's keyword-notification preference plus the keywords that
- * are currently monitored (server-side single source of truth).
+ * Enables/disables keyword notifications for the signed-in user.
  */
 router.get("/user/notification-settings", requireAnyAuth, async (req, res) => {
   try {

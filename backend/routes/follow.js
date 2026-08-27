@@ -4,6 +4,7 @@ import User from "../models/user.js";
 import Notification from "../models/notification.js";
 import FollowRequest from "../models/followRequest.js";
 import { requireAnyAuth } from "../middleware/auth.js";
+import { rateLimit } from "../utils/rateLimiter.js";
 
 const router = express.Router();
 
@@ -41,6 +42,8 @@ function validObjectId(id) {
  */
 router.post("/users/follow/:id", requireAnyAuth, async (req, res) => {
   try {
+    const limiter = rateLimit({ key: `follow:${req.user?.uid || req.user?.email || req.ip}`, windowMs: 60 * 1000, max: 20 });
+    if (!limiter.allowed) return res.status(429).send({ error: "Too many follow requests. Please slow down." });
     const { id } = req.params;
     if (!validObjectId(id)) return res.status(400).send({ error: "Invalid user id" });
 
@@ -61,7 +64,7 @@ router.post("/users/follow/:id", requireAnyAuth, async (req, res) => {
       return res.status(200).send({
         success: true,
         following: true,
-        user: await User.findById(current._id),
+        user: await User.findById(current._id).select(PROFILE_SELECT),
       });
     }
 
@@ -83,7 +86,7 @@ router.post("/users/follow/:id", requireAnyAuth, async (req, res) => {
         success: true,
         requiresRequest: true,
         requested: !!existing,
-        user: await User.findById(current._id),
+        user: await User.findById(current._id).select(PROFILE_SELECT),
       });
     }
 
@@ -102,12 +105,13 @@ router.post("/users/follow/:id", requireAnyAuth, async (req, res) => {
       type: "follow",
     });
 
-    const user = await User.findById(current._id);
+    const updatedTarget = await User.findById(target._id).select("followers");
+    const user = await User.findById(current._id).select(PROFILE_SELECT);
     return res.status(200).send({
       success: true,
       following: true,
       user,
-      target: { _id: target._id, followerCount: (target.followers || []).length + 1 },
+      target: { _id: target._id, followerCount: (updatedTarget?.followers || []).length },
     });
   } catch (error) {
     return res.status(400).send({ error: error.message });
@@ -120,6 +124,8 @@ router.post("/users/follow/:id", requireAnyAuth, async (req, res) => {
  */
 router.post("/users/unfollow/:id", requireAnyAuth, async (req, res) => {
   try {
+    const limiter = rateLimit({ key: `follow:${req.user?.uid || req.user?.email || req.ip}`, windowMs: 60 * 1000, max: 20 });
+    if (!limiter.allowed) return res.status(429).send({ error: "Too many requests. Please slow down." });
     const { id } = req.params;
     if (!validObjectId(id)) return res.status(400).send({ error: "Invalid user id" });
 
@@ -139,7 +145,7 @@ router.post("/users/unfollow/:id", requireAnyAuth, async (req, res) => {
       { $pull: { followers: current._id } }
     );
 
-    const user = await User.findById(current._id);
+    const user = await User.findById(current._id).select(PROFILE_SELECT);
     return res.status(200).send({
       success: true,
       following: false,
@@ -403,7 +409,7 @@ router.post("/users/follow-request/accept/:requestId", requireAnyAuth, async (re
       type: "request_accepted",
     });
 
-    const user = await User.findById(current._id);
+    const user = await User.findById(current._id).select(PROFILE_SELECT);
     return res.status(200).send({ success: true, user });
   } catch (error) {
     return res.status(400).send({ error: error.message });

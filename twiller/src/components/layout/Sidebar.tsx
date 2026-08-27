@@ -63,7 +63,7 @@ interface NavItem {
  * Collapses to an icon-only rail below `lg`; every row is a 44px pill with
  * a 180ms hover fade.
  */
-export default function Sidebar({
+function SidebarInner({
   currentPage = "home",
   onNavigate,
   forceExpanded = false,
@@ -275,3 +275,6 @@ export default function Sidebar({
     </TooltipProvider>
   );
 }
+
+const Sidebar = React.memo(SidebarInner);
+export default Sidebar;

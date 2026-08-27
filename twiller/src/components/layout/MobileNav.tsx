@@ -24,7 +24,7 @@ interface MobileNavProps {
  * X-style mobile bottom bar: icon-only, hairline top border, safe-area
  * padding, with a floating compose button anchored above it.
  */
-export default function MobileNav({
+function MobileNavInner({
   currentPage = "home",
   onNavigate,
   onOpenMenu,
@@ -85,6 +85,9 @@ export default function MobileNav({
     </nav>
   );
 }
+
+const MobileNav = React.memo(MobileNavInner);
+export default MobileNav;
 
 function NavButton({
   label,

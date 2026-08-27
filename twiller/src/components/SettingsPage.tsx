@@ -25,6 +25,7 @@ import LoginHistorySection from "./LoginHistorySection";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useToast } from "./Toast";
 import axiosInstance from "@/lib/axiosInstance";
@@ -54,6 +55,7 @@ export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
   const { t } = useLanguage();
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
   const { toast } = useToast();
   const [showEditModal, setShowEditModal] = useState(false);
   const [section, setSection] = useState("account");
@@ -65,15 +67,20 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (section !== "subscription") return;
-    setLoadingHistory(true);
-    axiosInstance
-      .get("/payment/history")
-      .then((res) => setSubHistory(res.data.subscriptions || []))
-      .catch(() => {
-        toast("Failed to load payment history", "error");
-      })
-      .finally(() => setLoadingHistory(false));
-  }, [section]);
+    let cancelled = false;
+    (async () => {
+      setLoadingHistory(true);
+      try {
+        const res = await axiosInstance.get("/payment/history");
+        if (!cancelled) setSubHistory(res.data.subscriptions || []);
+      } catch {
+        if (!cancelled) toast("Failed to load payment history", "error");
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [section, toast]);
 
   if (!user) return null;
 
@@ -250,7 +257,7 @@ export default function SettingsPage() {
               <Button
                 variant="outline"
                 className="rounded-full mt-4 w-full"
-                onClick={() => window.location.href = "/premium"}
+                onClick={() => router.push("/premium")}
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 {t("settings_manage_plan")}

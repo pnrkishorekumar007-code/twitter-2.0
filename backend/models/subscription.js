@@ -22,7 +22,7 @@ const SubscriptionSchema = new mongoose.Schema({
   invoiceNumber: { type: String, default: null },
   status: {
     type: String,
-    enum: ["PENDING", "ACTIVE", "FAILED", "REFUNDED"],
+    enum: ["PENDING", "PROCESSING", "ACTIVE", "FAILED", "REFUNDED"],
     default: "PENDING",
   },
   startDate: { type: Date, default: null },

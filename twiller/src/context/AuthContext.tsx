@@ -8,10 +8,10 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "./firebase";
-import axiosInstance from "../lib/axiosInstance";
+import axiosInstance, { clearFirebaseTokenCache } from "../lib/axiosInstance";
 import type { LoginHistoryEntry } from "../lib/types";
 import { getErrorMessage } from "../lib/types";
 import { getClientInfo } from "@/lib/clientInfo";
@@ -70,18 +70,29 @@ interface AuthContextType {
   isLoading: boolean;
   googlesignin: () => Promise<void>;
   completeLogin: (data: { user?: User; token?: string }) => void;
-  /** Set true before calling completeLogin + router.replace to prevent
-   *  onAuthStateChanged from racing with the redirect. */
   suppressAuthListener: (suppress: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Set when a login requires OTP verification (Chrome device rule) but the
-// Firebase session is already active (e.g. Google sign-in). While set, the
-// session-restore path refuses to restore the user, so protected pages stay
-// locked until the OTP is verified.
 const PENDING_OTP_FLAG = "twiller-otp-pending";
+
+// Dedup: in-flight /loggedinuser promise cache keyed by email.
+const inflightUserFetches = new Map<string, Promise<User | null>>();
+
+async function fetchUserByEmail(email: string): Promise<User | null> {
+  const existing = inflightUserFetches.get(email);
+  if (existing) return existing;
+
+  const promise = axiosInstance
+    .get("/loggedinuser", { params: { email } })
+    .then((res) => res.data as User)
+    .catch(() => null)
+    .finally(() => inflightUserFetches.delete(email));
+
+  inflightUserFetches.set(email, promise);
+  return promise;
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -97,16 +108,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const router = useRouter();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
-  // Always start loading (true) — including on the server — so the SSR
-  // HTML matches the client's first paint. Real auth state resolves in the
-  // onAuthStateChanged effect below. (auth is null during SSR.)
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [token, setToken] = useState<string | null>(null);
 
-  // When a manual login flow (login / signup / googlesignin) is in progress,
-  // suppress onAuthStateChanged from fetching /loggedinuser so it doesn't
-  // race with the manual flow's own /loggedinuser call.
   const loginInProgress = useRef(false);
+  // Cache user by email to avoid redundant fetches on re-mount.
+  const userCacheRef = useRef<Map<string, User>>(new Map());
 
   useEffect(() => {
     if (!auth) return;
@@ -114,8 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const unsubscribe = onAuthStateChanged(
       auth,
       async (firebaseUser) => {
-        // If a manual login flow is in progress, don't interfere — the flow
-        // will call completeLogin() or handle the error itself.
         if (loginInProgress.current) return;
 
         if (firebaseUser?.email) {
@@ -123,8 +128,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             typeof window !== "undefined" &&
             localStorage.getItem(PENDING_OTP_FLAG) === "1";
 
-          // A Chrome OTP verification is still required for this account. Do
-          // not restore the session from Firebase — send to OTP page instead.
           if (otpPending) {
             setUser(null);
             localStorage.removeItem("twitter-user");
@@ -139,32 +142,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             return;
           }
 
-          try {
-            const res = await axiosInstance.get("/loggedinuser", {
-              params: { email: firebaseUser.email },
-            });
+          // Check local cache first for instant hydration.
+          const cached = userCacheRef.current.get(firebaseUser.email);
+          if (cached) {
+            setUser(cached);
+            localStorage.setItem("twitter-user", JSON.stringify(cached));
+            setIsLoading(false);
+            return;
+          }
 
-            if (res.data) {
-              setUser(res.data);
-              localStorage.setItem("twitter-user", JSON.stringify(res.data));
+          try {
+            const userData = await fetchUserByEmail(firebaseUser.email);
+            if (userData) {
+              setUser(userData);
+              userCacheRef.current.set(firebaseUser.email, userData);
+              localStorage.setItem("twitter-user", JSON.stringify(userData));
             }
           } catch (err) {
             console.error("Failed to fetch user:", err);
           }
         } else {
+          // Email/password logins (and email OTP logins) sign out of Firebase,
+          // so the absence of a Firebase user is NOT proof of logout. When an
+          // OTP isn't pending and we hold a valid backend session, restore the
+          // cached user so a completed login survives auth events and refresh.
+          if (
+            typeof window !== "undefined" &&
+            localStorage.getItem(PENDING_OTP_FLAG) !== "1" &&
+            localStorage.getItem("twiller-jwt")
+          ) {
+            const cachedRaw = localStorage.getItem("twitter-user");
+            if (cachedRaw) {
+              try {
+                const cachedUser = JSON.parse(cachedRaw) as User;
+                if (cachedUser?.email) {
+                  setUser(cachedUser);
+                  setIsLoading(false);
+                  return;
+                }
+              } catch {
+                // fall through to sign-out below
+              }
+            }
+          }
           setUser(null);
           localStorage.removeItem("twitter-user");
         }
         setIsLoading(false);
       },
       (error) => {
-        // Handle Firebase initialization errors (e.g. auth/invalid-credential
-        // from a stale session belonging to a previous Firebase project).
         console.warn("Firebase auth state error:", error?.message || error);
         const code = (error as { code?: string })?.code;
         if (code === "auth/invalid-credential" || code === "auth/invalid-api-key") {
-          // Clear stale Firebase session data so the user sees a clean login
-          // screen instead of an infinite loading spinner.
           if (auth) {
             signOut(auth).catch(() => {});
           }
@@ -186,12 +215,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!auth) {
         throw new Error("Firebase not configured. Add NEXT_PUBLIC_FIREBASE_* env vars.");
       }
-      // Authenticate credentials with Firebase without persisting session.
       await signInWithEmailAndPassword(auth, email, password);
-      // Sign out immediately to prevent onAuthStateChanged from setting user
-      // before OTP verification.
       await signOut(auth);
-      // No user state is set here; OTP verification will call completeLogin.
     } finally {
       setIsLoading(false);
       loginInProgress.current = false;
@@ -212,24 +237,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("Firebase not configured. Add NEXT_PUBLIC_FIREBASE_* env vars.");
       }
 
-      // Step 1: Create Firebase account (so credentials exist for login/OTP).
       try {
         await createUserWithEmailAndPassword(auth, email, password);
       } catch (firebaseErr: unknown) {
         const fe = firebaseErr as { code?: string };
         if (fe.code === "auth/email-already-in-use") {
-          // Firebase account exists — check if backend user also exists.
-          // Use a direct fetch (no auth header) to avoid 401 from the OTP guard.
           try {
             const checkRes = await fetch(
               `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/loggedinuser?email=${encodeURIComponent(email)}`
             );
             if (checkRes.ok) {
-              // Both Firebase AND backend user exist — this is a real duplicate.
               throw new Error("An account with this email already exists. Please log in.");
             }
-            // Backend user doesn't exist — Firebase account is orphaned. Proceed
-            // with registration (backend will create the user after OTP verify).
           } catch (checkErr) {
             if (
               checkErr instanceof Error &&
@@ -237,20 +256,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             ) {
               throw checkErr;
             }
-            // Network error or other issue — proceed with registration OTP.
           }
         } else {
           throw firebaseErr;
         }
       }
 
-      // Step 2: Send registration OTP (backend user NOT created yet).
       const avatar = "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400";
       const res = await axiosInstance.post("/auth/register-otp", {
         email, displayName, username, phone, avatar,
       });
 
-      // Step 3: Store pending session and redirect to OTP page.
       localStorage.setItem("twiller-login-token", res.data.loginToken || "");
       localStorage.setItem("twiller-login-email", email);
       localStorage.setItem(
@@ -270,24 +286,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     if (!user?.email) return;
     try {
-      const res = await axiosInstance.get("/loggedinuser", {
-        params: { email: user.email },
-      });
-      if (res.data) {
-        setUser(res.data);
-        localStorage.setItem("twitter-user", JSON.stringify(res.data));
+      const userData = await fetchUserByEmail(user.email);
+      if (userData) {
+        setUser(userData);
+        userCacheRef.current.set(user.email, userData);
+        localStorage.setItem("twitter-user", JSON.stringify(userData));
       }
     } catch (err) {
       console.error("Failed to refresh user:", err);
     }
-  };
+  }, [user]);
 
   const logout = async () => {
     setUser(null);
     setToken(null);
+    clearFirebaseTokenCache();
     if (auth) {
       await signOut(auth);
     }
@@ -300,9 +316,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem(PENDING_OTP_FLAG);
   };
 
-  // Called after a completed login (direct or OTP-verified): persists the
-  // session JWT and the user profile returned by the backend.
-  const completeLogin = ({ user: newUser, token: newToken }: { user?: User; token?: string }) => {
+  const completeLogin = useCallback(({ user: newUser, token: newToken }: { user?: User; token?: string }) => {
     localStorage.removeItem(PENDING_OTP_FLAG);
     if (newToken) {
       setToken(newToken);
@@ -310,18 +324,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     if (newUser) {
       setUser(newUser);
+      userCacheRef.current.set(newUser.email, newUser);
       localStorage.setItem("twitter-user", JSON.stringify(newUser));
     }
-  };
+  }, []);
 
-  /** Temporarily suppress onAuthStateChanged from fetching /loggedinuser.
-   *  Call suppressAuthListener(true) before completeLogin + router.replace,
-   *  then suppressAuthListener(false) in a microtask after navigation. */
-  const suppressAuthListener = (suppress: boolean) => {
+  const suppressAuthListener = useCallback((suppress: boolean) => {
     loginInProgress.current = suppress;
-  };
+  }, []);
 
-  const updateProfile = async (profileData: {
+  const updateProfile = useCallback(async (profileData: {
     displayName: string;
     bio: string;
     location: string;
@@ -344,11 +356,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
     if (res.data) {
       setUser(res.data);
+      userCacheRef.current.set(user.email, res.data);
       localStorage.setItem("twitter-user", JSON.stringify(res.data));
     }
-  };
+  }, [user]);
 
-  const updateBanner = async (bannerUrl: string) => {
+  const updateBanner = useCallback(async (bannerUrl: string) => {
     if (!user) return;
     const res = await axiosInstance
       .patch(`/profile/banner`, { banner: bannerUrl })
@@ -363,11 +376,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
     if (res.data) {
       setUser(res.data);
+      userCacheRef.current.set(user.email, res.data);
       localStorage.setItem("twitter-user", JSON.stringify(res.data));
     }
-  };
+  }, [user]);
 
-  const googlesignin = async () => {
+  const googlesignin = useCallback(async () => {
     setIsLoading(true);
     loginInProgress.current = true;
 
@@ -383,31 +397,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("No email found in Google account");
       }
 
-      // Check if the backend user exists using the Firebase ID token
-      // (not the Twiller JWT, which doesn't exist yet for new users).
-      let userData: User | null = null;
-      let isNewUser = false;
+      // Parallelize: check if user exists AND get ID token simultaneously.
+      const idTokenPromise = firebaseuser.getIdToken();
+      const existingUserPromise = fetchUserByEmail(firebaseuser.email);
 
-      try {
-        const idToken = await firebaseuser.getIdToken();
-        const res = await axiosInstance.get("/loggedinuser", {
-          params: { email: firebaseuser.email },
-          headers: { Authorization: `Bearer ${idToken}` },
-        });
-        userData = res.data;
-      } catch {
-        isNewUser = true;
-      }
+      const [idToken, userData] = await Promise.all([idTokenPromise, existingUserPromise]);
 
-      if (isNewUser) {
-        // New user: send registration OTP (backend user created only after verify).
+      if (!userData) {
+        // New user: send registration OTP.
         const avatar = firebaseuser.photoURL || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400";
         const regRes = await axiosInstance.post("/auth/register-otp", {
           email: firebaseuser.email,
           displayName: firebaseuser.displayName || "User",
           username: firebaseuser.email.split("@")[0],
           avatar,
-        });
+        }, { headers: { Authorization: `Bearer ${idToken}` } });
 
         localStorage.setItem("twiller-login-token", regRes.data.loginToken || "");
         localStorage.setItem("twiller-login-email", firebaseuser.email);
@@ -428,14 +432,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
 
-      // Existing user: device gate + OTP (always requires OTP now).
-      if (!userData) return;
+      // Existing user: device gate + OTP decision.
       try {
         const res = await axiosInstance.post("/auth/login", {
           email: userData.email,
           method: "google",
           clientInfo: getClientInfo(),
-        });
+        }, { headers: { Authorization: `Bearer ${idToken}` } });
 
         if (res.data?.requiresOtp) {
           localStorage.setItem("twiller-login-token", res.data.loginToken || "");
@@ -470,10 +473,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
 
-      // No OTP required — this login is complete.
+      // No OTP required — login complete. Use replace for instant redirect.
       localStorage.removeItem(PENDING_OTP_FLAG);
       setUser(userData);
+      userCacheRef.current.set(userData.email, userData);
       localStorage.setItem("twitter-user", JSON.stringify(userData));
+      router.replace("/home");
     } catch (error) {
       const code = (error as { code?: string })?.code;
       if (
@@ -492,7 +497,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoading(false);
       loginInProgress.current = false;
     }
-  };
+  }, [router, toast]);
 
   return (
     <AuthContext.Provider
