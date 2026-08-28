@@ -279,20 +279,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           describeFirebaseError(firebaseErr, "signUp");
         }
         if (fe.code === "auth/email-already-in-use") {
+          // Use the shared axios instance so the Authorization header is
+          // attached (Firebase ID token or session JWT) — a raw fetch() sent
+          // no credentials, so an auth-gated /loggedinuser returned 401 and
+          // the duplicate check never completed.
+          const checkErr = await axiosInstance
+            .get("/loggedinuser", { params: { email } })
+            .catch((e) => e);
+          const status = checkErr?.response?.status;
+          if (status !== 404 && status !== 401) {
+            // A MongoDB profile exists with this email — it's a fully
+            // registered account, ask the user to log in instead.
+            throw new Error("An account with this email already exists. Please log in.");
+          }
+          // No MongoDB profile for this email — the earlier Firebase account
+          // was created but never OTP-verified. Don't block: (re)send a
+          // registration code so the user can complete the OTP flow. The
+          // backend never creates a duplicate Mongo user (the actual profile is
+          // only inserted in /auth/register-verify after a verified code).
           try {
-            const checkRes = await fetch(
-              `${getBackendBaseUrl()}/loggedinuser?email=${encodeURIComponent(email)}`
+            const res = await axiosInstance.post("/auth/register-otp", {
+              email,
+              displayName,
+              username,
+              phone,
+              avatar:
+                "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
+            });
+            localStorage.setItem("twiller-login-token", res.data.loginToken || "");
+            localStorage.setItem("twiller-login-email", email);
+            localStorage.setItem(
+              "twiller-login-expires-at",
+              String(Date.now() + (res.data.expiresIn ?? 300) * 1000)
             );
-            if (checkRes.ok) {
-              throw new Error("An account with this email already exists. Please log in.");
-            }
-          } catch (checkErr) {
-            if (
-              checkErr instanceof Error &&
-              checkErr.message === "An account with this email already exists. Please log in."
-            ) {
-              throw checkErr;
-            }
+            localStorage.setItem("twiller-login-method", "email");
+            localStorage.setItem("twiller-login-is-registration", "1");
+            localStorage.setItem(
+              "twiller-registration-data",
+              JSON.stringify({
+                email,
+                displayName,
+                username,
+                phone,
+                avatar:
+                  "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
+              })
+            );
+            localStorage.setItem(PENDING_OTP_FLAG, "1");
+            router.push(`/verify-login-otp?email=${encodeURIComponent(email)}`);
+            return;
+          } catch {
+            // If the resend fails (e.g. rate limited), surface the duplicate.
+            throw new Error("An account with this email already exists. Please log in.");
           }
         }
         throw firebaseErr;
