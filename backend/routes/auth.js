@@ -24,7 +24,7 @@ import {
 } from "../services/loginOtpService.js";
 import { recordLogin } from "../services/loginHistoryService.js";
 import { getFirebaseAdmin } from "../utils/firebaseAdmin.js";
-import { findUserByEmail } from "../utils/emailLookup.js";
+import { findUserByEmail, escapeRegExp } from "../utils/emailLookup.js";
 import sanitizeUser from "../utils/sanitizeUser.js";
 
 const router = express.Router();
@@ -633,8 +633,15 @@ router.post("/forgot-password", async (req, res) => {
 
     // Locate the account (email case-insensitive, phone exact, then phone-digits
     // fallback so "+919876543210" finds a user stored as "9876543210").
+    // NOTE: must be a real Mongoose document (no .lean()) because we call
+    // user.save() below to persist the daily reset request.
     let user = isEmail
-      ? await findUserByEmail(identifier)
+      ? await User.findOne({
+          $or: [
+            { email: identifier.trim().toLowerCase() },
+            { email: { $regex: new RegExp(`^${escapeRegExp(identifier.trim().toLowerCase())}$`, "i") } },
+          ],
+        })
       : await User.findOne({ phone: identifier });
     if (!user && isPhone) {
       // Guard: an all-zero / blank number must not collapse to the empty
@@ -791,8 +798,15 @@ router.post("/forgot-password/verify", async (req, res) => {
       });
     }
 
+    // NOTE: must be a real Mongoose document (no .lean()) because
+    // resetAndDeliverPassword() calls user.save() to persist the new password.
     let user = isEmail
-      ? await findUserByEmail(identifier)
+      ? await User.findOne({
+          $or: [
+            { email: identifier.trim().toLowerCase() },
+            { email: { $regex: new RegExp(`^${escapeRegExp(identifier.trim().toLowerCase())}$`, "i") } },
+          ],
+        })
       : await User.findOne({ phone: identifier });
     if (!user && isPhone) {
       const digits = normalizePhone(identifier).replace(/^0+/, "");
