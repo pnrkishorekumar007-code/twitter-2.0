@@ -391,10 +391,16 @@ router.post("/register-otp", async (req, res) => {
     if (!email) return res.status(400).send({ error: "Email is required." });
     if (!isValidEmail(email)) return res.status(400).send({ error: "Invalid email address." });
     if (!username) return res.status(400).send({ error: "Username is required." });
+    if (username.trim().length < 3) return res.status(400).send({ error: "Username must be at least 3 characters." });
+    if (username.trim().length > 30) return res.status(400).send({ error: "Username must be at most 30 characters." });
+    if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) return res.status(400).send({ error: "Username can only contain letters, numbers, and underscores." });
     if (!displayName) return res.status(400).send({ error: "Display name is required." });
 
     const existing = await findUserByEmail(email);
     if (existing) return res.status(409).send({ error: "An account with this email already exists. Please log in." });
+
+    const existingUsername = await User.findOne({ username: username.trim() });
+    if (existingUsername) return res.status(409).send({ error: "This username is already taken. Please choose another." });
 
     const limiter = rateLimit({
       key: `register-otp:${email.toLowerCase()}`,
@@ -458,14 +464,32 @@ router.post("/register-verify", async (req, res) => {
     const existing = await findUserByEmail(email);
     if (existing) return res.status(409).send({ error: "An account with this email already exists." });
 
-    const newUser = new User({
-      username,
-      displayName,
-      avatar: avatar || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
-      email: email.toLowerCase(),
-      ...(phone ? { phone } : {}),
-    });
-    await newUser.save();
+    const existingUsername = await User.findOne({ username: username.trim() });
+    if (existingUsername) return res.status(409).send({ error: "This username is already taken. Please choose another." });
+
+    let newUser;
+    try {
+      newUser = new User({
+        username: username.trim(),
+        displayName,
+        avatar: avatar || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
+        email: email.toLowerCase(),
+        ...(phone ? { phone } : {}),
+      });
+      await newUser.save();
+    } catch (saveErr) {
+      if (saveErr?.code === 11000) {
+        const field = Object.keys(saveErr.keyPattern || {})[0] || "field";
+        if (field === "username") {
+          return res.status(409).send({ error: "This username is already taken. Please choose another." });
+        }
+        if (field === "email") {
+          return res.status(409).send({ error: "An account with this email already exists." });
+        }
+        return res.status(409).send({ error: `This ${field} is already in use. Please choose another.` });
+      }
+      throw saveErr;
+    }
 
     const authToken = signAuthToken({
       userId: newUser._id.toString(),

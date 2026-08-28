@@ -1,5 +1,6 @@
 import { io, Socket } from "socket.io-client";
 import { auth } from "@/context/firebase";
+import { getBackendBaseUrl } from "./backendUrl";
 
 let socket: Socket | null = null;
 let refCount = 0;
@@ -25,8 +26,10 @@ async function getSessionToken(): Promise<string | null> {
 // Lazy singleton so multiple consumers share a single connection.
 export function getSocket(): Socket | null {
   if (typeof window === "undefined") return null;
+  const baseUrl = getBackendBaseUrl();
+  if (!baseUrl) return null;
   if (!socket) {
-    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000", {
+    socket = io(baseUrl, {
       transports: ["websocket", "polling"],
       autoConnect: false,
     });

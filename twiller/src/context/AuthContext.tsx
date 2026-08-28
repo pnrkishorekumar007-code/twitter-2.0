@@ -12,6 +12,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { useRouter } from "next/navigation";
 import { auth } from "./firebase";
 import axiosInstance, { clearFirebaseTokenCache } from "../lib/axiosInstance";
+import { getBackendBaseUrl } from "../lib/backendUrl";
 import type { LoginHistoryEntry } from "../lib/types";
 import { getErrorMessage } from "../lib/types";
 import { getClientInfo } from "@/lib/clientInfo";
@@ -87,7 +88,14 @@ async function fetchUserByEmail(email: string): Promise<User | null> {
   const promise = axiosInstance
     .get("/loggedinuser", { params: { email } })
     .then((res) => res.data as User)
-    .catch(() => null)
+    .catch((err) => {
+      if (err?.response?.status === 404) return null;
+      console.error(
+        `[Twiller] /loggedinuser for ${email} failed:`,
+        err?.message || err
+      );
+      return null;
+    })
     .finally(() => inflightUserFetches.delete(email));
 
   inflightUserFetches.set(email, promise);
@@ -237,14 +245,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("Firebase not configured. Add NEXT_PUBLIC_FIREBASE_* env vars.");
       }
 
+      let firebaseUser;
       try {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        firebaseUser = cred.user;
       } catch (firebaseErr: unknown) {
         const fe = firebaseErr as { code?: string };
         if (fe.code === "auth/email-already-in-use") {
           try {
             const checkRes = await fetch(
-              `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/loggedinuser?email=${encodeURIComponent(email)}`
+              `${getBackendBaseUrl()}/loggedinuser?email=${encodeURIComponent(email)}`
             );
             if (checkRes.ok) {
               throw new Error("An account with this email already exists. Please log in.");
@@ -257,15 +267,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               throw checkErr;
             }
           }
-        } else {
-          throw firebaseErr;
         }
+        throw firebaseErr;
       }
 
       const avatar = "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400";
-      const res = await axiosInstance.post("/auth/register-otp", {
-        email, displayName, username, phone, avatar,
-      });
+      let res;
+      try {
+        res = await axiosInstance.post("/auth/register-otp", {
+          email, displayName, username, phone, avatar,
+        });
+      } catch (backendErr) {
+        // Backend rejected the registration (e.g. duplicate username/email).
+        // Clean up the orphaned Firebase account so the user can retry.
+        try {
+          await firebaseUser.delete();
+        } catch {
+          // Firebase delete may fail if user isn't recently created — best effort.
+        }
+        throw backendErr;
+      }
 
       localStorage.setItem("twiller-login-token", res.data.loginToken || "");
       localStorage.setItem("twiller-login-email", email);

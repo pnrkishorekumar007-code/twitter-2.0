@@ -2,15 +2,21 @@ import crypto from "crypto";
 import Otp from "../models/otp.js";
 import { sendMail } from "./mailer.js";
 
-const OTP_SECRET = process.env.LOGIN_OTP_SECRET || process.env.JWT_SECRET;
-if (!OTP_SECRET) {
-  console.warn("⚠️  Neither LOGIN_OTP_SECRET nor JWT_SECRET is set. Using fallback dev secret — DO NOT deploy with this.");
-}
-const OTP_SECRET_KEY = OTP_SECRET || "twiller-dev-otp-secret";
 const MAX_ATTEMPTS = 5;
 
+// The HMAC key is resolved lazily (not at module load) because ESM imports are
+// hoisted above dotenv.config(), so reading process.env at import time would
+// always miss the configured JWT_SECRET and silently use the fallback.
+function getOtpSecret() {
+  const secret = process.env.LOGIN_OTP_SECRET || process.env.JWT_SECRET;
+  if (!secret) {
+    console.warn("⚠️  Neither LOGIN_OTP_SECRET nor JWT_SECRET is set. Using fallback dev secret — DO NOT deploy with this.");
+  }
+  return secret || "twiller-dev-otp-secret";
+}
+
 export function hmacOtp(code) {
-  return crypto.createHmac("sha256", OTP_SECRET_KEY).update(String(code)).digest("hex");
+  return crypto.createHmac("sha256", getOtpSecret()).update(String(code)).digest("hex");
 }
 
 export function generateOtpCode() {

@@ -2,7 +2,6 @@ import express from "express";
 import User from "../models/user.js";
 import { requireAnyAuth } from "../middleware/auth.js";
 import { getLoginHistory } from "../services/loginHistoryService.js";
-import { DEFAULT_KEYWORDS } from "../utils/keywordDetector.js";
 import { LANGUAGE_CODES } from "../models/LanguageChangeOTP.js";
 import { rateLimit } from "../utils/rateLimiter.js";
 import {
@@ -18,6 +17,31 @@ import sanitizeUser from "../utils/sanitizeUser.js";
 import { stripHtml } from "../utils/inputSanitize.js";
 
 const router = express.Router();
+
+const KEYWORD_LIMIT = 20;
+const KEYWORD_MAX_LEN = 50;
+
+function cleanKeywords(value) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  const cleaned = [];
+  for (const raw of value) {
+    const keyword = String(raw || "").trim().slice(0, KEYWORD_MAX_LEN);
+    if (!keyword) continue;
+    const lower = keyword.toLowerCase();
+    if (seen.has(lower)) continue;
+    seen.add(lower);
+    cleaned.push(keyword);
+  }
+  return cleaned.slice(0, KEYWORD_LIMIT);
+}
+
+function keywordSettings(user) {
+  return {
+    keywordNotifications: user.keywordNotifications !== false,
+    keywords: user.keywords || [],
+  };
+}
 
 // Profile fields a client is allowed to change. Everything else in the request
 // body is ignored, so a caller can never silently overwrite plan/subscription
@@ -140,10 +164,7 @@ router.patch("/notifications/:email", requireAnyAuth, async (req, res) => {
       { new: true }
     );
     if (!user) return res.status(404).send({ error: "User not found" });
-    return res.status(200).send({
-      keywordNotifications: user.keywordNotifications !== false,
-      keywords: DEFAULT_KEYWORDS,
-    });
+    return res.status(200).send(keywordSettings(user));
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -157,10 +178,7 @@ router.get("/user/notification-settings", requireAnyAuth, async (req, res) => {
   try {
     const user = await User.findOne({ email: req.user.email || "" });
     if (!user) return res.status(404).send({ error: "User not found" });
-    return res.status(200).send({
-      keywordNotifications: user.keywordNotifications !== false,
-      keywords: DEFAULT_KEYWORDS,
-    });
+    return res.status(200).send(keywordSettings(user));
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }
@@ -168,24 +186,26 @@ router.get("/user/notification-settings", requireAnyAuth, async (req, res) => {
 
 /**
  * TASK: KEYWORD-BASED BROWSER NOTIFICATIONS
- * Enables/disables keyword notifications for the signed-in user.
+ * Enables/disables keyword notifications and persists the signed-in user's
+ * keyword list for the signed-in user.
  */
 router.put("/user/notification-settings", requireAnyAuth, async (req, res) => {
   try {
-    const value = req.body?.keywordNotifications;
-    if (typeof value !== "boolean") {
-      return res.status(400).send({ error: "keywordNotifications must be a boolean" });
-    }
-    const user = await User.findOneAndUpdate(
-      { email: req.user.email || "" },
-      { $set: { keywordNotifications: value } },
-      { new: true }
-    );
+    const body = req.body || {};
+    const user = await User.findOne({ email: req.user.email || "" });
     if (!user) return res.status(404).send({ error: "User not found" });
-    return res.status(200).send({
-      keywordNotifications: user.keywordNotifications !== false,
-      keywords: DEFAULT_KEYWORDS,
-    });
+
+    if (body.keywordNotifications !== undefined) {
+      if (typeof body.keywordNotifications !== "boolean") {
+        return res.status(400).send({ error: "keywordNotifications must be a boolean" });
+      }
+      user.keywordNotifications = body.keywordNotifications;
+    }
+    if (body.keywords !== undefined) {
+      user.keywords = cleanKeywords(body.keywords);
+    }
+    await user.save();
+    return res.status(200).send(keywordSettings(user));
   } catch (error) {
     return res.status(400).send({ error: error.message });
   }

@@ -3,12 +3,14 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { KeyRound, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { KeyRound, Loader2, RefreshCw, ShieldCheck, ArrowLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Input } from "./ui/input";
 import { TwillerBrand } from "./Twitterlogo";
 import { useAuth } from "@/context/AuthContext";
+import { auth } from "@/context/firebase";
+import { signOut } from "firebase/auth";
 import axiosInstance from "@/lib/axiosInstance";
 import { getErrorMessage } from "@/lib/types";
 import { useToast } from "./Toast";
@@ -53,6 +55,7 @@ export default function VerifyLoginOtp() {
   );
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [showBackToSignup, setShowBackToSignup] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [sending, setSending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -127,17 +130,49 @@ export default function VerifyLoginOtp() {
       }
 
       clearPending();
-      // Prevent onAuthStateChanged from racing with the redirect: suppress
-      // the listener while we update context state and navigate away.
       suppressAuthListener(true);
       completeLogin(verifyRes.data);
+
+      // Registration: the signup() created a Firebase user that is still
+      // signed in. Sign it out so onAuthStateChanged falls into the
+      // "no Firebase user" branch, which restores the session from the
+      // localStorage that completeLogin() just populated.
+      if (isRegistration && auth?.currentUser) {
+        try { await signOut(auth); } catch { /* best effort */ }
+      }
+
       toast("Login successful", "success");
-      // Use replace for instant navigation — no history entry created.
       router.replace("/home");
-      // Allow the listener to run again after navigation completes.
       requestAnimationFrame(() => suppressAuthListener(false));
     } catch (err) {
-      setError(getErrorMessage(err, "Verification failed. Please try again."));
+      const msg = getErrorMessage(err, "Verification failed. Please try again.");
+      setError(msg);
+
+      // If registration verification failed with a 4xx error (except OTP
+      // errors), the backend may have rejected the data but the Firebase
+      // account still exists. Clean up the Firebase user and pending state
+      // so the user can retry from the signup form.
+      const axiosErr = err as {
+        response?: { status?: number; data?: { error?: string } };
+      };
+      const status = axiosErr?.response?.status;
+      const isRegistration = localStorage.getItem("twiller-login-is-registration") === "1";
+      if (isRegistration && status && status >= 400 && status < 500) {
+        const errorMsg = axiosErr?.response?.data?.error || "";
+        const isOtpError = /otp|code|expired|incorrect/i.test(errorMsg);
+        if (!isOtpError) {
+          // Non-OTP error (e.g. duplicate username) — clean up and let user retry.
+          clearPending();
+          setShowBackToSignup(true);
+          try {
+            if (auth?.currentUser) {
+              await signOut(auth);
+            }
+          } catch {
+            // best effort
+          }
+        }
+      }
     } finally {
       setVerifying(false);
     }
@@ -234,6 +269,20 @@ export default function VerifyLoginOtp() {
               <div className="bg-destructive/10 border border-destructive/40 rounded-lg p-3 text-red-400 text-sm">
                 {error}
               </div>
+            )}
+
+            {showBackToSignup && (
+              <Button
+                variant="ghost"
+                className="w-full text-blue-400 hover:text-blue-300 hover:bg-transparent text-sm font-semibold"
+                onClick={() => {
+                  clearPending();
+                  router.replace("/");
+                }}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to sign up
+              </Button>
             )}
 
             <div className="space-y-2">

@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { Bell, BellRing, BellOff } from "lucide-react";
+import { Bell, BellRing, BellOff, Plus, X } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
+import { Input } from "./ui/input";
 import { useNotifications } from "@/context/NotificationsContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
@@ -23,13 +24,47 @@ export default function NotificationSettingsCard() {
   const { t } = useLanguage();
 
   const [enabled, setEnabled] = useState(settings.keywordNotifications);
+  const [keywords, setKeywords] = useState<string[]>(settings.keywords || []);
+  const [input, setInput] = useState("");
 
-  // Keep local toggle in sync if settings change from elsewhere.
-  const [lastValue, setLastValue] = useState(settings.keywordNotifications);
-  if (settings.keywordNotifications !== lastValue) {
-    setLastValue(settings.keywordNotifications);
+  // Keep local state in sync if settings change from elsewhere (e.g. user swap).
+  const [lastEnabled, setLastEnabled] = useState(settings.keywordNotifications);
+  const [lastKeywords, setLastKeywords] = useState(settings.keywords || []);
+  if (settings.keywordNotifications !== lastEnabled) {
+    setLastEnabled(settings.keywordNotifications);
     setEnabled(settings.keywordNotifications);
   }
+  const joined = (settings.keywords || []).join("\u0000");
+  const joinedLast = (lastKeywords || []).join("\u0000");
+  if (joined !== joinedLast) {
+    setLastKeywords(settings.keywords || []);
+    setKeywords(settings.keywords || []);
+  }
+
+  const addKeyword = () => {
+    const value = input.trim();
+    if (!value) return;
+    const exists = keywords.some(
+      (kw) => kw.toLowerCase() === value.toLowerCase()
+    );
+    if (exists) {
+      setInput("");
+      return;
+    }
+    setKeywords((prev) => [...prev, value]);
+    setInput("");
+  };
+
+  const removeKeyword = (kw: string) => {
+    setKeywords((prev) => prev.filter((k) => k !== kw));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addKeyword();
+    }
+  };
 
   const permissionMeta = {
     granted: {
@@ -65,7 +100,7 @@ export default function NotificationSettingsCard() {
         return;
       }
     }
-    const ok = await updateSettings(enabled);
+    const ok = await updateSettings(enabled, keywords);
     if (!ok) setEnabled(settings.keywordNotifications);
   };
 
@@ -115,11 +150,33 @@ export default function NotificationSettingsCard() {
         {/* Monitored keywords */}
         <div>
           <p className="text-foreground text-sm font-medium mb-2">{t("keywords_monitored")}</p>
-          {settings.keywords.length === 0 ? (
+
+          {/* Add keyword */}
+          <div className="flex items-center gap-2 mb-3">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t("enter_keyword")}
+              className="flex-1 rounded-full"
+              maxLength={50}
+            />
+            <Button
+              onClick={addKeyword}
+              disabled={!input.trim()}
+              className="rounded-full shrink-0"
+              variant="brand"
+            >
+              <Plus className="h-4 w-4" />
+              {t("add")}
+            </Button>
+          </div>
+
+          {keywords.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t("no_keywords")}</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {settings.keywords.map((kw) => (
+              {keywords.map((kw) => (
                 <Badge
                   key={kw}
                   variant="secondary"
@@ -127,6 +184,14 @@ export default function NotificationSettingsCard() {
                 >
                   <BellRing className="h-3.5 w-3.5 text-brand" />
                   {kw}
+                  <button
+                    type="button"
+                    onClick={() => removeKeyword(kw)}
+                    aria-label={`Remove ${kw}`}
+                    className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </Badge>
               ))}
             </div>

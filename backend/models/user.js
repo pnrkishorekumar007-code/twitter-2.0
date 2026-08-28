@@ -48,6 +48,7 @@ const UserSchema = new mongoose.Schema({
 
   // Task: keyword-based browser notifications
   keywordNotifications: { type: Boolean, default: true },
+  keywords: { type: [String], default: [] },
 
   // Task: follow system
   followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],

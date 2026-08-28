@@ -26,6 +26,13 @@ function normalizeParticipants(a, b) {
   return [String(a), String(b)].sort();
 }
 
+// Order-independent unique key for a participant pair. `_` cannot appear in a
+// Mongo ObjectId hex string, so "A_B" and "B_A" can never collide with another
+// pair's key (e.g. "AB_" is impossible since hex is only 0-9a-f).
+function participantsKey(a, b) {
+  return normalizeParticipants(a, b).join("_");
+}
+
 // Reads the per-user unread counter whether the doc is hydrated (Map) or lean
 // (plain object keyed by user id string).
 function getUnreadCount(conversation, userId) {
@@ -113,13 +120,17 @@ router.post("/messages/conversations", requireAnyAuth, async (req, res) => {
     if (!receiver) return res.status(404).send({ error: "User not found" });
 
     const participants = normalizeParticipants(current._id, receiverId);
-    let conversation = await Conversation.findOne({ participants });
-    if (!conversation) {
-      conversation = await Conversation.create({
-        participants,
-        lastMessageAt: new Date(),
-      });
-    }
+    // Atomic upsert keyed on the order-independent participantsKey rather than
+    // the participants array. A unique index on the array is multikey
+    // (per-element), which would prevent a user from having more than one
+    // conversation; keying on the sorted pair string keeps a user's many
+    // conversations legal while guaranteeing each pair is created exactly once.
+    const key = participantsKey(current._id, receiverId);
+    const conversation = await Conversation.findOneAndUpdate(
+      { participantsKey: key },
+      { $setOnInsert: { participants, participantsKey: key, lastMessageAt: new Date() } },
+      { upsert: true, new: true }
+    );
 
     const payload = await buildConversationPayload(conversation, current._id);
     return res.status(200).send(payload);
@@ -162,9 +173,10 @@ router.post("/messages/send", requireAnyAuth, async (req, res) => {
     if (!receiver) return res.status(404).send({ error: "User not found" });
 
     const participants = normalizeParticipants(current._id, receiverId);
+    const pairKey = participantsKey(current._id, receiverId);
     const conversation = await Conversation.findOneAndUpdate(
-      { participants },
-      { $setOnInsert: { participants, lastMessageAt: new Date() } },
+      { participantsKey: pairKey },
+      { $setOnInsert: { participants, participantsKey: pairKey, lastMessageAt: new Date() } },
       { upsert: true, new: true }
     );
 

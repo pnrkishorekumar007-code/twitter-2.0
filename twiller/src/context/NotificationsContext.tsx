@@ -28,7 +28,7 @@ interface NotificationsContextValue {
   settings: NotificationSettings;
   saveMessage: string | null;
   requestPermission: () => Promise<NotificationPermission>;
-  updateSettings: (keywordNotifications: boolean) => Promise<boolean>;
+  updateSettings: (keywordNotifications: boolean, keywords?: string[]) => Promise<boolean>;
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
@@ -97,7 +97,6 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       connectedRef.current = true;
       s.off("keyword-tweet", showBrowserNotification);
       s.on("keyword-tweet", showBrowserNotification);
-      s.emit("keyword-notifications-set", true);
     })();
     return () => {
       mounted = false;
@@ -154,34 +153,38 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     return result;
   }, []);
 
-  const updateSettings = useCallback(async (keywordNotifications: boolean): Promise<boolean> => {
-    setSaving(true);
-    setSaveMessage(null);
-    try {
-      const { data } = await axiosInstance.put("/user/notification-settings", {
-        keywordNotifications,
-      });
-      setSettings({
-        keywordNotifications: data.keywordNotifications,
-        keywords: data.keywords || [],
-      });
-      setSaveMessage(
-        keywordNotifications
-          ? "Notifications enabled — you'll get a popup when a tweet mentions your keywords."
-          : "Notifications disabled."
-      );
-      return true;
-    } catch (err) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status !== 401) {
-        console.error("Failed to update notification settings:", err);
+  const updateSettings = useCallback(
+    async (keywordNotifications: boolean, keywords?: string[]): Promise<boolean> => {
+      setSaving(true);
+      setSaveMessage(null);
+      try {
+        const { data } = await axiosInstance.put("/user/notification-settings", {
+          keywordNotifications,
+          ...(Array.isArray(keywords) ? { keywords } : {}),
+        });
+        setSettings({
+          keywordNotifications: data.keywordNotifications,
+          keywords: data.keywords || [],
+        });
+        setSaveMessage(
+          keywordNotifications
+            ? "Notifications enabled — you'll get a popup when a tweet mentions your keywords."
+            : "Notifications disabled."
+        );
+        return true;
+      } catch (err) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status !== 401) {
+          console.error("Failed to update notification settings:", err);
+        }
+        setSaveMessage("Couldn't save your preference. Please try again.");
+        return false;
+      } finally {
+        setSaving(false);
       }
-      setSaveMessage("Couldn't save your preference. Please try again.");
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   const value = useMemo(
     () => ({ loading, saving, permission, settings, saveMessage, requestPermission, updateSettings }),

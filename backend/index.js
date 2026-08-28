@@ -11,6 +11,10 @@ import dotenv from "dotenv";
 // first, and with the default "verbatim" DNS order the connection stalls until
 // timeout (ENETUNREACH). Prefer IPv4 globally so email/OTP sends complete.
 dns.setDefaultResultOrder("ipv4first");
+// Node on this Windows host fails to enumerate the system DNS resolver and
+// falls back to 127.0.0.1, which refuses every lookup (ECONNREFUSED) — even
+// google.com. Pin real resolvers so mongoose can resolve the Atlas SRV record.
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 import User from "./models/user.js";
 import Tweet from "./models/tweet.js";
 import { initSocket } from "./socket.js";

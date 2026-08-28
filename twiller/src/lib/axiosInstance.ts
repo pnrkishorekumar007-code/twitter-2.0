@@ -1,18 +1,25 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import { auth } from "@/context/firebase";
+import { getBackendBaseUrl } from "./backendUrl";
 
 interface TwillerRequestConfig extends InternalAxiosRequestConfig {
   _twillerRetried?: boolean;
 }
 
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000",
+  baseURL: getBackendBaseUrl(),
   headers: {
     "Content-Type": "application/json",
   },
   withCredentials: true,
   timeout: 15000,
 });
+
+// Diagnostic: print the exact backend URL this bundle will call, so a deployed
+// Vercel build can be verified without guessing at environment variables.
+if (typeof window !== "undefined") {
+  console.log("[Twiller] Backend URL:", getBackendBaseUrl());
+}
 
 // Cached Firebase ID token — avoids a forced refresh on every request.
 let cachedFirebaseToken: string | null = null;
@@ -53,6 +60,9 @@ if (typeof window !== "undefined" && !(localStorage as Record<string, unknown>).
 }
 
 axiosInstance.interceptors.request.use(async (config: TwillerRequestConfig) => {
+  // Respect an Authorization header the caller set explicitly (e.g. the fresh
+  // Firebase ID token on the Google /auth/login request) — never override it.
+  if (config.headers?.Authorization) return config;
   try {
     if (typeof window !== "undefined") {
       const jwtToken = localStorage.getItem("twiller-jwt");
