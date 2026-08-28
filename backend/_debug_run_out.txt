@@ -1,0 +1,99 @@
+[dotenv@17.2.1] injecting env (25) from .env -- tip: 📡 version env with Radar: https://dotenvx.com/radar
+✅ Connected to MongoDB
+🚀 Server running on port 5000
+✓ Brevo Transactional Email API configured
+✓ Gmail SMTP Connected
+[scheduler] Running every 60 min
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a912bd7fcd4c2d4af6e03c9","email":"e2ea1787898839239@example.com","fromJwt":true}
+[DEBUG]   receiverId: "6a912bd7fcd4c2d4af6e03ce" | isObjectId: true
+[DEBUG]   current._id: 6a912bd7fcd4c2d4af6e03c9
+[DEBUG]   receiver user: 6a912bd7fcd4c2d4af6e03ce
+[DEBUG]   participants: ["6a912bd7fcd4c2d4af6e03c9","6a912bd7fcd4c2d4af6e03ce"]
+[DEBUG]   -> 200 conversation 6a912bd62a43753facfdfb34
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a912bd7fcd4c2d4af6e03c9","email":"e2ea1787898839239@example.com","fromJwt":true}
+[DEBUG]   receiverId: "6a912bd7fcd4c2d4af6e03ce" | isObjectId: true
+[DEBUG]   current._id: 6a912bd7fcd4c2d4af6e03c9
+[DEBUG]   receiver user: 6a912bd7fcd4c2d4af6e03ce
+[DEBUG]   participants: ["6a912bd7fcd4c2d4af6e03c9","6a912bd7fcd4c2d4af6e03ce"]
+[DEBUG]   -> 200 conversation 6a912bd62a43753facfdfb34
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a912bd7fcd4c2d4af6e03c9","email":"e2ea1787898839239@example.com","fromJwt":true}
+[DEBUG]   receiverId: "not-a-valid-id" | isObjectId: false
+[DEBUG]   -> 400: Invalid user id
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a912bd7fcd4c2d4af6e03c9","email":"e2ea1787898839239@example.com","fromJwt":true}
+[DEBUG]   receiverId: "000000000000000000000000" | isObjectId: true
+[DEBUG]   current._id: 6a912bd7fcd4c2d4af6e03c9
+[DEBUG]   receiver user: NOT FOUND
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a7aca7d314b17cdf5eaf75b","email":"abc2007kumar@gmail.com","fromJwt":true}
+[DEBUG]   receiverId: "6a7b5d4ec7d8f71123bc716d" | isObjectId: true
+[DEBUG]   current._id: 6a7aca7d314b17cdf5eaf75b
+[DEBUG]   receiver user: 6a7b5d4ec7d8f71123bc716d
+[DEBUG]   participants: ["6a7aca7d314b17cdf5eaf75b","6a7b5d4ec7d8f71123bc716d"]
+[DEBUG]   -> 200 conversation 6a7ffb011cf765369392bec4
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a912cc34afa66146b5ba90f","email":"racea1787899075231@example.com","fromJwt":true}
+[DEBUG]   receiverId: "6a912cc34afa66146b5ba916" | isObjectId: true
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a912cc34afa66146b5ba90f","email":"racea1787899075231@example.com","fromJwt":true}
+[DEBUG]   receiverId: "6a912cc34afa66146b5ba916" | isObjectId: true
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a912cc34afa66146b5ba90f","email":"racea1787899075231@example.com","fromJwt":true}
+[DEBUG]   receiverId: "6a912cc34afa66146b5ba916" | isObjectId: true
+[DEBUG]   current._id: 6a912cc34afa66146b5ba90f
+[DEBUG]   receiver user: 6a912cc34afa66146b5ba916
+[DEBUG]   participants: ["6a912cc34afa66146b5ba90f","6a912cc34afa66146b5ba916"]
+[DEBUG]   current._id: 6a912cc34afa66146b5ba90f
+[DEBUG]   receiver user: 6a912cc34afa66146b5ba916
+[DEBUG]   participants: ["6a912cc34afa66146b5ba90f","6a912cc34afa66146b5ba916"]
+[DEBUG]   current._id: 6a912cc34afa66146b5ba90f
+[DEBUG]   receiver user: 6a912cc34afa66146b5ba916
+[DEBUG]   participants: ["6a912cc34afa66146b5ba90f","6a912cc34afa66146b5ba916"]
+[DEBUG]   -> 200 conversation 6a912cc22a43753facfdfb35
+[DEBUG]   -> 200 conversation 6a912cc22a43753facfdfb35
+[DEBUG]   -> 200 conversation 6a912cc22a43753facfdfb35
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a7aca7d314b17cdf5eaf75b","email":"abc2007kumar@gmail.com","fromJwt":true}
+[DEBUG]   receiverId: "6a7b5d4ec7d8f71123bc716d" | isObjectId: true
+[DEBUG]   current._id: 6a7aca7d314b17cdf5eaf75b
+[DEBUG]   receiver user: 6a7b5d4ec7d8f71123bc716d
+[DEBUG]   participants: ["6a7aca7d314b17cdf5eaf75b","6a7b5d4ec7d8f71123bc716d"]
+[DEBUG]   -> 200 conversation 6a7ffb011cf765369392bec4
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a7aca7d314b17cdf5eaf75b","email":"abc2007kumar@gmail.com","fromJwt":true}
+[DEBUG]   receiverId: "6a7b585b307c8807c65b8d8b" | isObjectId: true
+[DEBUG]   current._id: 6a7aca7d314b17cdf5eaf75b
+[DEBUG]   receiver user: 6a7b585b307c8807c65b8d8b
+[DEBUG]   participants: ["6a7aca7d314b17cdf5eaf75b","6a7b585b307c8807c65b8d8b"]
+[DEBUG]   -> 400 (exception): Plan executor error during findAndModify :: caused by :: E11000 duplicate key error collection: test.conversations index: participants_1 dup key: { participants: ObjectId('6a7aca7d314b17cdf5eaf75b') }
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a7b5d4ec7d8f71123bc716d","email":"pnrkishorekumar007@gmail.com","fromJwt":true}
+[DEBUG]   receiverId: "6a7b585b307c8807c65b8d8b" | isObjectId: true
+[DEBUG]   current._id: 6a7b5d4ec7d8f71123bc716d
+[DEBUG]   receiver user: 6a7b585b307c8807c65b8d8b
+[DEBUG]   participants: ["6a7b585b307c8807c65b8d8b","6a7b5d4ec7d8f71123bc716d"]
+[DEBUG]   -> 400 (exception): Plan executor error during findAndModify :: caused by :: E11000 duplicate key error collection: test.conversations index: participants_1 dup key: { participants: ObjectId('6a7b5d4ec7d8f71123bc716d') }
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a7b5d4ec7d8f71123bc716d","email":"pnrkishorekumar007@gmail.com","fromJwt":true}
+[DEBUG]   receiverId: "6a7aca7d314b17cdf5eaf75b" | isObjectId: true
+[DEBUG]   current._id: 6a7b5d4ec7d8f71123bc716d
+[DEBUG]   receiver user: 6a7aca7d314b17cdf5eaf75b
+[DEBUG]   participants: ["6a7aca7d314b17cdf5eaf75b","6a7b5d4ec7d8f71123bc716d"]
+[DEBUG]   -> 200 conversation 6a7ffb011cf765369392bec4
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a9115cdc712245635886fd8","email":"p.v.sasikumar2007@gmail.com","fromJwt":true}
+[DEBUG]   receiverId: "6a7b5d4ec7d8f71123bc716d" | isObjectId: true
+[DEBUG]   current._id: 6a9115cdc712245635886fd8
+[DEBUG]   receiver user: 6a7b5d4ec7d8f71123bc716d
+[DEBUG]   participants: ["6a7b5d4ec7d8f71123bc716d","6a9115cdc712245635886fd8"]
+[DEBUG]   -> 400 (exception): Plan executor error during findAndModify :: caused by :: E11000 duplicate key error collection: test.conversations index: participants_1 dup key: { participants: ObjectId('6a7b5d4ec7d8f71123bc716d') }
+[DEBUG] POST /messages/conversations
+[DEBUG]   authenticated user: {"uid":"6a9115cdc712245635886fd8","email":"p.v.sasikumar2007@gmail.com","fromJwt":true}
+[DEBUG]   receiverId: "6a7aca7d314b17cdf5eaf75b" | isObjectId: true
+[DEBUG]   current._id: 6a9115cdc712245635886fd8
+[DEBUG]   receiver user: 6a7aca7d314b17cdf5eaf75b
+[DEBUG]   participants: ["6a7aca7d314b17cdf5eaf75b","6a9115cdc712245635886fd8"]
+[DEBUG]   -> 400 (exception): Plan executor error during findAndModify :: caused by :: E11000 duplicate key error collection: test.conversations index: participants_1 dup key: { participants: ObjectId('6a7aca7d314b17cdf5eaf75b') }

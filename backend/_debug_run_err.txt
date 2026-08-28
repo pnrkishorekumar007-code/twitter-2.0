@@ -1,0 +1,1 @@
+⚠️  Neither LOGIN_OTP_SECRET nor JWT_SECRET is set. Using fallback dev secret — DO NOT deploy with this.

@@ -1,0 +1,46 @@
+
+> twiller@0.1.0 dev
+> next dev
+
+▲ Next.js 16.3.1 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.5:3000
+- Environments: .env.local
+✓ Ready in 1097ms
+✓ Running next.config.ts took 66ms
+- Experiments (use with caution):
+  · optimizePackageImports
+
+[browser] [Twiller] /loggedinuser for p.v.sasikumar2007@gmail.com failed: Network Error 
+    at <unknown> (src/context/AuthContext.tsx:93:15)
+    at async AuthProvider.useEffect.unsubscribe (src/context/AuthContext.tsx:163:30)
+  91 |     .catch((err) => {
+  92 |       if (err?.response?.status === 404) return null;
+> 93 |       console.error(
+     |               ^
+  94 |         `[Twiller] /loggedinuser for ${email} failed:`,
+  95 |         err?.message || err
+  96 |       ); (src/context/AuthContext.tsx:93:15)
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+ GET / 200 in 1497ms (next.js: 1093ms, application-code: 405ms)
+ GET / 200 in 113ms (next.js: 30ms, application-code: 83ms)
+ GET /home 200 in 259ms (next.js: 79ms, application-code: 179ms)
+ GET /login 404 in 163ms (next.js: 83ms, application-code: 80ms)
+[browser] [Twiller] /loggedinuser for p.v.sasikumar2007@gmail.com failed: Network Error 
+    at <unknown> (src/context/AuthContext.tsx:93:15)
+    at async AuthProvider.useEffect.unsubscribe (src/context/AuthContext.tsx:163:30)
+  91 |     .catch((err) => {
+  92 |       if (err?.response?.status === 404) return null;
+> 93 |       console.error(
+     |               ^
+  94 |         `[Twiller] /loggedinuser for ${email} failed:`,
+  95 |         err?.message || err
+  96 |       ); (src/context/AuthContext.tsx:93:15)
+[?25h
+npm error Lifecycle script `dev` failed with error:
+npm error code 1
+npm error path C:\Users\acer\Desktop\twitter-2.0\twiller
+npm error workspace twiller@0.1.0
+npm error location C:\Users\acer\Desktop\twitter-2.0\twiller
+npm error command failed
+npm error command C:\Windows\system32\cmd.exe /d /s /c next dev

@@ -1,0 +1,7 @@
+[dotenv@17.2.1] injecting env (25) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+✅ Connected to MongoDB
+🚀 Server running on port 5000
+✓ Brevo Transactional Email API configured
+✓ Gmail SMTP Connected
+[scheduler] Running every 60 min
+[scheduler] Reset tweet quota for 2 user(s) (new month: 2026-08)

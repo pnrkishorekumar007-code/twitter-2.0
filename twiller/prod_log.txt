@@ -1,0 +1,16 @@
+
+> twiller@0.1.0 start
+> next start
+
+▲ Next.js 16.3.1
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.5:3000
+✓ Ready in 359ms
+✓ Running next.config.ts took 81ms
+npm error Lifecycle script `start` failed with error:
+npm error code 4294967295
+npm error path C:\Users\acer\Desktop\twitter-2.0\twiller
+npm error workspace twiller@0.1.0
+npm error location C:\Users\acer\Desktop\twitter-2.0\twiller
+npm error command failed
+npm error command C:\Windows\system32\cmd.exe /d /s /c next start
